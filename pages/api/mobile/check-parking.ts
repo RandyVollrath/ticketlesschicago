@@ -164,6 +164,17 @@ interface MobileCheckParkingResponse {
    * pretending confidence.
    */
   needsVerification?: boolean;
+  /**
+   * When true, mobile MUST NOT push a parking notification (neither rule
+   * alerts nor "you're parked OK" safe notification). The server has detected
+   * either walk-away contamination (compass disagrees with last GPS heading
+   * by > 50°) or a low-confidence no-snap result (address_confidence=0 with
+   * no snap-to-street). The diagnostic is still saved; the user can open the
+   * app to verify or correct. See PARKING_LOCATION_ACCURACY.md.
+   */
+  suppressNotifications?: boolean;
+  /** Why suppressNotifications fired (debug). e.g. 'walkaway_suspected:hd=158'. */
+  suppressionReason?: string;
   /** Human-readable factors that drove the confidence score (debug-friendly). */
   addressConfidenceReasons?: string[];
   /**
@@ -2756,10 +2767,66 @@ export default async function handler(
       confidenceReasons.push('carplay-active-drive');
     }
     addressConfidence = Math.max(0, Math.min(100, addressConfidence));
-    const needsVerification = addressConfidence < 70;
+    let needsVerification = addressConfidence < 70;
     diag.address_confidence = addressConfidence;
     diag.address_confidence_reasons = confidenceReasons;
     diag.needs_verification = needsVerification;
+
+    // ───────── Walk-away + low-confidence suppression (May 2026) ─────────
+    // Two failure modes from real-world reports that all four address tools
+    // (snap, Nominatim, Apple, Mapbox) agreed on but were physically wrong:
+    //
+    // (1) Walk-away drift — Adams/Laflin (May 2026), Lawrence/Wolcott
+    //     (recurring): GPS captured AFTER the user got out and walked.
+    //     `headingDisagreementDeg` (compass vs last GPS heading) > 50° is a
+    //     near-certain "user has turned/walked since the car stopped"
+    //     signal. Every confirmed false positive in the dataset has hd > 50;
+    //     correct detections cluster < 30°.
+    //
+    // (2) No-snap, no-confidence — Southport red light (May 2026):
+    //     coremotion_walking fired at a long red, GPS landed mid-intersection
+    //     so PostGIS snap returned no centerline within tolerance, address
+    //     confidence settled at 0, but the address fallback still produced
+    //     "2474 N Southport" and we notified the user. When snap is null
+    //     AND confidence is 0, we have no real ground truth — better to
+    //     stay quiet than to alert.
+    //
+    // In both cases: don't surface a parking notification. Save the
+    // diagnostic, mark needsVerification, and let the user open the app to
+    // confirm if they actually parked here. Mobile honors `suppressNotifications`.
+    let suppressNotifications = false;
+    let suppressionReason: string | null = null;
+
+    const HEADING_WALKAWAY_THRESHOLD_DEG = 50;
+    const walkAwayLikely =
+      headingDisagreementDeg != null
+      && headingDisagreementDeg > HEADING_WALKAWAY_THRESHOLD_DEG
+      && nativeLocationSource !== 'last_driving';  // last_driving fix isn't post-walk
+    if (walkAwayLikely) {
+      suppressNotifications = true;
+      suppressionReason = `walkaway_suspected:hd=${Math.round(headingDisagreementDeg!)}`;
+      needsVerification = true;
+      diag.walkaway_guard_fired = true;
+      diag.walkaway_details = `headingDisagreementDeg=${Math.round(headingDisagreementDeg!)}° > ${HEADING_WALKAWAY_THRESHOLD_DEG}° (locSrc=${nativeLocationSource ?? 'n/a'})`;
+      console.log(`[check-parking] WALKAWAY GUARD FIRED: ${diag.walkaway_details}. Suppressing parking notifications.`);
+    }
+
+    const noSnapNoConfidence =
+      addressConfidence === 0
+      && (snapResult == null || snapResult.snapDistanceMeters == null);
+    if (noSnapNoConfidence) {
+      suppressNotifications = true;
+      suppressionReason = suppressionReason
+        ? `${suppressionReason};no_snap_no_confidence`
+        : 'no_snap_no_confidence';
+      needsVerification = true;
+      console.log(`[check-parking] LOW-CONFIDENCE SUPPRESSION: addressConfidence=0 and no snap result. Suppressing parking notifications.`);
+    }
+
+    if (suppressNotifications) {
+      diag.needs_verification = true;
+    }
+    // ──────────────────────────────────────────────────────────────────────
 
     // Surface the runner-up candidates as one-tap correction options for the
     // mobile "Wrong street?" modal. Only emitted when there's genuine
@@ -2922,6 +2989,8 @@ export default async function handler(
       coordinates: { latitude: checkLat, longitude: checkLng },
       addressConfidence,
       needsVerification,
+      suppressNotifications: suppressNotifications || undefined,
+      suppressionReason: suppressionReason ?? undefined,
       addressConfidenceReasons: confidenceReasons,
       addressAlternates: addressAlternates.length > 0 ? addressAlternates : undefined,
       parkingAnchor: diag.locked_by_user_anchor

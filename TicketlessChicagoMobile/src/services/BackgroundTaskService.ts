@@ -2544,7 +2544,21 @@ class BackgroundTaskServiceClass {
 
       // Send notification — always notify so the user knows the scan ran
       const rawData = result.rawApiData || await this.getRawParkingData(result);
-      if (filteredResult.rules.length > 0) {
+
+      // Server-side suppression: walk-away drift or low-confidence no-snap.
+      // When the server isn't sure where the car actually is (compass vs GPS
+      // heading disagree by > 50°, or addressConfidence=0 with no snap), it
+      // sends `suppressNotifications: true` and we stay quiet — no rule
+      // alerts, no "parked OK" notification, no call alert. The diagnostic is
+      // still saved server-side; user can open the app to verify or correct.
+      // See pages/api/mobile/check-parking.ts walk-away guard (May 2026).
+      const serverSuppress = rawData?.suppressNotifications === true;
+      if (serverSuppress) {
+        log.warn(
+          `Parking notification SUPPRESSED by server: reason=${rawData?.suppressionReason || 'unknown'}, ` +
+          `addressConfidence=${rawData?.addressConfidence ?? '?'}, address=${filteredResult.address}`
+        );
+      } else if (filteredResult.rules.length > 0) {
         await this.sendParkingNotification(filteredResult, coords.accuracy, rawData);
 
         // Trigger phone call alert if user has it enabled and there are active restrictions
@@ -2749,7 +2763,12 @@ class BackgroundTaskServiceClass {
         // Update the notification with the real address
         const filteredResult = await this.filterOwnPermitZone(result);
         const rawData = result.rawApiData || await this.getRawParkingData(result);
-        if (filteredResult.rules.length > 0) {
+        const serverSuppress = rawData?.suppressNotifications === true;
+        if (serverSuppress) {
+          log.warn(
+            `Address backfill notification SUPPRESSED: reason=${rawData?.suppressionReason || 'unknown'}, address=${filteredResult.address}`
+          );
+        } else if (filteredResult.rules.length > 0) {
           await this.sendParkingNotification(filteredResult, coords.accuracy, rawData);
         } else {
           await this.sendSafeNotification(filteredResult.address, coords.accuracy, rawData);
@@ -2830,7 +2849,12 @@ class BackgroundTaskServiceClass {
 
       // Re-send notification with corrected data
       const rawData = result.rawApiData || await this.getRawParkingData(result);
-      if (filteredResult.rules.length > 0) {
+      const serverSuppress = rawData?.suppressNotifications === true;
+      if (serverSuppress) {
+        log.warn(
+          `Phase 2 re-notify SUPPRESSED: reason=${rawData?.suppressionReason || 'unknown'}, address=${filteredResult.address}`
+        );
+      } else if (filteredResult.rules.length > 0) {
         await this.sendParkingNotification(filteredResult, burstCoords.accuracy, rawData);
       } else {
         await this.sendSafeNotification(filteredResult.address, burstCoords.accuracy, rawData);
