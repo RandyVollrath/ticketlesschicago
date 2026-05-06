@@ -559,6 +559,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     locationAtStopStart = nil
     recentLowSpeedLocations.removeAll()
     recentDrivingLocations.removeAll()
+    maxBufferSpeedMps = -1.0
     startContinuousGps()
     startAccelerometerRecording()
 
@@ -927,6 +928,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private var recentLowSpeedLocations: [CLLocation] = []
   private let maxRecentLowSpeedLocations = 10  // Keep last 10 fixes (~10 seconds)
   private let lowSpeedThresholdMps = 3.0  // Collect when speed < 3 m/s (~7 mph)
+
+  // Tracks the maximum GPS speed (m/s) ever observed in the CURRENT
+  // driving-buffer window. Used to detect buffer contamination by walking
+  // samples (Adams/Laflin walk-away bug, May 2026): when the user got out
+  // of the car and walked, the post-stop walking samples (speeds 0.3-2.8 m/s)
+  // refilled `recentLowSpeedLocations` and `recentDrivingLocations`,
+  // pushing real driving fixes out of the ring buffer. The averaged location
+  // ended up on the street the user walked to, not where the car actually
+  // stopped. If `maxBufferSpeedMps` never crossed `bufferRealDrivingThresholdMps`
+  // (3 m/s), the buffer contains only walking — at finalization we skip the
+  // inverse-variance average and fall back to `locationAtStopStart`.
+  // Reset whenever we transition into a fresh driving session.
+  private var maxBufferSpeedMps: Double = -1.0
+  private let bufferRealDrivingThresholdMps = 3.0  // Min "definitely driving" speed
 
   // Ring buffer of recent GPS fixes while the car is moving (any speed above
   // ~0.3 m/s). Sent with the parking event as `driveTrajectory` so the server
@@ -2889,6 +2904,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           // trajectory so the next parking event's driveTrajectory reflects
           // only this drive's path, not leftover fixes from the last trip.
           self.recentDrivingLocations.removeAll()
+          self.maxBufferSpeedMps = -1.0
           // Spin up precise GPS now that we know user is driving
           self.startContinuousGps()
           // Start recording accelerometer data for red light evidence
@@ -3288,6 +3304,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         locationAtStopStart = nil
         recentLowSpeedLocations.removeAll()
         recentDrivingLocations.removeAll()
+        maxBufferSpeedMps = -1.0
         // TEMPORARILY DISABLED for App Store compliance (guideline 2.5.4)
         // configureSpeechAudioSession()
         self.log("Driving started (GPS speed \(String(format: "%.1f", speed)) m/s confirmed CoreMotion automotive)")
@@ -3364,6 +3381,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             locationAtStopStart = nil
             recentLowSpeedLocations.removeAll()
             recentDrivingLocations.removeAll()
+            maxBufferSpeedMps = -1.0
             startContinuousGps()
             startAccelerometerRecording()
             // TEMPORARILY DISABLED for App Store compliance (guideline 2.5.4)
@@ -3708,14 +3726,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // GPS averaging: collect low-speed GPS fixes for parking location accuracy.
     // When speed drops below threshold, we're approaching the parking spot.
     // Ring buffer keeps the last N fixes for averaging at confirmation time.
-    if isDriving && location.speed >= 0 && location.speed < lowSpeedThresholdMps && location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
+    //
+    // ALSO gated on `coreMotionSaysAutomotive`: once CoreMotion transitions
+    // out of automotive (user is walking/stationary), STOP appending. Walking
+    // fixes (0.5-2 m/s) otherwise refill the buffer and contaminate the
+    // weighted average — this was the Adams/Laflin walk-away bug (May 2026).
+    if isDriving && coreMotionSaysAutomotive
+       && location.speed >= 0 && location.speed < lowSpeedThresholdMps
+       && location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
       recentLowSpeedLocations.append(location)
       if recentLowSpeedLocations.count > maxRecentLowSpeedLocations {
         recentLowSpeedLocations.removeFirst()
       }
+      if location.speed > maxBufferSpeedMps { maxBufferSpeedMps = location.speed }
     } else if location.speed >= 0 && location.speed >= lowSpeedThresholdMps {
       // Still driving fast — clear the buffer, we haven't started stopping yet
       recentLowSpeedLocations.removeAll()
+      if location.speed > maxBufferSpeedMps { maxBufferSpeedMps = location.speed }
     }
 
     // Driving-speed trajectory buffer: capture fixes at any non-trivial speed
@@ -3724,12 +3751,21 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     // right before a stop are exactly the ones that reveal the post-turn street
     // (the 1-2 fixes between turning onto Wolcott and stopping).
     // Accuracy gate (<= 50m) prevents trash fixes from polluting the trajectory.
-    if isDriving && location.speed >= drivingBufferMinSpeedMps
+    //
+    // ALSO gated on `coreMotionSaysAutomotive` for the same reason as the
+    // low-speed buffer above: walking samples otherwise overrun the trajectory
+    // and the server's mapbox map-matching ends up matching the user's walking
+    // path (e.g. "user walked east on Lawrence") instead of the car's drive
+    // (e.g. "car drove south on Wolcott"). The 90-fix capacity meant 60-90s
+    // of walking could fully evict driving fixes from the ring buffer.
+    if isDriving && coreMotionSaysAutomotive
+       && location.speed >= drivingBufferMinSpeedMps
        && location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
       recentDrivingLocations.append(location)
       if recentDrivingLocations.count > maxRecentDrivingLocations {
         recentDrivingLocations.removeFirst()
       }
+      if location.speed > maxBufferSpeedMps { maxBufferSpeedMps = location.speed }
     }
 
     // Camera-aware GPS boost: if GPS speed shows movement but CoreMotion hasn't
@@ -6359,11 +6395,23 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       self.log("WARNING: Using current location as fallback")
     }
 
+    // Buffer-contamination guard: if the driving buffers never saw a fix at
+    // real driving speed (≥ 3 m/s = ~6.7 mph), they contain only walking
+    // samples and the weighted average will land where the user walked, not
+    // where the car parked. Adams/Laflin (May 2026): driveTrajectory had 90
+    // samples all at 0.3-2.8 m/s — the user walked from Laflin → Adams while
+    // the buffers refilled with walking GPS, then the average resolved to
+    // "1535 W Adams" (where the user walked) instead of Laflin (where the
+    // car was). Surface the flag to the server diagnostic and skip averaging.
+    let bufferSawRealDriving = maxBufferSpeedMps >= bufferRealDrivingThresholdMps
+    body["maxBufferSpeedMps"] = maxBufferSpeedMps
+    body["bufferSawRealDriving"] = bufferSawRealDriving
+
     // GPS averaging: use recent low-speed GPS fixes to improve parking location accuracy.
     // During the last seconds before parking, the car is moving slowly or stopped —
     // averaging multiple fixes reduces urban canyon noise.
     // Filter: only use fixes from the last 60 seconds to prevent stale contamination.
-    if !recentLowSpeedLocations.isEmpty {
+    if !recentLowSpeedLocations.isEmpty && bufferSawRealDriving {
       let now = Date()
       let recentFixes = recentLowSpeedLocations.filter { now.timeIntervalSince($0.timestamp) <= 60 }
 
@@ -6403,6 +6451,15 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       } else {
         self.log("GPS averaging: skipped — only \(recentFixes.count) recent fixes within 60s (need 2+)")
       }
+    } else if !recentLowSpeedLocations.isEmpty && !bufferSawRealDriving {
+      self.log("GPS averaging: SKIPPED — buffer max speed \(String(format: "%.1f", maxBufferSpeedMps))m/s < \(bufferRealDrivingThresholdMps)m/s threshold (likely walking-contaminated)")
+      decision("gps_averaging_skipped_walking_contamination", [
+        "maxBufferSpeedMps": maxBufferSpeedMps,
+        "bufferThresholdMps": bufferRealDrivingThresholdMps,
+        "bufferSize": recentLowSpeedLocations.count,
+      ])
+    }
+    if !recentLowSpeedLocations.isEmpty {
       // Clear buffer after use — prevents stale fixes leaking into next parking
       recentLowSpeedLocations.removeAll()
     }
