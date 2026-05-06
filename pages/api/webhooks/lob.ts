@@ -90,30 +90,45 @@ async function getRawBody(req: NextApiRequest): Promise<Buffer> {
 }
 
 /**
- * Verify Lob webhook signature
- * Lob uses a simple signature header for verification
+ * Verify Lob webhook signature.
+ *
+ * Per Lob spec (https://docs.lob.com/#webhooks-section), each request carries:
+ *   lob-signature           HMAC-SHA256 hex digest
+ *   lob-signature-timestamp Unix epoch seconds
+ * The signed payload is "${timestamp}.${rawBody}". Signing the raw body alone
+ * (the previous implementation here) silently rejected every real Lob delivery,
+ * which is why all historical letters had delivery_status = null.
+ *
+ * The 5-minute timestamp window guards against replay of an old captured event.
  */
-function verifyLobSignature(payload: string, signature: string | undefined): boolean {
+function verifyLobSignature(
+  payload: string,
+  signature: string | undefined,
+  timestamp: string | undefined,
+): boolean {
   const webhookSecret = process.env.LOB_WEBHOOK_SECRET;
 
-  // If no webhook secret configured, fail closed — reject all webhooks
   if (!webhookSecret) {
-    console.error('LOB_WEBHOOK_SECRET not configured - rejecting webhook (fail closed)');
+    console.error('LOB_WEBHOOK_SECRET not configured — rejecting webhook (fail closed)');
+    return false;
+  }
+  if (!signature || !timestamp) {
     return false;
   }
 
-  if (!signature) {
+  const tsNum = Number(timestamp);
+  if (!Number.isFinite(tsNum)) return false;
+  const ageSec = Math.abs(Date.now() / 1000 - tsNum);
+  if (ageSec > 300) {
+    console.error(`Lob webhook timestamp out of window: age=${ageSec.toFixed(0)}s`);
     return false;
   }
 
-  // Lob uses HMAC-SHA256 for webhook signatures
   const expectedSignature = crypto
     .createHmac('sha256', webhookSecret)
-    .update(payload)
+    .update(`${timestamp}.${payload}`)
     .digest('hex');
 
-  // timingSafeEqual throws on length mismatch — guard first so an attacker
-  // with a wrong-length signature gets a clean false instead of a 500.
   const sigBuf = Buffer.from(signature);
   const expBuf = Buffer.from(expectedSignature);
   if (sigBuf.length !== expBuf.length) return false;
@@ -156,9 +171,9 @@ export default async function handler(
     const rawBodyBuf = await getRawBody(req);
     const rawBody = rawBodyBuf.toString('utf8');
     const signature = req.headers['lob-signature'] as string | undefined;
+    const sigTimestamp = req.headers['lob-signature-timestamp'] as string | undefined;
 
-    // Verify signature
-    if (!verifyLobSignature(rawBody, signature)) {
+    if (!verifyLobSignature(rawBody, signature, sigTimestamp)) {
       console.error('Invalid Lob webhook signature');
       return res.status(401).json({ error: 'Invalid signature' });
     }
