@@ -178,6 +178,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`📨 Email from ${fromEmail} to ${toEmail}: "${subject}"`);
 
+    // SHORT-CIRCUIT: drop our own system-generated mail. Outbound alerts go
+    // out from alerts@/noreply@autopilotamerica.com and several of them land
+    // back in randy@autopilotamerica.com (the admin inbox) — at which point
+    // the keyword scanner below sees words like "details" or "info" in the
+    // alert body and fires a phantom "USER WANTS INFO" admin notification.
+    // No human ever replied. Bail before any of that runs.
+    // Resend's `from` may arrive bare ("alerts@…") or RFC2822 wrapped
+    // ("Autopilot America <alerts@…>"), so extract the address with a regex
+    // before matching local-parts.
+    const SYSTEM_SENDER_LOCALPARTS = [
+      'alerts',
+      'noreply',
+      'no-reply',
+      'mailer-daemon',
+      'postmaster',
+      'bounces',
+      'notifications',
+    ];
+    const fromAddrMatch = fromEmail.match(/([a-z0-9._+-]+)@autopilotamerica\.com/i);
+    const fromLocalPart = fromAddrMatch?.[1]?.toLowerCase() || '';
+    const isSelfLoop = !!fromLocalPart && SYSTEM_SENDER_LOCALPARTS.includes(fromLocalPart);
+    if (isSelfLoop) {
+      console.log(`⏭️ Ignoring self-loop from system sender: ${fromEmail}`);
+      return res.status(200).json({ ignored: true, reason: 'system sender loopback' });
+    }
+
     // SHORT-CIRCUIT: Resend fires email.received on EVERY configured webhook,
     // regardless of the destination inbox. If this email wasn't addressed to
     // an inbox this handler cares about (evidence@, FOIA response inboxes,
