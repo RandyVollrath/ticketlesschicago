@@ -79,10 +79,10 @@ async function call(label: string, body: Record<string, any>) {
     longitude: -87.6756653114322,
     accuracy: 4.5,
     heading: 87.9,
-    compassHeading: 246,
-    compassConfidence: 6.1,
-    locationSource: 'stop_start',
-    detectionSource: 'gps_coremotion_agree',
+    compass_heading: 246,
+    compass_confidence: 6.1,
+    location_source: 'stop_start',
+    detection_source: 'gps_coremotion_agree',
     driving_duration_sec: 963,
   });
 
@@ -94,10 +94,10 @@ async function call(label: string, body: Record<string, any>) {
     longitude: -87.663888162153,
     accuracy: 4.1,
     heading: 358.4,
-    compassHeading: 99.8,
-    compassConfidence: 3.8,
-    locationSource: 'stop_start',
-    detectionSource: 'coremotion_walking',
+    compass_heading: 99.8,
+    compass_confidence: 3.8,
+    location_source: 'stop_start',
+    detection_source: 'coremotion_walking',
     driving_duration_sec: 570,
   });
 
