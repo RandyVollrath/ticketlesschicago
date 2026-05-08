@@ -23,6 +23,7 @@ import { getOfficerIntelligence } from '../../../lib/contest-outcome-tracker';
 import { analyzeRedLightDefense, analyzeFactualInconsistency, type AnalysisInput, type RedLightDefenseAnalysis, type FactualInconsistencyAnalysis } from '../../../lib/red-light-defense-analysis';
 import { verifySweeperVisit, type SweeperVerification } from '../../../lib/sweeper-tracker';
 import { geocodeChicagoAddress } from '../../../lib/places-geocoder';
+import { formatViolationDate } from '../../../lib/contest-letter-date';
 
 // Weather relevance by violation type
 // PRIMARY: Weather directly invalidates the ticket (cleaning cancelled, threshold not met)
@@ -1446,7 +1447,7 @@ Ticket Information:
 - Ticket Number: ${contest.ticket_number || 'N/A'}
 - Violation: ${contest.violation_description || 'N/A'}
 - Violation Code: ${contest.violation_code || 'N/A'}
-- Date: ${contest.ticket_date || 'N/A'}
+- Date: ${formatViolationDate(contest.ticket_date) || 'N/A'} (use this exact human-readable date — DO NOT reformat the YYYY-MM-DD form, which can drift by one day across timezones)
 - Location: ${contest.ticket_location || 'N/A'}
 - Amount: $${contest.ticket_amount || 'N/A'}
 
@@ -2117,7 +2118,7 @@ ${availableEvidenceSummary.length > 0 ? availableEvidenceSummary.map((e, i) => `
 
 TICKET DETAILS:
 - Violation: ${contest.violation_description || 'N/A'} (${contest.violation_code || 'N/A'})
-- Date: ${contest.ticket_date || 'N/A'}
+- Date: ${formatViolationDate(contest.ticket_date) || 'N/A'}
 - Location: ${contest.ticket_location || 'N/A'}
 
 Respond ONLY with valid JSON in this exact format:
@@ -2177,7 +2178,7 @@ ${contestLetter}
 AVAILABLE EVIDENCE SUMMARY:
 ${availableEvidenceSummary.map((e, i) => `${i + 1}. ${e}`).join('\n')}
 
-TICKET: ${contest.violation_description} (${contest.violation_code}) on ${contest.ticket_date} at ${contest.ticket_location}
+TICKET: ${contest.violation_description} (${contest.violation_code}) on ${formatViolationDate(contest.ticket_date)} at ${contest.ticket_location}
 
 CRITICAL CONTEST METHOD CONSTRAINT:
 This is a WRITTEN MAIL-IN CONTEST mailed to City of Chicago Department of Finance, P.O. Box 88292, Chicago, IL 60680-1292. DO NOT request a hearing, ask to appear, mention scheduling, or use phrases like "at the hearing", "when I appear", or "I look forward to my hearing". The hearing officer reviews the written submission and issues a written determination by mail. Frame the request as "I respectfully request a written determination dismissing this citation."
@@ -2467,7 +2468,7 @@ RE: Contest of Parking Citation #${contest.ticket_number || '[TICKET NUMBER]'}
 
 Dear Sir/Madam,
 
-I am writing to formally contest parking citation #${contest.ticket_number || '[TICKET NUMBER]'} issued on ${contest.ticket_date || '[DATE]'} at ${contest.ticket_location || '[LOCATION]'}. The citation was issued for violation code ${contest.violation_code || '[CODE]'}: ${contest.violation_description || '[VIOLATION]'}.
+I am writing to formally contest parking citation #${contest.ticket_number || '[TICKET NUMBER]'} issued on ${contest.ticket_date ? formatViolationDate(contest.ticket_date) : '[DATE]'} at ${contest.ticket_location || '[LOCATION]'}. The citation was issued for violation code ${contest.violation_code || '[CODE]'}: ${contest.violation_description || '[VIOLATION]'}.
 
 I respectfully request that this citation be dismissed based on the following grounds:
 

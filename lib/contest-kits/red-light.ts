@@ -163,26 +163,21 @@ I respectfully request that this citation be dismissed.`,
 
     secondary: {
       id: 'illinois_statute_yellow',
-      name: 'Yellow Light Violates Illinois Statute (625 ILCS 5/11-306)',
-      template: `I respectfully contest this red light camera citation on the grounds that the yellow light duration at this intersection does not meet the minimum required by Illinois state law.
+      name: 'Yellow Light May Not Meet Illinois Statutory Minimum (625 ILCS 5/11-306)',
+      template: `I respectfully contest this red light camera citation on the grounds that the yellow change interval at this intersection may not meet the minimum required by Illinois state law for camera-enforced intersections.
 
 Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION].
 
-Illinois statute 625 ILCS 5/11-306(c-5) explicitly requires that intersections equipped with automated red light enforcement systems must have a yellow change interval of at least the MUTCD (Manual on Uniform Traffic Control Devices) minimum PLUS ONE ADDITIONAL SECOND.
-
-For this [SPEED_LIMIT] mph intersection:
-- MUTCD minimum yellow: [MUTCD_MIN] seconds
-- Illinois statutory minimum for camera intersections: [STATUTORY_MIN] seconds (MUTCD + 1.0s)
-- Chicago's actual yellow at this intersection: [CHICAGO_ACTUAL] seconds
-- Shortfall below legal minimum: [SHORTFALL] seconds
+Illinois Vehicle Code 625 ILCS 5/11-306(c-5) requires that the duration of the yellow change interval at an intersection equipped with an automated traffic law enforcement system be no less than the period of time provided for in the most recent edition of the Illinois Department of Transportation's Bureau of Design and Environment Manual. The IDOT BDE Manual yellow change interval values are speed- and grade-dependent.
 
 [YELLOW_TIMING_EVIDENCE]
 
-This is not merely an engineering recommendation — it is a binding requirement of Illinois state law that applies specifically to camera-enforced intersections. The 2014 Chicago Inspector General investigation confirmed that even small yellow light shortfalls generated tens of thousands of improper citations.
+To allow the City to substantiate that the yellow change interval at this intersection was in fact at or above the IDOT BDE Manual minimum at the time of the cited violation, I request the following records:
+(a) the CDOT signal timing plan in effect at [INTERSECTION] on [DATE], including the programmed yellow change interval;
+(b) the most recent yellow-time field-verification record for this intersection;
+(c) the IDOT BDE Manual page (most recent edition) specifying the required yellow change interval for the posted speed limit at this approach.
 
-I have also submitted a Freedom of Information Act request to the Chicago Department of Transportation for the signal timing plan at this intersection to verify the actual yellow duration programmed at the time of the violation.
-
-I respectfully request that this citation be dismissed on the grounds that the traffic control device at this camera-enforced intersection was not configured in compliance with 625 ILCS 5/11-306(c-5).`,
+If the programmed yellow change interval at the time of the alleged violation was below the IDOT BDE Manual minimum, the camera-enforced intersection was not configured in compliance with 625 ILCS 5/11-306(c-5) and the citation should be dismissed.`,
       requiredFacts: ['ticketNumber', 'date', 'intersection', 'speedLimit'],
       winRate: 0.35,
       conditions: [
@@ -203,7 +198,7 @@ I respectfully request that this citation be dismissed on the grounds that the t
 
 1. PROOF FROM CAMERA SYSTEM. I request the following records: (a) the full violation video (not only the still photographs), (b) the most recent calibration and certification records for the red light camera unit at this intersection, including the field test record nearest in time to [DATE], and (c) the manual review documentation for this specific citation.
 
-2. PROOF OF YELLOW LIGHT INTERVAL. Illinois Vehicle Code 625 ILCS 5/11-306(c-5) requires that camera-enforced intersections have a yellow change interval of at least the MUTCD minimum plus one additional second. I request the CDOT signal timing plan in effect at [INTERSECTION] on [DATE], including the programmed yellow change interval.
+2. PROOF OF YELLOW LIGHT INTERVAL. Illinois Vehicle Code 625 ILCS 5/11-306(c-5) requires that camera-enforced intersections have a yellow change interval no less than the period of time provided for in the most recent edition of the Illinois Department of Transportation's Bureau of Design and Environment Manual. I request the CDOT signal timing plan in effect at [INTERSECTION] on [DATE], including the programmed yellow change interval, and the IDOT BDE Manual page specifying the required yellow change interval for the posted speed limit at this approach.
 
 3. PROOF OF NOTICE. Chicago Municipal Code § 9-100-050 requires that violations be properly documented at the time of issuance.
 
@@ -242,14 +237,14 @@ I respectfully request that this citation be dismissed.`,
         name: 'Legal Right Turn on Red',
         template: `I respectfully contest this red light camera citation on the grounds that I was making a legal right turn on red with a complete stop.
 
-Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION]. The violation video shows my vehicle making a right turn. Under Illinois law (625 ILCS 5/11-306), a right turn on red is permitted after coming to a complete stop, yielding to pedestrians and cross traffic.
+Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION]. The violation video shows my vehicle making a right turn. Under Illinois law (625 ILCS 5/11-306(c)(1)), a right turn on red is permitted at a steady red signal after coming to a complete stop, yielding to pedestrians and cross traffic, unless a sign at the intersection prohibits it.
 
 The violation video shows that I:
 1. Came to a complete stop before the crosswalk/stop line
-2. Checked for pedestrians and cross traffic
-3. Proceeded with the right turn when safe to do so
+2. Yielded to pedestrians and cross traffic
+3. Proceeded with the right turn only when safe to do so
 
-Chicago Municipal Code § 9-8-020(c) requires that automated enforcement systems exclude permissible right turns on red. This was a lawful right turn, not a red light violation.
+A lawful right turn on red is not a red light violation under 625 ILCS 5/11-306. I request the violation video and any "No Turn on Red" signage record for this approach as of [DATE]; if no such sign was posted and the video shows a complete stop, this citation was issued in error.
 
 I respectfully request that this citation be dismissed.`,
         requiredFacts: ['ticketNumber', 'date', 'intersection'],
@@ -327,15 +322,16 @@ I respectfully request that this citation be dismissed based on these emergency 
 
 Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION]. The cited vehicle is a [VEHICLE_TYPE].
 
-Commercial vehicles equipped with air brakes require significantly longer stopping distances than passenger cars for two engineering reasons:
-1. Air Brake Lag: Air brakes have a 0.5-1.0 second delay before brakes engage (air pressure must build in the system). This adds to the perception-reaction time that yellow lights are designed to accommodate.
-2. Lower Deceleration Rate: Heavy vehicles decelerate at approximately 7 ft/s² versus 10 ft/s² for passenger cars, as documented in FMCSA braking standards.
+Commercial vehicles equipped with air brakes require longer stopping distances than passenger cars: air brakes have a build-up lag before the brakes fully engage, and heavy vehicles decelerate more slowly than passenger cars. The Institute of Transportation Engineers (ITE) yellow change interval formula on which standard signal timing is based assumes a passenger car perception/reaction time and deceleration rate.
 
-At the posted speed limit of [SPEED_LIMIT] mph, this commercial vehicle requires approximately [COMMERCIAL_YELLOW] seconds of yellow to safely perceive the signal, build air brake pressure, and decelerate. Chicago provides only [CHICAGO_ACTUAL] seconds — [SHORTFALL] seconds less than needed.
+[YELLOW_TIMING_EVIDENCE]
 
-The ITE yellow light formula and Chicago's signal timing are calibrated for passenger cars. Applying passenger car assumptions to a commercial vehicle creates a physical impossibility: the driver cannot stop safely in the time provided. This is a due process concern — the driver is penalized for a situation the traffic signal design did not account for.
+To allow the City to substantiate that the yellow change interval at the time of the alleged violation was sufficient for the cited vehicle class, I request:
+(a) the CDOT signal timing plan in effect at [INTERSECTION] on [DATE], including the programmed yellow change interval;
+(b) the IDOT BDE Manual yellow change interval value applicable to the posted speed limit on this approach;
+(c) any engineering study performed for this intersection accounting for heavy commercial vehicles.
 
-I respectfully request that this citation be dismissed.`,
+Where the programmed yellow change interval is at the passenger-car-based minimum and the cited vehicle is a heavy commercial vehicle, the driver cannot reasonably be expected to stop safely within the provided yellow phase. I respectfully request that this citation be dismissed.`,
         requiredFacts: ['ticketNumber', 'date', 'intersection', 'speedLimit'],
         winRate: 0.25,
         conditions: [
@@ -387,8 +383,8 @@ I respectfully request that this citation be dismissed.`,
 
   tips: [
     'REVIEW YOUR VIOLATION VIDEO at chicago.gov/finance — this is the #1 most important step',
-    'ILLINOIS LAW requires camera intersections to add 1 EXTRA SECOND to the MUTCD minimum yellow (625 ILCS 5/11-306). At 30mph that means 4.0 seconds — Chicago only provides 3.0 seconds!',
-    'Count the yellow light seconds in the video — under 3 seconds at 30mph is grounds for dismissal',
+    'ILLINOIS LAW (625 ILCS 5/11-306(c-5)) requires camera intersections to provide a yellow change interval at least as long as the IDOT Bureau of Design and Environment Manual minimum for the posted speed. We FOIA the actual programmed yellow time and the BDE Manual minimum to compare.',
+    'Count the yellow light seconds in the video — if it appears clearly short, FOIA the timing plan to confirm before contesting on this ground',
     'Right turns on red WITH a full stop are LEGAL — if the video shows a stop, you should win',
     'Camera tickets do NOT go on your driving record or affect your insurance in Illinois',
     'The fine is $100, but ignoring it can lead to a $100 late penalty + vehicle boot',

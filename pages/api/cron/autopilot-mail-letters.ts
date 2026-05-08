@@ -10,6 +10,7 @@ import { analyzeRedLightDefense, type AnalysisInput } from '../../../lib/red-lig
 import { getAdminAlertEmails } from '../../../lib/admin-alert-emails';
 import { checkEContestEligibility, submitEContest } from '../../../lib/econtest-service';
 import { buildEcontestEvidencePacket } from '../../../lib/econtest-evidence-packet';
+import { formatViolationDate } from '../../../lib/contest-letter-date';
 import * as Sentry from '@sentry/nextjs';
 
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 }) : null;
@@ -313,10 +314,15 @@ export function validateLetterContent(
   }
 
   // ── 6. Date consistency ──
+  // Use the same UTC-anchored formatter the prompt and the contest-kit
+  // templates use. Anything else introduces the off-by-one timezone drift
+  // that bit Jesse's first letter ("April 14" vs "April 15").
+  // NOTE: lib/letter-quality-validator.ts has a parallel copy of this whole
+  // function used by the smoke test. Both share formatViolationDate, so the
+  // date-check logic stays in sync. If you change date-handling logic here,
+  // change it there too.
   if (ticketData.violation_date) {
-    const vDate = new Date(ticketData.violation_date);
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const correctDateStr = `${monthNames[vDate.getUTCMonth()]} ${vDate.getUTCDate()}, ${vDate.getUTCFullYear()}`;
+    const correctDateStr = formatViolationDate(ticketData.violation_date);
     const dateInLetter = letterContent.match(/Violation Date:\s*(\w+ \d{1,2}, \d{4})/);
     if (dateInLetter && dateInLetter[1] !== correctDateStr) {
       issues.push(`Date mismatch: letter says "${dateInLetter[1]}" but ticket date is "${correctDateStr}"`);
@@ -397,7 +403,7 @@ ${letterContent}
 
 TICKET FACTS (ground truth — the letter MUST be consistent with these):
 - Ticket Number: ${ticketData.ticket_number}
-- Violation Date: ${ticketData.violation_date}
+- Violation Date: ${formatViolationDate(ticketData.violation_date)} (canonical human-readable form — the letter must use this exact form, NOT a YYYY-MM-DD string which can drift one day across timezones)
 - Violation: ${ticketData.violation_description} (${ticketData.violation_type})
 - Amount: $${ticketData.amount}
 - Location: ${ticketData.location || 'Unknown'}
@@ -409,7 +415,7 @@ SCORING CRITERIA (check each — deduct points for failures):
 
 2. TICKET NUMBER (-25 pts): The letter MUST contain the exact ticket number "${ticketData.ticket_number}". Missing ticket number means the city cannot process the contest.
 
-3. DATE ACCURACY (-20 pts): The violation date in the letter must match "${ticketData.violation_date}". A wrong date makes the entire contest invalid.
+3. DATE ACCURACY (-20 pts): The violation date in the letter must match "${formatViolationDate(ticketData.violation_date)}". A wrong date makes the entire contest invalid.
 
 4. DEFENSE COHERENCE (-25 pts): The defense strategy MUST match the violation type:
    - "PROHIBITED ANYTIME" / "TOW ZONE" → cannot argue "outside restricted hours"
@@ -619,7 +625,7 @@ ${letterContent}
 TICKET FACTS:
 - Ticket: ${ticketData.ticket_number}
 - Violation: ${ticketData.violation_description} (${ticketData.violation_type})
-- Date: ${ticketData.violation_date}
+- Date: ${formatViolationDate(ticketData.violation_date)} (use this exact human-readable date form)
 - Amount: $${ticketData.amount}
 - Location: ${ticketData.location || 'Unknown'}
 - Respondent: ${userName}

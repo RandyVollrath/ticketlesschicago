@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { Resend } from 'resend';
+import { runContestPipelineSmokeTest, smokeResultAsHtml } from '../../../lib/contest-pipeline-smoke';
 
 /**
  * Cron Job: Daily Admin Digest — Pending Contest Letters
@@ -95,12 +96,19 @@ export default async function handler(
 
     const foiaWaiting = foiaError ? [] : (foiaWaitingLetters || []);
 
-    if ((!pendingLetters || pendingLetters.length === 0) && foiaWaiting.length === 0) {
-      console.log('No pending letters — skipping digest email');
+    // Run the contest-pipeline smoke test before deciding whether to send.
+    // We want the email to fire on smoke FAILURE even when there are no
+    // pending letters, so a regression in signature verification, the
+    // letter validator, or the date formatter gets caught the next morning.
+    const smoke = await runContestPipelineSmokeTest();
+
+    if ((!pendingLetters || pendingLetters.length === 0) && foiaWaiting.length === 0 && smoke.passed) {
+      console.log('No pending letters and smoke test passed — skipping digest email');
       return res.status(200).json({
         success: true,
-        message: 'No pending letters, no email sent',
+        message: 'No pending letters, smoke passed, no email sent',
         pendingCount: 0,
+        smokePassed: true,
       });
     }
 
@@ -273,6 +281,8 @@ export default async function handler(
             &bull; Letters that pass the auto-send deadline will be mailed automatically as a safety net
           </p>
         </div>
+
+        ${smokeResultAsHtml(smoke)}
         <p style="color: #9ca3af; font-size: 12px; margin-top: 24px;">
           This is a daily automated digest from Autopilot America.
           Sent at ${new Date().toLocaleTimeString('en-US', { timeZone: 'America/Chicago' })} CT.
@@ -280,13 +290,17 @@ export default async function handler(
       </div>
     `;
 
-    // Send the email
+    // Send the email — smoke failures get a "[ALERT]" subject so they don't
+    // get lost in inbox noise.
+    const totalReview = (pendingLetters?.length || 0) + foiaWaiting.length;
+    const subject = !smoke.passed
+      ? `[ALERT] Contest pipeline smoke test FAILED${totalReview > 0 ? ` — also ${totalReview} letter${totalReview === 1 ? '' : 's'} need review` : ''}`
+      : `[Admin] ${totalReview} contest letter${totalReview === 1 ? '' : 's'} need${totalReview === 1 ? 's' : ''} review`;
+
     const { error: sendError } = await resend.emails.send({
       from: 'Autopilot America <alerts@autopilotamerica.com>',
       to: [ADMIN_EMAIL],
-      subject: `[Admin] ${(pendingLetters?.length || 0) + foiaWaiting.length} contest letter${
-        (pendingLetters?.length || 0) + foiaWaiting.length === 1 ? '' : 's'
-      } need${(pendingLetters?.length || 0) + foiaWaiting.length === 1 ? 's' : ''} review`,
+      subject,
       html,
     });
 
@@ -304,6 +318,8 @@ export default async function handler(
       pendingReview: pendingLetters?.length || 0,
       foiaWaiting: foiaWaiting.length,
       emailSentTo: ADMIN_EMAIL,
+      smokePassed: smoke.passed,
+      smokeChecks: smoke.checks.map(c => ({ name: c.name, passed: c.passed, ...(c.passed ? {} : { detail: c.detail }) })),
     });
   } catch (error: any) {
     console.error('Admin digest cron error:', error);
