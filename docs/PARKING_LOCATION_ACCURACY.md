@@ -123,6 +123,80 @@ See `/home/randy-vollrath/.claude/plans/magical-hugging-quail.md` for the full p
 | `lib/metered-parking-checker.ts` | Side-of-street determination, meter filtering |
 | `supabase/migrations/20260226_create_snap_to_nearest_street.sql` | PostGIS snap function |
 
+## Source-Attribution Diagnostic Loop (2026-05-08)
+
+When the app gets a park wrong, run the side-by-side audit:
+
+```bash
+node scripts/parking-source-attribution.js --user <email> --limit 1
+```
+
+This prints the final answer next to every source's vote (snap initial, snap final after disambiguation, Nominatim, Mapbox reverse, Mapbox map-match, Apple geocode, GPS heading, compass heading) plus the override-trail metadata. Tells you in seconds **which source got it right and which one was outvoted** — without grepping logs.
+
+To close the loop, the user reports ground truth via the in-app feedback prompt (or `pages/api/mobile/parking-feedback.ts`); the script then surfaces user_confirmed_block / corrected_address alongside every source.
+
+## Source Reliability Table (what we know so far)
+
+| Source | When it shines | When it fails | Who it overrules |
+|---|---|---|---|
+| PostGIS snap (closest centerline) | Mid-block parks with clean GPS | Intersections — closest line is the cross street. Urban canyon drift. | Default winner unless something overrides it |
+| Heading disambiguation (GPS course) | Driving straight up to the stop | Stale after turns (1 m/s threshold leaves last fix from prior street) | Picks among snap candidates |
+| Heading disambiguation (compass) | Phone is in a cradle / holster while parked, captured immediately at stop | Hand-held phone, magnetic interference (CarPlay, dashboard) | Replaces stale GPS heading when both classify to different grid orientations |
+| Trajectory median heading | Long approach on one street | Short final segment after a turn (the relevant block) | Backup when per-fix GPS heading missing |
+| Trajectory candidate vote (10 driving points) | Long approach on one street | Same — the 9 fixes from BEFORE the turn drown out the 1 fix from after | Confirms or rejects close-snap pick |
+| Nominatim (OSM reverse-geocode) | Mid-block GPS far from any cross street | Walk-away drift; intersection corners (picks whichever way's polyline is closest, not the one the car is on) | Overrides snap when both name a candidate AND no heading contradicts |
+| Mapbox reverse (Geocoding v6) | Has address-level numbers (e.g. "West Belden Avenue 1026") | Returns confidence=0 frequently in dense Chicago — gets discarded | Currently only **confirms** Nominatim; only **promotes** over Nominatim when snap distance > 50m |
+| Mapbox map-matching (trajectory) | Genuine moving drive ending at the stop | Stationary parked-car traces return matched=true / confidence=0 / empty street (verified rows 48/50/55) | Promotes when confidence ≥ 0.5 (rare in practice) |
+| Apple CLGeocoder | iOS only; fresh address pulled at park time, distinct DB | iOS only; sometimes blank thoroughfare | Triggers `two_source_intersection_override` when it agrees with Nominatim against snap at a corner |
+| Grid estimator (lib/chicago-grid-estimator.ts) | Side-of-street parity from cross product | Rounds at block boundaries — odd/even can flip | Forces parity correction on snap result |
+| Building footprint lookup | Side parity confirmation | Only useful where buildings are tagged with the same parity | Final tiebreaker on side |
+
+## Factors that go into the final location decision
+
+1. **Raw GPS fix** captured at stop-detection (the moment speed → 0).
+2. **Driving GPS buffer / `recentLowSpeedLocations`** — last 10 fixes while moving, inverse-variance weighted (iOS) or burst-sampled (Android).
+3. **GPS accuracy** (HDOP).
+4. **GPS heading** (course) — only valid when speed > 1 m/s.
+5. **Compass heading** — magnetometer, captured fresh at park time, 10 samples circular mean (iOS).
+6. **Trajectory** — last ~10 driving GPS points used for both median heading AND per-candidate "fixes near this centerline" voting.
+7. **CarPlay disconnect timestamp + lat/lng** (iOS) — sharper "parking moment" anchor and trajectory truncation point.
+8. **PostGIS snap** to nearest centerline within 25/50m search radius.
+9. **All snap candidates** within search radius (used by heading disambiguation).
+10. **Nominatim reverse-geocode** of raw GPS → OSM road name.
+11. **Mapbox reverse-geocode** (Geocoding v6) of post-correction GPS → address with house number + match-confidence.
+12. **Mapbox map-matching** of full trajectory → road segment + per-point confidence.
+13. **Apple CLGeocoder** (iOS) — thoroughfare + sub-thoroughfare from Apple's DB, sent in body.
+14. **Chicago street-name list** — `getChicagoStreetOrientation()` classifies each street as N-S or E-W.
+15. **Building footprints** with parity tags — used for side-of-street confirmation.
+16. **"Near intersection?" classifier** — diag.near_intersection set when ≥2 candidates within ~15m.
+17. **Walk-away guard** — suppresses notifications when heading evidence is internally inconsistent (>50° disagreement).
+
+## System Improvement Plan
+
+**Goal:** every miss yields a labeled training example so we can quantify which sources are most reliable in which scenarios, instead of relying on case-by-case fixes.
+
+**Phase 1 — Capture (DONE 2026-05-08):**
+- `pre_nominatim_snap` snapshot in `native_meta` on every parking diagnostic. Now we know what snap chose **before** any override.
+- `scripts/parking-source-attribution.js` for human side-by-side audit.
+
+**Phase 2 — Label (next):**
+- Lightweight in-app prompt after every park: tap the address bar to "fix" it. Drops a corrected_address into parking_feedback.
+- Periodic admin push: "Was this address right?" with the diag id, so unconfirmed events convert to labeled examples.
+- Goal: ≥30 user-confirmed events covering intersections, urban canyons, post-turn parks.
+
+**Phase 3 — Score (after ≥30 labels):**
+- For each source, compute: agreement rate with ground truth, conditional on (near_intersection, snap_distance bucket, heading_source, urban canyon proxy).
+- Output a per-scenario reliability matrix that drives override priorities, not hard-coded heuristics.
+- Specifically test: "When compass and GPS heading classify to different orientations, which source wins more often?" — preliminary data (2026-05-08 Belden case) supports compass; we need volume.
+
+**Phase 4 — Replace heuristics with weighted vote (after Phase 3):**
+- Each source produces a (street, side, house_number, confidence) tuple.
+- Final answer = weighted vote per the reliability matrix, conditioned on scenario features.
+- Override paths today (`nominatim_override_candidate_match`, `two_source_intersection_override`, `mapbox_match_candidate`, etc.) become outputs of the same vote function, not separate code paths.
+
+**Phase 5 — Active learning:**
+- When sources disagree by a wide margin AND we don't have a confident winner, prompt the user *before* choosing — turn ambiguity into a label instead of guessing.
+
 ## Change Log
 
 | Date | Change | Result |
@@ -139,3 +213,6 @@ See `/home/randy-vollrath/.claude/plans/magical-hugging-quail.md` for the full p
 | 2026-04-12 | iOS stop-candidate protection | Never consider stop candidate "weak" when walking. Add 20m proximity guard for refinement. |
 | 2026-04-13 | Keep close snap even if heading disagrees | Snap < 15m is strong geometric evidence; stale heading after a turn should not override it |
 | 2026-04-13 | Don't let heading protect extended/far snaps from Nominatim | Extended search (>25m) driven by stale heading can find wrong street; Nominatim overrides these |
+| 2026-05-08 | Compass heading allowed to contradict Nominatim | Belden/Kenmore case: GPS heading was stale after turn, compass was the chosen disambiguator, but Nominatim override only checked GPS — silently flipping the correct compass-disambiguated snap. Fix: when `effectiveHeadingSource === 'compass'` and snap < 25m, compass orientation contradicts Nominatim → block override. |
+| 2026-05-08 | Pre-Nominatim snap captured in native_meta | Diagnostic script can now show what snap chose before any override fired |
+| 2026-05-08 | `scripts/parking-source-attribution.js` | One command prints every source's vote side-by-side for a parking event |

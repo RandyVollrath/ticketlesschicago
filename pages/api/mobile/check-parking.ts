@@ -1724,6 +1724,17 @@ export default async function handler(
         // so heading-based disambiguation actively picks the WRONG street).
         // Nominatim is ground truth from the GPS position — it doesn't care about heading.
         if (snapResult) {
+          // Capture pre-override snap winner so we can audit override decisions
+          // later. Without this, once Nominatim overrides we lose the original
+          // snap pick (post-heading-disambiguation) and can't tell whether the
+          // override was right or wrong from data alone.
+          if (!diag.native_meta) diag.native_meta = {};
+          (diag.native_meta as any).pre_nominatim_snap = {
+            street: snapResult.streetName,
+            distance_m: snapResult.snapDistanceMeters ?? null,
+            source: snapResult.snapSource ?? null,
+            bearing: snapResult.streetBearing ?? null,
+          };
           try {
             const { reverseGeocode } = await import('../../../lib/reverse-geocoder');
             const nominatimResult = await reverseGeocode(latitude, longitude);
@@ -1757,22 +1768,71 @@ export default async function handler(
                 // hasHeading == GPS driving heading present (not compass). If
                 // the user was actively driving on Belden right before parking,
                 // the GPS course will say E-W and protect the Belden snap from
-                // being overridden by Nominatim's walked-away N-S read. Compass
-                // is intentionally excluded — phone orientation isn't car
-                // orientation, so compass agreement is too noisy to block OSM.
+                // being overridden by Nominatim's walked-away N-S read.
                 const drivingHeadingContradictsNominatim = hasHeading && (
                   (nominatimOrientation === 'N-S' && !isHeadingNorthSouth(headingDeg)) ||
                   (nominatimOrientation === 'E-W' && isHeadingNorthSouth(headingDeg))
                 );
 
+                // 2026-05-08 fix: compass MAY contradict Nominatim too, but
+                // only when it was already chosen as the disambiguator
+                // upstream (effectiveHeadingSource === 'compass' means we
+                // explicitly preferred compass over a stale GPS heading after
+                // a turn). When that happened, the compass was the signal
+                // that picked the snap winner — letting Nominatim override
+                // without re-checking compass would silently undo a correct
+                // disambiguation.
+                //
+                // Real example (Belden just east of Kenmore, 2026-05-08):
+                //   GPS heading 5° (stale, from driving north on Kenmore)
+                //   Compass 98° (fresh, parked facing east on Belden)
+                //   GPS+compass classified to different orientations →
+                //   compass became effective heading → snap winner = Belden
+                //   Nominatim said Kenmore. Driving heading didn't
+                //   contradict (it agreed with Kenmore — that's why it was
+                //   stale). Compass DID contradict but wasn't checked.
+                //   Result: silent override to Kenmore.
+                //
+                // We only honor compass-contradiction when:
+                //   - hasCompass (we already filter compassConfidenceDeg < 40°)
+                //   - effectiveHeadingSource === 'compass' (compass beat GPS upstream)
+                //   - close geometric support for the snap winner (< 25m)
+                // These guards keep the original "phone orientation noise"
+                // concern at bay: random hand-held phone compass readings
+                // don't reach this branch because they wouldn't have beaten
+                // a valid GPS heading upstream.
+                const compassContradictsNominatim = hasCompass &&
+                  effectiveHeadingSource === 'compass' &&
+                  snapResult.snapDistanceMeters != null &&
+                  snapResult.snapDistanceMeters < 25 && (
+                    (nominatimOrientation === 'N-S' && !isHeadingNorthSouth(compassHeadingDeg)) ||
+                    (nominatimOrientation === 'E-W' && isHeadingNorthSouth(compassHeadingDeg))
+                  );
+
+                // Compass-confirms-snap, mirroring the GPS path. Same guards
+                // as above — only when compass was the chosen disambiguator
+                // and the snap is geometrically close. This lets a
+                // compass-disambiguated snap win against Nominatim through
+                // the existing `headingConfirmedSnap && !snapWasExtended`
+                // branch, which keeps the snap.
+                const compassConfirmsSnap = hasCompass &&
+                  effectiveHeadingSource === 'compass' &&
+                  snapResult.snapDistanceMeters != null &&
+                  snapResult.snapDistanceMeters < 25 &&
+                  !snapResult.snapSource?.includes('heading_extended') && (
+                    (snapOrientation === 'N-S' && isHeadingNorthSouth(compassHeadingDeg)) ||
+                    (snapOrientation === 'E-W' && !isHeadingNorthSouth(compassHeadingDeg))
+                  );
+
                 // Fallback to original logic for cases where Nominatim picked
                 // a street outside our candidate set (likely walk-away drift).
-                // Heading source restricted to GPS — compass agreement on
-                // grid orientation alone is too weak to block Nominatim.
-                const headingConfirmedSnap = hasEffectiveHeading && effectiveHeadingSource === 'gps' && (
+                // GPS heading is the strong path; compass is allowed in via
+                // `compassConfirmsSnap` above (only when compass beat GPS
+                // upstream, so we know it's the trustworthy reading).
+                const headingConfirmedSnap = (hasEffectiveHeading && effectiveHeadingSource === 'gps' && (
                   (snapOrientation === 'N-S' && isHeadingNorthSouth(effectiveHeading)) ||
                   (snapOrientation === 'E-W' && !isHeadingNorthSouth(effectiveHeading))
-                );
+                )) || compassConfirmsSnap;
 
                 // Was this snap from the extended heading search (far away, heading-driven)?
                 // If so, Nominatim disagreeing is strong evidence the heading was stale.
@@ -1786,11 +1846,12 @@ export default async function handler(
                 const snapWasExtended = snapResult.snapSource?.includes('heading_extended') ||
                   (snapResult.snapDistanceMeters > 25 && effectiveHeadingSource !== 'compass');
 
-                if (nominatimMatchesCandidate && !drivingHeadingContradictsNominatim && nominatimCandidate) {
+                if (nominatimMatchesCandidate && !drivingHeadingContradictsNominatim && !compassContradictsNominatim && nominatimCandidate) {
                   // Two independent geometric signals agree: PostGIS snap saw
                   // this street as a candidate AND OSM identified it from the
-                  // raw GPS. No driving heading contradicts. Override regardless
-                  // of compass agreement on grid orientation.
+                  // raw GPS. No driving heading contradicts. No compass
+                  // heading contradicts (when compass was the chosen
+                  // disambiguator upstream). Override.
                   //
                   // Adopt the matching candidate's full geometry (snap coords,
                   // address ranges, parity) so downstream segment interpolation
@@ -1800,7 +1861,7 @@ export default async function handler(
                   const adopted = await adoptCandidateAsSnap(nominatimCandidate, 'nominatim_override_candidate_match');
                   console.log(
                     `[check-parking] Nominatim cross-reference: ${nominatimResult.street_name} (${nominatimOrientation}) ` +
-                    `is in snap candidate set and no driving heading contradicts — ` +
+                    `is in snap candidate set and no driving/compass heading contradicts — ` +
                     `overriding snap winner ${snapResult.streetName} (${snapOrientation}). ` +
                     `Adopted candidate geometry → interpolated ${adopted.snapResult.interpolatedNumber ?? 'n/a'}.`
                   );
