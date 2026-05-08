@@ -1726,7 +1726,7 @@ export default async function handler(
         if (snapResult) {
           try {
             const { reverseGeocode } = await import('../../../lib/reverse-geocoder');
-            const nominatimResult = await reverseGeocode(latitude, longitude);
+            const nominatimResult = await reverseGeocode(correctedLat, correctedLng);
 
             if (nominatimResult?.street_name) {
               const snapOrientation = getChicagoStreetOrientation(snapResult.streetName);
