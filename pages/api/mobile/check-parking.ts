@@ -832,6 +832,36 @@ export default async function handler(
       diag.native_meta = nativeMeta;
     }
 
+    // Persist the full request-side input set so every diagnostic row is a
+    // self-contained replay record. Without this, the regression suite has
+    // to synthesize trajectory / Apple geocode / CarPlay context, and
+    // replays don't faithfully exercise the algorithm path that produced
+    // the original miss. Trim oversized fields to keep the row small.
+    const replayInputs: Record<string, any> = {
+      latitude,
+      longitude,
+      accuracy_meters: accuracyMeters ?? null,
+      heading: hasHeading ? headingDeg : null,
+      compass_heading: hasCompass ? compassHeadingDeg : null,
+      compass_confidence: hasCompass ? compassConfidenceDeg : null,
+      driving_duration_sec: Number.isFinite(nativeDrivingDurationSec) ? nativeDrivingDurationSec : null,
+      drift_from_parking_distance: Number.isFinite(nativeDriftMeters) ? nativeDriftMeters : null,
+      location_source: nativeLocationSource ?? null,
+      detection_source: nativeDetectionSource ?? null,
+      drive_trajectory: driveTrajectory && driveTrajectory.length > 0 ? driveTrajectory : null,
+      apple_geocode: appleGeocode ?? null,
+      vehicle_id: vehicleId ?? null,
+      vehicle_id_source: vehicleIdSource ?? null,
+      vehicle_name: vehicleName ?? null,
+      cp_disconnect_at: hasCarPlayDisconnectTs ? cpDisconnectAt : null,
+      cp_disconnect_lat: hasCarPlayDisconnectCoords ? cpDisconnectLat : null,
+      cp_disconnect_lng: hasCarPlayDisconnectCoords ? cpDisconnectLng : null,
+      cp_connected_at: Number.isFinite(cpConnectedAt) ? cpConnectedAt : null,
+      cp_active_during_drive: carPlayActiveDuringDrive,
+      confidence: confidence ?? null,
+    };
+    diag.native_meta = { ...(diag.native_meta || {}), replay_inputs: replayInputs };
+
     // Step 0: Apply per-block GPS correction if available (Layer 4).
     // Single-roundtrip RPC: find_gps_correction does spatial proximity against
     // block_centroid_lat/lng (populated from meter averages) and returns the
