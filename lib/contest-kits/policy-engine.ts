@@ -20,6 +20,7 @@ import {
 } from './types';
 import { getContestKit, hasContestKit } from './index';
 import { getHistoricalWeather, HistoricalWeatherData } from '../weather-service';
+import { formatViolationDate } from '../contest-letter-date';
 
 /**
  * Main evaluation function - the entry point for the policy engine
@@ -427,7 +428,7 @@ function fillArgumentTemplate(arg: ArgumentTemplate, context: ArgumentContext): 
   // Replace common placeholders
   const replacements: Record<string, string> = {
     '[TICKET_NUMBER]': ticketFacts.ticketNumber || '[TICKET NUMBER]',
-    '[DATE]': ticketFacts.ticketDate || '[DATE]',
+    '[DATE]': ticketFacts.ticketDate ? formatViolationDate(ticketFacts.ticketDate) : '[DATE]',
     '[LOCATION]': ticketFacts.location || '[LOCATION]',
     '[LICENSE_PLATE]': '[YOUR LICENSE PLATE]',
     '[VIOLATION_CODE]': ticketFacts.violationCode || '[VIOLATION CODE]',
@@ -606,7 +607,7 @@ Thank you for your consideration.`,
     backupArgument: null,
     filledArgument: fallbackArgument.template
       .replace('[TICKET_NUMBER]', facts.ticketNumber || '[TICKET NUMBER]')
-      .replace('[DATE]', facts.ticketDate || '[DATE]')
+      .replace('[DATE]', facts.ticketDate ? formatViolationDate(facts.ticketDate) : '[DATE]')
       .replace('[LOCATION]', facts.location || '[LOCATION]')
       // Same fix as fillArgumentTemplate above — never emit the literal
       // `• [Your contest grounds]` placeholder. Caller is expected to fill
