@@ -819,6 +819,9 @@ export default async function handler(
     if (headingDisagreementDeg != null) {
       nativeMeta.headingDisagreementDeg = Math.round(headingDisagreementDeg);
       nativeMeta.headingPreferredSource = effectiveHeadingSource;
+      if (gpsAndCompassClassifyDifferently && headingDisagreementDeg > HEADING_STALE_DISAGREEMENT_DEG) {
+        nativeMeta.gps_heading_was_stale = true;
+      }
     }
     // Unified vehicle identity — persisted in parking_diagnostics.native_meta
     // (JSONB) so analytics can do "this same car parked at this same GPS on

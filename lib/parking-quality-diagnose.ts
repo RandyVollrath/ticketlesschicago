@@ -133,7 +133,7 @@ function classify(row: any): FailureSignature {
   if (row.walkaway_guard_fired) return 'walkaway_guard_fired';
   const al = row.native_meta?.auto_label;
   if (al && al.street_matched === false) return 'autolabel_disagreed';
-  if (row.heading_source === 'stale') return 'heading_stale';
+  if (row.native_meta?.gps_heading_was_stale === true) return 'heading_stale';
   if (!row.compass_heading && !row.gps_heading) return 'compass_missing';
   if ((row.raw_accuracy_meters || 0) > 30) return 'low_accuracy';
   if (row.parity_forced) return 'parity_forced';
