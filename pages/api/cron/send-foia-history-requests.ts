@@ -7,8 +7,8 @@
  *
  * Also sends the user a confirmation email.
  *
- * Schedule: Daily at 10 AM CT (15:00 UTC)
- * Rate limit: 5 per run to avoid email rate limits
+ * Schedule: Every 5 minutes (so QR-code intake gets filed within minutes, not days)
+ * Per-run limit: 50 (each row costs ~5–10s with PDF gen + 1s send pause; 50 fits inside maxDuration: 300s)
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -24,7 +24,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export const config = { maxDuration: 120 };
+export const config = { maxDuration: 300 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verify authorization (header only — never accept secrets in query params which get logged)
@@ -136,13 +136,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log(`  ♻️ Re-queued ${retried} failed history FOIA request(s) for retry`);
   }
 
-  // Fetch queued requests (limit 5 per run)
+  // Fetch queued requests (limit 50 per run; cron fires every 5 min so this gives plenty of headroom)
   const { data: queuedRequests, error: fetchError } = await supabaseAdmin
     .from('foia_history_requests')
     .select('*')
     .eq('status', 'queued')
     .order('created_at', { ascending: true })
-    .limit(5);
+    .limit(50);
 
   if (fetchError) {
     console.error('Failed to fetch queued FOIA history requests:', fetchError.message);
