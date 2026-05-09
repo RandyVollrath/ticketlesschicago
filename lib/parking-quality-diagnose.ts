@@ -126,10 +126,12 @@ function classify(row: any): FailureSignature {
   // means the user parked off-grid (back lot, wide ROW) — the answer is
   // correct, not a failure. Only flag snap_far when no cross-source
   // confirmation exists.
+  if (row.nominatim_overrode) return 'nominatim_overrode';
   const mb = row.native_meta?.mapbox_reverse;
   const mapboxConfirmsSnap = mb && mb.matched && mb.agrees_with_snap === true;
-  if ((row.snap_distance_meters || 0) > 20 && !mapboxConfirmsSnap) return 'snap_far';
-  if (row.nominatim_overrode) return 'nominatim_overrode';
+  // strict === false: null/undefined means Nominatim was never consulted; only explicit false is a confirmation
+  const nominatimConfirmsSnap = row.nominatim_overrode === false;
+  if ((row.snap_distance_meters || 0) > 20 && !mapboxConfirmsSnap && !nominatimConfirmsSnap) return 'snap_far';
   if (row.walkaway_guard_fired) return 'walkaway_guard_fired';
   const al = row.native_meta?.auto_label;
   if (al && al.street_matched === false) return 'autolabel_disagreed';
