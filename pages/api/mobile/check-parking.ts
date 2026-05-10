@@ -2892,7 +2892,9 @@ export default async function handler(
     const walkAwayLikely =
       headingDisagreementDeg != null
       && headingDisagreementDeg > HEADING_WALKAWAY_THRESHOLD_DEG
-      && nativeLocationSource !== 'last_driving';  // last_driving fix isn't post-walk
+      && nativeLocationSource !== 'last_driving'    // last_driving fix isn't post-walk
+      && nativeLocationSource !== 'stop_start'      // stop_start is car-stop-time GPS — heading disagreement here is GPS course staleness, not walk-away
+      && nativeLocationSource !== 'pre-captured';   // iOS native pre-captured = stop_start equivalent (see gps_source comment at line 801)
     if (walkAwayLikely) {
       suppressNotifications = true;
       suppressionReason = `walkaway_suspected:hd=${Math.round(headingDisagreementDeg!)}`;
