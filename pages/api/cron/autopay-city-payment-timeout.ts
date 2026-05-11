@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: stuck, error } = await supabaseAdmin
     .from('city_payment_queue')
-    .select('id, contest_letter_id, ticket_id, user_id, ticket_number, amount_cents, stripe_payment_intent_id, status, created_at')
+    .select('id, contest_letter_id, ticket_id, user_id, ticket_number, plate, state, amount_cents, stripe_payment_intent_id, status, created_at')
     .in('status', ['pending', 'in_progress', 'manual_required'])
     .lte('created_at', cutoffIso);
 
@@ -125,11 +125,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }).catch((e) => console.error(`refund-email failed: ${e.message}`));
       }
 
-      // Operator alert
+      // LOUD operator alert: even though the auto-refund worked and the user
+      // is financially whole, the underlying city payment FAILED. Per user
+      // request, any payment failure (especially "the website failed") must
+      // generate a screaming alert so the operator can investigate the
+      // root cause before more autopay jobs hit the same issue.
       await sendAutopayOperatorAlert({
-        subject: `[Autopay live] Auto-refunded $${(job.amount_cents / 100).toFixed(2)} — city payment timed out`,
-        text: `Letter: ${job.contest_letter_id}\nTicket: ${job.ticket_number}\nUser: ${job.user_id}\nStripe PI: ${job.stripe_payment_intent_id}\nRefund: ${refund.id}\nReason: city worker did not complete within ${timeoutHours}h`,
-        html: `<p><strong>Auto-refund issued</strong></p><p>Letter: <code>${job.contest_letter_id}</code></p><p>Ticket: ${job.ticket_number}</p><p>Stripe PI: <code>${job.stripe_payment_intent_id}</code></p><p>Refund: <code>${refund.id}</code></p><p>Reason: city payment worker did not complete within ${timeoutHours}h.</p>`,
+        severity: 'emergency',
+        subject: `🚨 CITY PAYMENT FAILED — auto-refunded $${(job.amount_cents / 100).toFixed(2)} to ${job.ticket_number}`,
+        text: [
+          `🚨 CITY OF CHICAGO PAYMENT FAILED — user was auto-refunded.`,
+          ``,
+          `The city portal did not accept payment within ${timeoutHours}h. The Stripe charge has been refunded to the user automatically, so they are NOT out money. BUT the underlying problem (city website down, portal flow changed, queue worker stuck, etc.) is unresolved and will affect every subsequent autopay job until you investigate.`,
+          ``,
+          `Letter: ${job.contest_letter_id}`,
+          `Ticket: ${job.ticket_number} (${job.plate}/${job.state || 'IL'})`,
+          `User: ${job.user_id}`,
+          `Amount refunded: $${(job.amount_cents / 100).toFixed(2)}`,
+          `Stripe PI (refunded): ${job.stripe_payment_intent_id}`,
+          `Stripe refund: ${refund.id}`,
+          ``,
+          `Action items:`,
+          `  1. Check the city payment portal manually — is it down? Has its flow changed?`,
+          `  2. Check 'journalctl --user -u city-payment-queue.service' for the Playwright errors that caused the failures.`,
+          `  3. Check the city_payment_queue table for other jobs stuck pending.`,
+          `  4. Notify the user (${job.user_id}) that they should pay the ticket manually before the late-fee deadline.`,
+        ].join('\n'),
+        html: `<p><strong>🚨 City of Chicago payment FAILED — user auto-refunded.</strong></p>
+        <p>The city portal did not accept payment within ${timeoutHours}h. The Stripe charge has been refunded to the user, so they are NOT out money. <strong>BUT the underlying problem is unresolved</strong> and will affect every subsequent autopay job until you investigate.</p>
+        <ul>
+          <li>Letter: <code>${job.contest_letter_id}</code></li>
+          <li>Ticket: ${job.ticket_number} (${job.plate}/${job.state || 'IL'})</li>
+          <li>User: <code>${job.user_id}</code></li>
+          <li>Amount refunded: <strong>$${(job.amount_cents / 100).toFixed(2)}</strong></li>
+          <li>Stripe PI (refunded): <code>${job.stripe_payment_intent_id}</code></li>
+          <li>Stripe refund: <code>${refund.id}</code></li>
+        </ul>
+        <p><strong>Action items:</strong></p>
+        <ol>
+          <li>Check the city payment portal manually — is it down? Has its flow changed?</li>
+          <li>Check <code>journalctl --user -u city-payment-queue.service</code> for the Playwright errors that caused the failures.</li>
+          <li>Check the <code>city_payment_queue</code> table for other jobs stuck pending.</li>
+          <li>Notify the user that they should pay the ticket manually before the late-fee deadline.</li>
+        </ol>`,
       }).catch((e) => console.error(`refund alert failed: ${e.message}`));
 
       results.refunded++;

@@ -254,8 +254,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (notifiedAt === null) {
           // First sighting — send the pre-charge email and stamp the timestamp.
+          const scheduledChargeAt = new Date(Date.now() + PRE_CHARGE_GRACE_MS);
           if (profile.email && letter.final_amount) {
-            const scheduledChargeAt = new Date(Date.now() + PRE_CHARGE_GRACE_MS);
             try {
               await sendAutopayPreChargeEmail({
                 to: profile.email,
@@ -272,6 +272,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           await (supabaseAdmin.from('contest_letters') as any)
             .update({ autopay_pre_charge_notified_at: new Date().toISOString() })
             .eq('id', letter.id);
+
+          // Operator heads-up: a real letter just entered the 21-day pipeline.
+          // Informational only — gives the operator 21 days of awareness to
+          // intervene if anything looks wrong before the charge actually fires.
+          await sendAutopayOperatorAlert({
+            severity: 'info',
+            subject: `[Autopay] 21-day timer started — ${profile.email || letter.user_id} — $${(letter.final_amount ?? 0).toFixed(2)}`,
+            text: [
+              `Autopay pre-charge timer just started for a real user.`,
+              ``,
+              `Letter: ${letter.id}`,
+              `Ticket: ${letter.ticket_id}`,
+              `User: ${letter.user_id}`,
+              `Email: ${profile.email || 'unknown'}`,
+              `Amount: $${(letter.final_amount ?? 0).toFixed(2)}`,
+              `Scheduled charge: ${scheduledChargeAt.toISOString()}`,
+              ``,
+              `The user has been emailed and can opt out via /account/autopay any time before the charge fires.`,
+            ].join('\n'),
+            html: `<p><strong>Autopay pre-charge timer started for a real user.</strong></p>
+            <ul>
+              <li>Letter: <code>${letter.id}</code></li>
+              <li>Ticket: <code>${letter.ticket_id}</code></li>
+              <li>User: <code>${letter.user_id}</code></li>
+              <li>Email: ${profile.email || 'unknown'}</li>
+              <li>Amount: <strong>$${(letter.final_amount ?? 0).toFixed(2)}</strong></li>
+              <li>Scheduled charge: ${scheduledChargeAt.toISOString()}</li>
+            </ul>
+            <p>The user has been emailed and can opt out via <a href="https://www.autopilotamerica.com/account/autopay">/account/autopay</a> any time before the charge fires.</p>`,
+          }).catch((e) => console.error(`pre-charge admin heads-up failed: ${e?.message || e}`));
+
           results.notEnabled++; // counted as "deferred" — bookkeeping
           continue;
         }
@@ -531,22 +562,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
         }
 
+        const isLiveFailure = executionMode === 'live';
         await sendAutopayOperatorAlert({
-          subject: `[Autopay simulate] Execution failed for contest letter ${letter.id}`,
+          severity: isLiveFailure ? 'emergency' : 'warning',
+          subject: isLiveFailure
+            ? `🚨 AUTOPAY STRIPE CHARGE FAILED — ${profile.email || letter.user_id} — $${(letter.final_amount ?? 0).toFixed(2)}`
+            : `[Autopay simulate] Execution failed for contest letter ${letter.id}`,
           text: [
+            isLiveFailure ? '🚨 STRIPE CHARGE FAILED IN LIVE MODE — user has NOT been charged.' : 'Simulate-mode execution failed.',
+            ``,
             `Contest letter: ${letter.id}`,
             `Ticket: ${letter.ticket_id}`,
             `User: ${letter.user_id}`,
             `Email: ${profile.email || 'unknown'}`,
-            `Error: ${failError}`,
+            `Amount: $${(letter.final_amount ?? 0).toFixed(2)}`,
+            `Stripe error: ${failError}`,
+            ``,
+            isLiveFailure
+              ? `Action: User has been emailed asking them to pay the city manually. Verify in Stripe dashboard that no charge succeeded. Letter lifecycle is now 'payment_failed'. Operator should investigate root cause (expired card, decline, etc.) and consider reaching out to the user.`
+              : `No action needed — simulate mode.`,
           ].join('\n'),
           html: `
-            <p><strong>Autopay simulated execution failed</strong></p>
+            <p><strong>${isLiveFailure ? '🚨 Stripe charge FAILED in LIVE mode — user has NOT been charged.' : 'Autopay simulated execution failed'}</strong></p>
             <p>Contest letter: <code>${letter.id}</code></p>
             <p>Ticket: <code>${letter.ticket_id}</code></p>
             <p>User: <code>${letter.user_id}</code></p>
             <p>Email: ${profile.email || 'unknown'}</p>
-            <p>Error: ${failError}</p>
+            <p>Amount: $${(letter.final_amount ?? 0).toFixed(2)}</p>
+            <p>Stripe error: <code>${failError}</code></p>
+            ${isLiveFailure ? `<p><strong>Action:</strong> User has been emailed asking them to pay the city manually. Verify in Stripe dashboard that no charge succeeded. Letter lifecycle is now <code>payment_failed</code>. Investigate root cause (expired card, decline, etc.) and consider reaching out to the user.</p>` : ''}
           `,
         }).catch((alertErr) => {
           console.error(`Failed to send autopay-failed operator alert for ${letter.id}: ${alertErr.message}`);
