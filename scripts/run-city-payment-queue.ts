@@ -514,24 +514,66 @@ async function markFailed(
       },
     }]);
 
+  const attemptNum = job.attempts + 1;
+
   if (reachedMax) {
     // Don't auto-refund here — the timeout-refund cron handles refunds
     // after CITY_PAYMENT_REFUND_TIMEOUT_HOURS so we don't refund a
     // payment that the local script COULD have completed manually.
     await sendAutopayOperatorAlert({
       severity: 'emergency',
-      subject: `City payment failed ${MAX_ATTEMPTS}x for ${job.contest_letter_id} — manual review`,
+      subject: `🚨 CITY PAYMENT FAILED ${MAX_ATTEMPTS}x — ${job.ticket_number} ($${(job.amount_cents / 100).toFixed(2)}) — MANUAL REVIEW`,
       text: [
+        `🚨 CITY PAYMENT EXHAUSTED RETRIES — manual review needed.`,
+        ``,
+        `The Playwright worker failed to pay the city portal ${MAX_ATTEMPTS} times in a row. The Stripe charge is still on the user's card. The timeout-refund cron will auto-refund after CITY_PAYMENT_REFUND_TIMEOUT_HOURS unless you intervene.`,
+        ``,
         `Contest letter: ${job.contest_letter_id}`,
         `Ticket: ${job.ticket_number} (${job.plate}/${job.state})`,
-        `Amount: $${(job.amount_cents / 100).toFixed(2)}`,
-        `Stripe PI: ${job.stripe_payment_intent_id}`,
+        `Amount on card: $${(job.amount_cents / 100).toFixed(2)}`,
+        `Stripe PI (live charge): ${job.stripe_payment_intent_id}`,
         `Last error: ${errorMessage}`,
         ``,
-        `Decide: pay manually via the city portal, or refund via the Stripe dashboard. The timeout-refund cron will auto-refund after CITY_PAYMENT_REFUND_TIMEOUT_HOURS if you do nothing.`,
+        `Decide: (a) pay the ticket manually via the city portal and mark the job 'paid_manually', or (b) refund via Stripe dashboard and tell the user to pay manually. If you do nothing, the timeout-refund cron will auto-refund.`,
       ].join('\n'),
-      html: `<p><strong>City payment exhausted retries</strong></p><p>Letter: <code>${job.contest_letter_id}</code></p><p>Ticket: ${job.ticket_number} (${job.plate}/${job.state})</p><p>Amount: $${(job.amount_cents / 100).toFixed(2)}</p><p>Stripe PI: <code>${job.stripe_payment_intent_id}</code></p><p>Last error: ${errorMessage}</p>`,
+      html: `<p><strong>🚨 City payment exhausted retries — manual review needed.</strong></p>
+      <p>The Playwright worker failed to pay the city portal <strong>${MAX_ATTEMPTS} times in a row</strong>. The Stripe charge is still on the user's card. The timeout-refund cron will auto-refund after <code>CITY_PAYMENT_REFUND_TIMEOUT_HOURS</code> unless you intervene.</p>
+      <ul>
+        <li>Letter: <code>${job.contest_letter_id}</code></li>
+        <li>Ticket: ${job.ticket_number} (${job.plate}/${job.state})</li>
+        <li>Amount on card: <strong>$${(job.amount_cents / 100).toFixed(2)}</strong></li>
+        <li>Stripe PI (LIVE charge): <code>${job.stripe_payment_intent_id}</code></li>
+        <li>Last error: <code>${errorMessage}</code></li>
+      </ul>
+      <p><strong>Decide:</strong> (a) pay the ticket manually via the city portal and mark the job <code>paid_manually</code>, or (b) refund via Stripe dashboard and tell the user to pay manually. If you do nothing, the timeout-refund cron will auto-refund.</p>`,
     }).catch((e) => console.error(`failed alert: ${e.message}`));
+  } else {
+    // Per-attempt warning: fire on EVERY failed attempt so the operator sees
+    // the city website failing on attempt 1 — not after 45 min of retries.
+    await sendAutopayOperatorAlert({
+      severity: 'warning',
+      subject: `⚠️ City payment attempt ${attemptNum}/${MAX_ATTEMPTS} FAILED — ${job.ticket_number} ($${(job.amount_cents / 100).toFixed(2)})`,
+      text: [
+        `⚠️ City payment attempt ${attemptNum} of ${MAX_ATTEMPTS} failed. Will retry on next worker run (15 min cadence).`,
+        ``,
+        `Contest letter: ${job.contest_letter_id}`,
+        `Ticket: ${job.ticket_number} (${job.plate}/${job.state})`,
+        `Amount on card: $${(job.amount_cents / 100).toFixed(2)}`,
+        `Stripe PI (live charge): ${job.stripe_payment_intent_id}`,
+        `Error: ${errorMessage}`,
+        ``,
+        `If this fails ${MAX_ATTEMPTS - attemptNum} more time(s), it escalates to emergency. If the city website is down, you may want to pause the worker now to avoid more retries.`,
+      ].join('\n'),
+      html: `<p><strong>⚠️ City payment attempt ${attemptNum} of ${MAX_ATTEMPTS} failed.</strong> Will retry on next worker run (15 min cadence).</p>
+      <ul>
+        <li>Letter: <code>${job.contest_letter_id}</code></li>
+        <li>Ticket: ${job.ticket_number} (${job.plate}/${job.state})</li>
+        <li>Amount on card: <strong>$${(job.amount_cents / 100).toFixed(2)}</strong></li>
+        <li>Stripe PI (LIVE charge): <code>${job.stripe_payment_intent_id}</code></li>
+        <li>Error: <code>${errorMessage}</code></li>
+      </ul>
+      <p>If this fails <strong>${MAX_ATTEMPTS - attemptNum}</strong> more time(s), it escalates to emergency. If the city website is down, you may want to pause the worker now to avoid more retries.</p>`,
+    }).catch((e) => console.error(`per-attempt alert failed: ${e.message}`));
   }
 }
 
