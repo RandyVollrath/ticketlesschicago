@@ -73,8 +73,10 @@ export function buildAnalysis(
     const kit = classified.violationCode ? getContestKit(classified.violationCode) : null;
     const factFindings = detectBeyondTemplateArguments(t, classified, ctx);
     const cureFindings = detectCureAndEvidencePaths(t, classified);
-    const enrichment = enrichmentByTicket.get(t.ticket_number);
-    const autopilotFindings = enrichment ? buildAutopilotFindings(enrichment, classified) : [];
+    // Default to "not in our historical dataset" when the worker didn't
+    // supply enrichment — that path surfaces the FOIA-on-behalf finding.
+    const enrichment = enrichmentByTicket.get(t.ticket_number) ?? { foundInFoia: false };
+    const autopilotFindings = buildAutopilotFindings(enrichment, classified);
     // Order: Autopilot findings first (the value prop), then portal facts,
     // then cure/evidence as supplementary.
     const beyond = [...autopilotFindings, ...factFindings, ...cureFindings];
@@ -169,12 +171,19 @@ function recommendForTicket(
     };
   }
 
-  // Strong Autopilot finding (FOIA officer pattern, block pattern) → contest
+  // Strong Autopilot finding → contest. Phrasing varies because some
+  // Autopilot findings are FOIA-on-behalf (a capability we'll exercise)
+  // while others are historical patterns (already in the record).
   if (hasStrongAutopilot) {
     const top = autopilotFindings.find(b => b.strength === 'strong')!;
+    const tail = top.id.startsWith('autopilot_foia_request')
+      ? 'That FOIA response — or the city\'s failure to produce it — becomes part of your contest record.'
+      : top.id.startsWith('autopilot_address_resolved')
+        ? 'That gives us what we need to run every location-specific defense.'
+        : 'That kind of pattern evidence regularly wins contests of this type.';
     return {
       recommendation: 'contest',
-      reason: `${top.title}. That kind of pattern evidence regularly wins contests of this type.`,
+      reason: `${top.title}. ${tail}`,
     };
   }
 
