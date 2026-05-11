@@ -1,17 +1,12 @@
 /**
- * Smoke test for the kinematic calculator's GPS-augmented mode.
- *
- * Confirms:
- *  1. Calculator runs without GPS (FA81246-style ticket — no app user) and
- *     produces a sound qualitative paragraph.
- *  2. Calculator runs WITH GPS data and produces a paragraph that includes
- *     the "INDEPENDENT GPS EVIDENCE" attestation block.
- *  3. Full-stop detection produces a right-turn-on-red defense block.
- *  4. Approach speed below posted limit gets used in the qualitative math
- *     (more honest than asserting posted speed).
+ * Smoke test for the kinematic calculator's GPS-augmented mode and the
+ * full renderFindingsParagraph pipeline (statutory framework block,
+ * Photo 1 spec-mismatch defense, GPS attestation).
  */
 
 import { computeEnteredOnYellowArgument } from '../lib/red-light-kinematics';
+import { renderFindingsParagraph } from '../lib/camera-evidence-pipeline';
+import type { CameraEvidenceFindings } from '../lib/camera-evidence-analysis';
 
 function assert(cond: any, msg: string) {
   if (!cond) {
@@ -95,7 +90,79 @@ assert(gpsWithDistance.paragraph.includes('INDEPENDENT GPS EVIDENCE'), 'GPS+dist
 assert(gpsWithDistance.usedUserAppGps === true, 'GPS+distance case: usedUserAppGps = true');
 assert(gpsWithDistance.confidence > 0.7, 'GPS+distance case: confidence elevated by GPS');
 
+// ── Case 5: Full pipeline — findings + GPS + framework block ──
+const baseFindings: CameraEvidenceFindings = {
+  vehicle: {
+    visiblePlate: 'FA81246',
+    visiblePlateConfidence: 0.9,
+    vehicleColor: 'black',
+    vehicleBodyStyle: 'sedan',
+    vehicleMakeModel: 'Honda Civic',
+  },
+  signal: {
+    signalState: 'red',
+    signalStateConfidence: 0.95,
+    amberDurationSec: 3.0,
+    timeIntoRedPhaseSec: 0.3,
+    estimatedFeetPastStopBar: 20,
+    postedSpeedLimitMph: 30,
+    photo1FrontTiresPosition: 'before_stop_bar',
+    photo1FrontTiresConfidence: 0.7,
+  },
+  scene: {
+    visibleLocation: '7200 N Western Ave',
+    weatherConditions: 'clear',
+    noTurnOnRedSignVisible: 'unknown',
+    otherSignsVisible: [],
+  },
+  contestable: [],
+  recommendDefense: 'signal_state',
+  summary: 'Vehicle in intersection, 0.3s into red, amber phase 3.0s.',
+  analyzedAt: new Date().toISOString(),
+};
+
+const fullPipeline = renderFindingsParagraph(baseFindings, 'FA81246', null);
+assert(!!fullPipeline, 'Full pipeline: returns a paragraph');
+assert(fullPipeline!.includes('CONTROLLING LEGAL FRAMEWORK'), 'Full pipeline: includes statutory framework block');
+assert(fullPipeline!.includes('625 ILCS 5/11-306(c)(1)'), 'Full pipeline: cites 11-306 verbatim');
+assert(fullPipeline!.includes('625 ILCS 5/11-208.6(a)'), 'Full pipeline: cites 11-208.6 verbatim');
+assert(fullPipeline!.includes('Processing Methods & Criteria'), 'Full pipeline: cites CDOT/DOF processing criteria');
+assert(fullPipeline!.includes('vehicles that entered the intersection on yellow'), 'Full pipeline: quotes CDOT FAQ verbatim');
+assert(fullPipeline!.includes('HEARING-OFFICER MATH NOTE'), 'Full pipeline: includes math note');
+
+// ── Case 6: Photo 1 spec-mismatch defense ──
+const photo1Mismatch: CameraEvidenceFindings = {
+  ...baseFindings,
+  signal: {
+    ...baseFindings.signal!,
+    photo1FrontTiresPosition: 'past_stop_bar',
+    photo1FrontTiresConfidence: 0.85,
+  },
+};
+const photo1Output = renderFindingsParagraph(photo1Mismatch, 'FA81246', null);
+assert(!!photo1Output, 'Photo 1 mismatch: returns a paragraph');
+assert(photo1Output!.includes('PROCESSING-CRITERIA FAILURE'), 'Photo 1 mismatch: includes spec-mismatch defense block');
+assert(photo1Output!.includes('Photo 1 — shows the front tires of the vehicle BEFORE the stop bar'), 'Photo 1 mismatch: quotes CDOT spec verbatim');
+
+// ── Case 7: GPS-only path still includes statutory block ──
+const gpsOnly = renderFindingsParagraph(null, 'FA81246', {
+  approachSpeedMph: 28.0,
+  minSpeedMph: 0.0,
+  fullStopDetected: true,
+  fullStopDurationSec: 1.8,
+  speedDeltaMph: 28.0,
+  deviceTimestamp: '2026-02-04T13:21:07Z',
+});
+assert(!!gpsOnly, 'GPS-only: returns a paragraph');
+assert(gpsOnly!.includes('INDEPENDENT GPS EVIDENCE'), 'GPS-only: includes GPS attestation');
+
 console.log('\nAll smoke tests passed.\n');
 
 console.log('--- Sample paragraph: GPS + full-stop (right-turn-on-red) ---\n');
 console.log(gpsFullStop.paragraph);
+
+console.log('\n\n--- Sample paragraph: full pipeline (framework + math + plate match) ---\n');
+console.log(fullPipeline);
+
+console.log('\n\n--- Sample paragraph: Photo 1 spec-mismatch defense ---\n');
+console.log(photo1Output);

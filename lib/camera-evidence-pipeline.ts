@@ -274,6 +274,27 @@ export function renderFindingsParagraph(
   const lines: string[] = [];
   const f = findings;
 
+  // ── STATUTORY + ADMINISTRATIVE FRAMEWORK ──
+  // Every red-light camera letter leads with the controlling legal premise:
+  // the violation is ENTRY on red, not failure to clear. Three independent
+  // sources — Illinois state statute, Illinois automated-enforcement statute,
+  // and Chicago's own published processing criteria + public FAQ — all use
+  // the same standard. Hearing officers see this enough to know it, but
+  // reciting it verbatim eliminates any ambiguity and prevents the City's
+  // representative from glossing past it.
+  //
+  // We include this block whenever we have ANY signal-related observation
+  // (kinematic math, signal_state contestable, or Photo 1 spec issue) so
+  // the legal framework is anchored before the factual argument lands.
+  const hasSignalArgument =
+    (f.signal && f.signal.amberDurationSec !== null && f.signal.timeIntoRedPhaseSec !== null) ||
+    f.contestable.some((c) => c.supports === 'signal_state' && c.confidence >= 0.6) ||
+    (f.signal && f.signal.photo1FrontTiresPosition === 'past_stop_bar' && f.signal.photo1FrontTiresConfidence >= 0.6) ||
+    !!userAppGps;
+  if (hasSignalArgument) {
+    lines.push(renderStatutoryFrameworkBlock());
+  }
+
   // Plate mismatch: only assert if confidence is high
   if (f.vehicle.visiblePlateConfidence >= 0.6 && f.vehicle.visiblePlate) {
     const seen = f.vehicle.visiblePlate.replace(/\s/g, '').toUpperCase();
@@ -330,8 +351,78 @@ export function renderFindingsParagraph(
     lines.push(`Based on review of the City's own violation imagery: ${rtorContestable[0].observation}`);
   }
 
+  // ── PHOTO 1 SPEC-MISMATCH DEFENSE ──
+  // The City's published processing criteria say Photo 1 must show the
+  // vehicle's front tires BEFORE the stop bar. When our analyzer reports
+  // Photo 1 actually shows the front tires past the stop bar, the issuance
+  // failed the City's own criteria — an independent ground for dismissal.
+  if (
+    f.signal &&
+    f.signal.photo1FrontTiresPosition === 'past_stop_bar' &&
+    f.signal.photo1FrontTiresConfidence >= 0.6
+  ) {
+    lines.push(renderPhoto1SpecMismatchParagraph());
+  }
+
   if (lines.length === 0) return null;
   return lines.join('\n\n');
+}
+
+/**
+ * Foundation block cited at the top of every red-light camera contest
+ * letter. States the controlling legal premise (entry on red, not failure
+ * to clear) using verbatim quotes from primary sources:
+ *   - 625 ILCS 5/11-306(c)(1) — driver duty under steady red
+ *   - 625 ILCS 5/11-208.6(a) — definition of what the camera records
+ *   - Chicago CDOT/DOF "Automated Red-Light Camera Enforcement Violation
+ *     Processing Methods & Criteria" PDF (eff. 03/15/2018)
+ *   - Chicago CDOT public FAQ
+ *
+ * All four sources independently use the entry standard. Reciting them
+ * up front locks the hearing officer into the correct legal framing
+ * BEFORE the factual argument is presented.
+ */
+function renderStatutoryFrameworkBlock(): string {
+  return (
+`CONTROLLING LEGAL FRAMEWORK — what the law actually requires:
+
+The duty under Illinois law at a steady red signal is to STOP BEFORE ENTERING the intersection. It is not a duty to clear the intersection before red. Four independent sources establish this:
+
+(1) Illinois Vehicle Code, 625 ILCS 5/11-306(c)(1) — the controlling statute on signal compliance:
+    "Vehicular traffic facing a steady circular red signal alone shall stop at a clearly marked stop line, but if there is no such stop line, before entering the crosswalk on the near side of the intersection, or if there is no such crosswalk, then before entering the intersection, and shall remain standing until an indication to proceed is shown."
+
+(2) Illinois Vehicle Code, 625 ILCS 5/11-208.6(a) — the statute authorizing automated red-light cameras, which expressly defines what a violation is for camera-enforcement purposes:
+    "'Automated traffic law enforcement system' means a device with one or more motor vehicle sensors working in conjunction with a red light signal to produce recorded images of motor vehicles entering an intersection against a red signal indication in violation of Section 11-306 of this Code or a similar provision of a local ordinance."
+
+(3) City of Chicago Department of Transportation + Department of Finance, "Automated Red-Light Camera Enforcement Violation Processing Methods & Criteria" (effective 03/15/2018, available on chicago.gov) — the City's own published trigger rule:
+    "The system is programmed to compile photographic and video images if upon entering the intersection, the traffic control signal has been red for at least 0.3 seconds before the vehicle enters the intersection."
+
+(4) City of Chicago Department of Transportation, "Red Light Camera Enforcement" public FAQ (chicago.gov) — addressing exactly the scenario where a driver crossed during yellow:
+    "Red Light Cameras do not take pictures of vehicles legally turning right on red after a complete stop ... or caught in the intersection after the light turns red (for example, vehicles that entered the intersection on yellow, or were already in the intersection and waiting to make a left turn)."
+
+The legal standard is therefore unambiguous and consistent across the Illinois Vehicle Code, the Chicago administrative criteria, and the City's own public explanation: the violation is ENTRY into the intersection on red. A vehicle that entered on green or yellow and was still within the intersection when the signal changed to red has not violated 625 ILCS 5/11-306 — and accordingly there is nothing for the automated enforcement system to lawfully record as a violation under 625 ILCS 5/11-208.6. Indeed, per source (4) above, the City itself has publicly committed not to issue tickets in that scenario.`
+  );
+}
+
+/**
+ * Defense paragraph for the case where the issued Photo 1 itself fails
+ * the City's own published criteria. CDOT/DOF spec: Photo 1 shows front
+ * tires BEFORE the stop bar. If Photo 1 actually shows front tires past
+ * the stop bar, the issuance violated the criteria — independent ground
+ * for dismissal even before the kinematic argument is reached.
+ */
+function renderPhoto1SpecMismatchParagraph(): string {
+  return (
+`PROCESSING-CRITERIA FAILURE — Photo 1 does not match the City's own published specification:
+
+Per the City of Chicago's "Automated Red-Light Camera Enforcement Violation Processing Methods & Criteria" (CDOT/DOF, effective 03/15/2018, available on chicago.gov), the photographic evidence package is required to be composed as follows:
+  • "Photo 1 — shows the front tires of the vehicle BEFORE the stop bar with the red signal indication visible in the photo"
+  • "Photo 2 — shows the rear tires of the vehicle past the stop bar with a red signal indication visible in the photo"
+
+Photo 1 in the issued evidence package for this citation does NOT show the front tires before the stop bar; it shows the front tires already past the stop bar, inside the intersection. The City's own processing criteria require an image that captures the moment of entry — front tires not yet over the line — to substantiate that entry occurred during the red phase. The image actually issued does not do this; it shows a vehicle already within the intersection.
+
+This is an independent ground for dismissal. Where the City's own administrative criteria for ticket issuance have not been satisfied, the citation is procedurally defective. I respectfully request that the hearing officer compare the issued Photo 1 against the City's published Photo 1 specification and dismiss this citation on that basis, separate and apart from any other defense raised.`
+  );
 }
 
 /**
