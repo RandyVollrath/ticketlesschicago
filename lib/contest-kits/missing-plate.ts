@@ -104,9 +104,7 @@ My vehicle's license plate ([LICENSE_PLATE]) was properly displayed and legible.
 
 [EVIDENCE_REFERENCE]
 
-As shown in the attached photos, my license plate is clearly visible and complies with all requirements.
-
-I respectfully request that this citation be dismissed.`,
+As shown in the attached photos, my license plate is clearly visible and complies with all requirements.`,
       requiredFacts: ['licensePlate'],
       winRate: 0.60,
       conditions: [

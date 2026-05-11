@@ -152,9 +152,7 @@ Citation #[TICKET_NUMBER] was issued on [DATE] at [LOCATION]. After reviewing th
 
 [IDENTIFICATION_ISSUES]
 
-The city bears the burden of proving that the vehicle in the photos is mine and that it was exceeding the speed limit. The photos do not meet this burden.
-
-I respectfully request that this citation be dismissed.`,
+The city bears the burden of proving that the vehicle in the photos is mine and that it was exceeding the speed limit. The photos do not meet this burden.`,
       requiredFacts: ['ticketNumber', 'date', 'location'],
       winRate: 0.30,
       conditions: [
@@ -243,9 +241,7 @@ Citation #[TICKET_NUMBER] was issued on [DATE]. My vehicle was reported stolen t
 
 [POLICE_REPORT_INFO]
 
-As the vehicle was not in my possession or control at the time of the violation, I am not liable under Chicago Municipal Code Section 9-102-020.
-
-I respectfully request that this citation be dismissed.`,
+As the vehicle was not in my possession or control at the time of the violation, I am not liable under Chicago Municipal Code Section 9-102-020.`,
         requiredFacts: ['ticketNumber', 'date', 'theftDate'],
         winRate: 0.90,
         conditions: [
@@ -263,9 +259,7 @@ Citation #[TICKET_NUMBER] was issued on [DATE]. I sold/transferred this vehicle 
 
 [SALE_DOCUMENTATION]
 
-As I was not the owner or operator of this vehicle at the time of the alleged violation, I am not liable.
-
-I respectfully request that this citation be dismissed.`,
+As I was not the owner or operator of this vehicle at the time of the alleged violation, I am not liable.`,
         requiredFacts: ['ticketNumber', 'date', 'saleDate'],
         winRate: 0.85,
         conditions: [

@@ -180,9 +180,7 @@ If the City cannot establish that [LOCATION] is a designated winter ban street, 
 
 The winter overnight parking ban applies only to specifically designated streets, not to all streets in Chicago. According to the City's winter ban street database, the block where my vehicle was parked is not a designated winter ban street.
 
-[SIGNAGE_FINDINGS]
-
-I respectfully request that this citation be dismissed.`,
+[SIGNAGE_FINDINGS]`,
         requiredFacts: ['location'],
         winRate: 0.45,
         conditions: [],

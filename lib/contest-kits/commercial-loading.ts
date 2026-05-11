@@ -105,9 +105,7 @@ At the time of the citation, I was:
 
 Commercial loading zones are designated for this exact purpose. I was using the space as intended for active commercial operations.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
       requiredFacts: ['location', 'loadingDetails'],
       winRate: 0.65,
       conditions: [
@@ -127,9 +125,7 @@ Upon inspection of the area:
 
 Without clear signage indicating this was a commercial loading zone with specific restrictions, I could not reasonably know I was in violation.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
       requiredFacts: ['location', 'signageIssue', 'signageDetails'],
       winRate: 0.55,
       conditions: [
@@ -173,9 +169,7 @@ My vehicle (plate #[LICENSE_PLATE]) is registered as a commercial vehicle / has 
 
 [PERMIT_EVIDENCE]
 
-As a permitted commercial vehicle, I was authorized to use this loading zone for commercial purposes.
-
-I respectfully request that this citation be dismissed.`,
+As a permitted commercial vehicle, I was authorized to use this loading zone for commercial purposes.`,
         requiredFacts: ['licensePlate'],
         winRate: 0.70,
         conditions: [

@@ -105,9 +105,7 @@ Chicago Municipal Code allows temporary alley parking for active loading and unl
 
 I was not parking but rather conducting a necessary loading/unloading operation.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
       requiredFacts: ['location', 'loadingDetails'],
       winRate: 0.35,
       conditions: [
@@ -127,9 +125,7 @@ The alley where my vehicle was parked is:
 
 Chicago Municipal Code Section 9-64-020 prohibits parking in PUBLIC alleys. This alley is private property.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
       requiredFacts: ['location', 'alleyDetails'],
       winRate: 0.40,
       conditions: [
@@ -171,9 +167,7 @@ On [DATE], my vehicle [DISABILITY_DESCRIPTION]. I was in the process of getting 
 
 [DISABILITY_DOCUMENTATION]
 
-I did not choose to park in an alley. The vehicle breakdown left me no option.
-
-I respectfully request that this citation be dismissed.`,
+I did not choose to park in an alley. The vehicle breakdown left me no option.`,
         requiredFacts: ['location', 'date', 'disabilityDescription'],
         winRate: 0.32,
         conditions: [
@@ -191,9 +185,7 @@ I respectfully request that this citation be dismissed.`,
 
 Given the emergency circumstances, I had no alternative but to stop temporarily in the alley. The safety and wellbeing of those involved took priority.
 
-[EMERGENCY_DOCUMENTATION]
-
-I respectfully request that this citation be dismissed.`,
+[EMERGENCY_DOCUMENTATION]`,
         requiredFacts: ['location', 'date', 'emergencyDescription'],
         winRate: 0.28,
         conditions: [
@@ -212,9 +204,7 @@ I [own/rent] a parking space or garage at [GARAGE_ADDRESS] that is accessed via 
 
 I was not parking in the alley but rather accessing my own property.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
         requiredFacts: ['location', 'garageAddress', 'accessDetails'],
         winRate: 0.38,
         conditions: [

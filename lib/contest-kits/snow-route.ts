@@ -128,9 +128,7 @@ Section 9-64-070 prohibits parking on a designated Snow Route only "at any time 
 
 [WEATHER_DATA]
 
-Since the snow on the street did not exceed the two-inch depth required by the ordinance, the snow route prohibition was not in effect at the time of citation, and the violation cannot be sustained.
-
-I respectfully request that this citation be dismissed.`,
+Since the snow on the street did not exceed the two-inch depth required by the ordinance, the snow route prohibition was not in effect at the time of citation, and the violation cannot be sustained.`,
       requiredFacts: ['date', 'snowfallAmount'],
       winRate: 0.40,
       conditions: [

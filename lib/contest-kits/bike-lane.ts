@@ -116,9 +116,7 @@ When I parked at this location, the bike lane markings were:
 
 Without visible lane markings, I had no way to identify this as a designated bike lane. I exercised reasonable care when parking.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
       requiredFacts: ['location', 'markingCondition'],
       winRate: 0.25,
       conditions: [
@@ -135,9 +133,7 @@ I respectfully request that this citation be dismissed.`,
 
 While Chicago relies primarily on pavement markings for bike lanes, the markings at this location were [MARKING_ISSUE]. Without clear pavement markings or signage, I could not identify this as a bike lane.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
       requiredFacts: ['location', 'markingIssue'],
       winRate: 0.22,
       conditions: [
@@ -179,9 +175,7 @@ On [DATE], my vehicle [DISABILITY_DESCRIPTION]. I was in the process of getting 
 
 [DISABILITY_DOCUMENTATION]
 
-I did not intentionally park in a bike lane. The vehicle breakdown was beyond my control.
-
-I respectfully request that this citation be dismissed.`,
+I did not intentionally park in a bike lane. The vehicle breakdown was beyond my control.`,
         requiredFacts: ['location', 'date', 'disabilityDescription'],
         winRate: 0.28,
         conditions: [
@@ -199,9 +193,7 @@ I respectfully request that this citation be dismissed.`,
 
 The [snow/leaves/debris] made it impossible to see the bike lane markings. From the driver's perspective, there was no indication I was parking in a bike lane.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
         requiredFacts: ['date', 'location', 'weatherDescription'],
         winRate: 0.24,
         conditions: [
@@ -220,9 +212,7 @@ The street layout at this location:
 
 This confusing configuration made it unclear where the bike lane began or ended. I parked where I reasonably believed was a legal parking area.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
         requiredFacts: ['location', 'laneConfusionDetails'],
         winRate: 0.20,
         conditions: [

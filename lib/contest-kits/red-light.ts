@@ -145,9 +145,7 @@ export const redLightKit: ContestKit = {
 
 Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION] under Chicago Municipal Code Section 9-102-010 and Illinois Vehicle Code 625 ILCS 5/11-306.
 
-For the City to sustain this citation, it must establish from the camera evidence that the cited vehicle entered the intersection after the signal turned red. Where the camera evidence itself does not unambiguously establish that, dismissal is the appropriate remedy.
-
-I respectfully request that this citation be dismissed.`,
+For the City to sustain this citation, it must establish from the camera evidence that the cited vehicle entered the intersection after the signal turned red. Where the camera evidence itself does not unambiguously establish that, dismissal is the appropriate remedy.`,
       requiredFacts: ['ticketNumber', 'date', 'intersection'],
       winRate: 0.35,
       conditions: [
@@ -215,9 +213,7 @@ If the City cannot produce calibrated camera evidence and signal-timing records 
 
 Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION].
 
-Under Chicago Municipal Code Section 9-102-010, liability attaches to the registered owner only when the City establishes that the vehicle in the photos is the registered owner's vehicle. Where the make, model, color, or plate shown in the City's violation photos do not match the registered vehicle, that burden is not met.
-
-I respectfully request that this citation be dismissed.`,
+Under Chicago Municipal Code Section 9-102-010, liability attaches to the registered owner only when the City establishes that the vehicle in the photos is the registered owner's vehicle. Where the make, model, color, or plate shown in the City's violation photos do not match the registered vehicle, that burden is not met.`,
         requiredFacts: ['ticketNumber', 'date', 'intersection'],
         winRate: 0.30,
         conditions: [
@@ -238,9 +234,7 @@ The violation video shows that I:
 2. Yielded to pedestrians and cross traffic
 3. Proceeded with the right turn only when safe to do so
 
-A lawful right turn on red is not a red light violation under 625 ILCS 5/11-306. I request the violation video and any "No Turn on Red" signage record for this approach as of [DATE]; if no such sign was posted and the video shows a complete stop, this citation was issued in error.
-
-I respectfully request that this citation be dismissed.`,
+A lawful right turn on red is not a red light violation under 625 ILCS 5/11-306. I request the violation video and any "No Turn on Red" signage record for this approach as of [DATE]; if no such sign was posted and the video shows a complete stop, this citation was issued in error.`,
         requiredFacts: ['ticketNumber', 'date', 'intersection'],
         winRate: 0.40,
         conditions: [
@@ -258,9 +252,7 @@ Citation #[TICKET_NUMBER] was issued on [DATE]. My vehicle was reported stolen t
 
 [POLICE_REPORT_INFO]
 
-As the vehicle was not in my possession or control at the time of the violation, I am not liable under Chicago Municipal Code Section 9-102-010.
-
-I respectfully request that this citation be dismissed.`,
+As the vehicle was not in my possession or control at the time of the violation, I am not liable under Chicago Municipal Code Section 9-102-010.`,
         requiredFacts: ['ticketNumber', 'date', 'theftDate'],
         winRate: 0.90,
         conditions: [
@@ -278,9 +270,7 @@ Citation #[TICKET_NUMBER] was issued on [DATE]. I sold/transferred this vehicle 
 
 [SALE_DOCUMENTATION]
 
-As I was not the owner or operator of this vehicle at the time of the alleged violation, I am not liable.
-
-I respectfully request that this citation be dismissed.`,
+As I was not the owner or operator of this vehicle at the time of the alleged violation, I am not liable.`,
         requiredFacts: ['ticketNumber', 'date', 'saleDate'],
         winRate: 0.85,
         conditions: [
@@ -298,9 +288,7 @@ Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION]. At the time:
 
 [EMERGENCY_DESCRIPTION]
 
-Under Chicago Municipal Code § 9-100-060, emergency circumstances that prevented safe compliance with the traffic signal are a recognized defense. [EMERGENCY_DETAILS]
-
-I respectfully request that this citation be dismissed based on these emergency circumstances.`,
+Under Chicago Municipal Code § 9-100-060, emergency circumstances that prevented safe compliance with the traffic signal are a recognized defense. [EMERGENCY_DETAILS]`,
         requiredFacts: ['ticketNumber', 'date', 'intersection'],
         winRate: 0.25,
         conditions: [
