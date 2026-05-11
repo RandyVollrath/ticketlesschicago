@@ -42,7 +42,64 @@ const STALE_CLAIM_MIN = 10;
 const POLL_INTERVAL_MS = 8000;
 const LOOP = process.env.LOOP === '1' || process.env.LOOP === 'true';
 
-async function claimOne(): Promise<{ id: string; plate: string; state: string; last_name: string } | null> {
+/**
+ * If the user supplied an email and the review finished cleanly, send a
+ * results-ready email with a link back to the page (which loads by ?id=…).
+ * Quiet failure mode: never block the queue on a Resend hiccup.
+ */
+async function maybeSendResultsEmail(
+  rowId: string,
+  email: string | null,
+  plate: string,
+  totalTickets: number,
+  worthContestingCount: number,
+): Promise<void> {
+  if (!email) return;
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[${rowId}] RESEND_API_KEY not set — skipping email`);
+    return;
+  }
+  const { Resend } = await import('resend');
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const link = `https://www.autopilotamerica.com/free-ticket-review?id=${rowId}`;
+  const headline = totalTickets === 0
+    ? `No open tickets on plate ${plate}`
+    : worthContestingCount > 0
+      ? `${worthContestingCount} ticket${worthContestingCount === 1 ? '' : 's'} worth contesting on plate ${plate}`
+      : `Review ready for plate ${plate}`;
+  const html = `
+    <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #0F172A;">
+      <h2 style="font-size: 20px; margin: 0 0 12px;">Your free ticket contest review is ready</h2>
+      <p style="font-size: 15px; line-height: 1.6; color: #334155; margin: 0 0 16px;">
+        ${headline}. We pulled every parking, red-light, and speed-camera ticket the city has on file
+        for your plate and flagged the specific arguments worth running on each one.
+      </p>
+      <p style="margin: 0 0 24px;">
+        <a href="${link}" style="display: inline-block; padding: 12px 18px; background: #2563EB; color: #fff; font-weight: 700; text-decoration: none; border-radius: 8px;">View your results</a>
+      </p>
+      <p style="font-size: 12px; color: #64748B; line-height: 1.6;">
+        Or paste this link into a browser: <br/>
+        <code style="font-size: 11px; word-break: break-all;">${link}</code>
+      </p>
+      <p style="font-size: 12px; color: #64748B; line-height: 1.6; margin-top: 24px;">
+        Autopilot America — Chicago parking ticket protection
+      </p>
+    </div>
+  `;
+  try {
+    await resend.emails.send({
+      from: 'Autopilot America <alerts@autopilotamerica.com>',
+      to: email,
+      subject: headline,
+      html,
+    });
+    console.log(`[${rowId}] results email sent to ${email}`);
+  } catch (err: any) {
+    console.warn(`[${rowId}] failed to send results email: ${err?.message || err}`);
+  }
+}
+
+async function claimOne(): Promise<{ id: string; plate: string; state: string; last_name: string; email: string | null } | null> {
   // Release stale claims first
   const staleCutoff = new Date(Date.now() - STALE_CLAIM_MIN * 60 * 1000).toISOString();
   await supabase
@@ -54,7 +111,7 @@ async function claimOne(): Promise<{ id: string; plate: string; state: string; l
   // Atomic-ish claim: update one pending row to processing
   const { data: candidates } = await supabase
     .from('free_review_requests')
-    .select('id, plate, state, last_name')
+    .select('id, plate, state, last_name, email')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
     .limit(1);
@@ -71,14 +128,14 @@ async function claimOne(): Promise<{ id: string; plate: string; state: string; l
     })
     .eq('id', row.id)
     .eq('status', 'pending')
-    .select('id, plate, state, last_name')
+    .select('id, plate, state, last_name, email')
     .maybeSingle();
 
   if (error || !claimed) return null;
   return claimed;
 }
 
-async function processOne(row: { id: string; plate: string; state: string; last_name: string }) {
+async function processOne(row: { id: string; plate: string; state: string; last_name: string; email: string | null }) {
   console.log(`[${row.id}] starting portal lookup for ${row.plate} (${row.state}) / ${row.last_name}`);
   const lookup = await lookupPlateOnPortal(row.plate, row.state, row.last_name);
 
@@ -149,6 +206,9 @@ async function processOne(row: { id: string; plate: string; state: string; last_
       claimed_at: null,
     })
     .eq('id', row.id);
+
+  const worthContesting = analysis.perTicket.filter(t => t.recommendation === 'contest').length;
+  await maybeSendResultsEmail(row.id, row.email, row.plate, analysis.totalTickets, worthContesting);
 }
 
 async function main() {

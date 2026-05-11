@@ -82,16 +82,30 @@ export default function FreeTicketReview() {
   const [state, setStateAbbr] = useState('IL');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [emailUsed, setEmailUsed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reviewId, setReviewId] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollAttempts = useRef(0);
 
+  // If the URL has ?id=<uuid>, jump straight into polling that review.
+  // This lets users bookmark / refresh / return via emailed link.
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id && /^[0-9a-f-]{36}$/i.test(id)) {
+      setReviewId(id);
+      setStatus({ id, status: 'pending' });
+      void pollStatus(id);
+      pollTimer.current = setInterval(() => pollStatus(id), 4000);
+    }
     return () => {
       if (pollTimer.current) clearInterval(pollTimer.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -125,8 +139,17 @@ export default function FreeTicketReview() {
         return;
       }
       setReviewId(data.id);
+      setEmailUsed(!!email.trim());
       setStatus({ id: data.id, status: data.status });
-      // Start polling
+      // Update URL so the user can refresh / bookmark / share the result
+      // page without losing their place. The /free-ticket-review?id=… form
+      // is what the email link will use too.
+      if (typeof window !== 'undefined') {
+        const u = new URL(window.location.href);
+        u.searchParams.set('id', data.id);
+        window.history.replaceState({}, '', u.toString());
+      }
+      pollAttempts.current = 0;
       pollTimer.current = setInterval(() => pollStatus(data.id), 4000);
     } catch (err: any) {
       setError(err?.message || 'Network error.');
@@ -140,11 +163,17 @@ export default function FreeTicketReview() {
       const r = await fetch(`/api/contest/free-review?id=${id}`);
       const data: StatusResponse = await r.json();
       setStatus(data);
+      pollAttempts.current += 1;
       if (data.status === 'done' || data.status === 'error') {
         if (pollTimer.current) {
           clearInterval(pollTimer.current);
           pollTimer.current = null;
         }
+      } else if (pollAttempts.current === 5 && pollTimer.current) {
+        // After ~20s of fast polling, slow down to once every 10s so we
+        // don't hammer the API while a request waits in the worker queue.
+        clearInterval(pollTimer.current);
+        pollTimer.current = setInterval(() => pollStatus(id), 10000);
       }
     } catch {
       // network blip — keep polling
@@ -252,7 +281,7 @@ export default function FreeTicketReview() {
         )}
 
         {reviewId && status && status.status !== 'done' && status.status !== 'error' && (
-          <ProgressView status={status.status} />
+          <ProgressView status={status.status} emailUsed={emailUsed} reviewId={reviewId} />
         )}
 
         {status && status.status === 'error' && (
@@ -303,7 +332,7 @@ function Field(props: {
   );
 }
 
-function ProgressView({ status }: { status: string }) {
+function ProgressView({ status, emailUsed, reviewId }: { status: string; emailUsed: boolean; reviewId: string }) {
   const label = status === 'processing'
     ? 'Pulling your tickets from the City of Chicago portal…'
     : 'Waiting in line — the city portal allows one lookup at a time…';
@@ -315,7 +344,8 @@ function ProgressView({ status }: { status: string }) {
       }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: '#0c4a6e' }}>{label}</div>
         <div style={{ marginTop: 10, fontSize: 13, color: COLORS.slate }}>
-          This usually takes 15–60 seconds. The city's portal is slow on purpose.
+          The city's portal is slow on purpose, and at busy times there may be other reviews ahead of you.
+          Most reviews finish within a couple of minutes.
         </div>
         <div style={{ marginTop: 18, height: 4, background: '#BAE6FD', borderRadius: 4, overflow: 'hidden' }}>
           <div style={{
@@ -323,6 +353,23 @@ function ProgressView({ status }: { status: string }) {
             animation: 'fr-slide 1.4s ease-in-out infinite',
           }} />
         </div>
+
+        {emailUsed ? (
+          <div style={{ marginTop: 20, padding: 14, background: '#fff', borderRadius: 10, border: '1px solid #BAE6FD', textAlign: 'left', fontSize: 13, color: COLORS.deepHarbor, lineHeight: 1.6 }}>
+            <strong>You can close this tab.</strong> We'll email you a link to your results as soon as the review is finished.
+          </div>
+        ) : (
+          <div style={{ marginTop: 20, padding: 14, background: '#fff', borderRadius: 10, border: '1px solid #BAE6FD', textAlign: 'left', fontSize: 13, color: COLORS.deepHarbor, lineHeight: 1.6 }}>
+            <strong>Don't want to wait?</strong> Bookmark or copy this page's URL — the results will load on this exact link whenever you come back:
+            <div style={{
+              marginTop: 8, padding: '8px 10px', background: COLORS.concrete,
+              borderRadius: 6, fontFamily: 'monospace', fontSize: 12, color: COLORS.graphite,
+              wordBreak: 'break-all',
+            }}>
+              {typeof window !== 'undefined' ? `${window.location.origin}/free-ticket-review?id=${reviewId}` : `/free-ticket-review?id=${reviewId}`}
+            </div>
+          </div>
+        )}
       </div>
       <style jsx global>{`
         @keyframes fr-slide {
