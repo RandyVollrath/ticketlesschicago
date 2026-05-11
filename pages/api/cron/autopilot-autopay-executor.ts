@@ -234,15 +234,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // ─── EXECUTION PATH (simulate or live) ───
       results.eligible++;
 
-      // 24-hour pre-charge grace: in LIVE mode, give the user a real
-      // chance to cancel before money moves. The flow:
+      // 21-day pre-charge grace: in LIVE mode, give the user a real chance
+      // to appeal the city's decision before money moves. Chicago's pay-or-
+      // contest window is 25 days after liability; we wait 21 days so users
+      // have the full appeal window plus a 4-day buffer to actually file and
+      // for us to fire the charge before late fees double the fine. The flow:
       //   1. First time we see this letter as ready: send pre-charge email,
       //      stamp autopay_pre_charge_notified_at = NOW, exit (don't charge).
-      //   2. Next executor runs: if notified < 24h ago, skip (still in grace).
-      //   3. After 24h: proceed to charge.
+      //   2. Next executor runs: if notified < 21 days ago, skip (in grace).
+      //   3. After 21 days: proceed to charge.
       // Simulate mode bypasses the gate so test runs fire end-to-end immediately.
       if (executionMode === 'live') {
-        const PRE_CHARGE_GRACE_MS = 24 * 60 * 60 * 1000;
+        const PRE_CHARGE_GRACE_MS = 21 * 24 * 60 * 60 * 1000;
         const notifiedAt = letter.autopay_pre_charge_notified_at
           ? new Date(letter.autopay_pre_charge_notified_at).getTime()
           : null;
@@ -273,11 +276,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const elapsed = Date.now() - notifiedAt;
         if (elapsed < PRE_CHARGE_GRACE_MS) {
-          // Still in the 24h grace window — skip this run.
+          // Still in the 21-day grace window — skip this run.
           results.cooldownSkipped++;
           continue;
         }
-        // Notified > 24h ago: proceed to charge.
+        // Notified > 21 days ago: proceed to charge.
       }
 
       // Stamp the attempt timestamp BEFORE running the execution so the
