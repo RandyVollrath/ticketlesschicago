@@ -78,7 +78,7 @@ export async function sendAutopayPreChargeEmail(params: {
         Because you have Late Fee Protection on, <strong>we'll charge your card on file and pay the city for you on ${chargeDate}</strong> — 21 days from now.
       </p>
       <p style="font-size: 15px; line-height: 1.6;">
-        We give you 21 days so you have time to file an appeal with the city if you want to, or to pay the ticket yourself. Chicago's pay-or-contest deadline is 25 days after a finding of liability — we leave a 4-day buffer so the charge still lands before late fees can double the fine.
+        We give you 21 days so you have time to file an appeal with the city if you want to, or to pay the ticket yourself. Under Chicago Municipal Code § 9-100-050, the city's late-payment penalty attaches 25 days after a determination of liability is issued — we leave a 4-day buffer so the charge lands and clears before that penalty can apply.
       </p>
       <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 20px 0;">
         <strong style="color: #78350f;">Want to appeal, or pay it yourself?</strong>
@@ -102,7 +102,7 @@ Your contest for ${ticketLabel} was decided against you. The city wants ${amount
 
 Because you have Late Fee Protection on, we'll charge your card and pay the city on ${chargeDate} — 21 days from now.
 
-We give you 21 days so you have time to file an appeal with the city if you want to, or to pay the ticket yourself. Chicago's pay-or-contest deadline is 25 days after a finding of liability; we leave a 4-day buffer so the charge still lands before late fees can double the fine.
+We give you 21 days so you have time to file an appeal with the city if you want to, or to pay the ticket yourself. Under Chicago Municipal Code § 9-100-050, the city's late-payment penalty attaches 25 days after a determination of liability is issued; we leave a 4-day buffer so the charge lands and clears before that penalty can apply.
 
 If you'd rather pay the city yourself, or you want to appeal, turn Late Fee Protection off for this ticket any time before ${chargeDate}:
 ${params.cancelUrl}

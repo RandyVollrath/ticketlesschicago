@@ -235,10 +235,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       results.eligible++;
 
       // 21-day pre-charge grace: in LIVE mode, give the user a real chance
-      // to appeal the city's decision before money moves. Chicago's pay-or-
-      // contest window is 25 days after liability; we wait 21 days so users
-      // have the full appeal window plus a 4-day buffer to actually file and
-      // for us to fire the charge before late fees double the fine. The flow:
+      // to appeal the city's decision before money moves. Per Chicago
+      // Municipal Code § 9-100-050, the late-payment penalty kicks in 25
+      // days after a determination of liability is issued. We wait 21 days
+      // so users have a meaningful appeal window plus a 4-day buffer to
+      // actually fire the charge and clear it through Stripe + the city
+      // portal before the late-fee penalty attaches. The flow:
       //   1. First time we see this letter as ready: send pre-charge email,
       //      stamp autopay_pre_charge_notified_at = NOW, exit (don't charge).
       //   2. Next executor runs: if notified < 21 days ago, skip (in grace).

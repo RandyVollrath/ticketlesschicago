@@ -76,6 +76,20 @@ These are the canonical Chicago fine amounts. **Any user-facing copy that names 
 | Burglar alarm > 4 minutes | 9-76-150(b) | $50 | $50 |
 | Abandoned vehicle 7+ days / inoperable | 9-80-110(a) | $75 | $75 |
 
+## Deadlines (when fines double / when late penalty attaches)
+
+Two different 25-day clocks apply depending on where the ticket is in its lifecycle. Don't conflate them:
+
+| Stage | Statute | Deadline | What happens if missed |
+|-------|---------|----------|-------------------------|
+| Just-issued parking ticket (no contest filed) | MCC § 9-100-050 | **25 days from issuance** to pay or request adjudication | Default determination of liability is entered; late penalty attaches |
+| Just-issued automated camera ticket (red light / speed) | MCC § 9-100-050 | **21 days from issuance** to pay or request adjudication | Determination of liability entered in the fine amount |
+| After determination of liability (whether by default or after a hearing) | MCC § 9-100-050 | **25 days from issuance of the determination** to pay | Late-payment penalty attaches — *lesser of the original fine OR $250 minus the original fine* |
+
+**Source for the post-determination deadline:** MCC § 9-100-050, verified 2026-05-11 via amlegal codelibrary. Verbatim: *"Failure by any respondent to pay the fine within 25 days of issuance of a determination of liability for a violation will automatically subject the respondent to a penalty for late payment."*
+
+This is the deadline Late Fee Protection (autopay) is designed around: we wait 21 days after the city issues a determination of liability before charging the user's card, leaving a 4-day buffer for the charge to clear through Stripe and the city portal before the late penalty attaches.
+
 ## Notes on usage
 
 - **"Late penalty payment amount"** is the additional amount added when the ticket goes unpaid past the deadline. For most violations the late penalty equals the initial fine (effectively doubling the cost). A few high-fine violations show `$0` late — meaning no further escalation, the original fine stands.
