@@ -769,38 +769,45 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
       })());
     }
 
-    // 4b. Camera-ticket evidence: scrape the City's vendor-run violation
-    // portal for photos + video, run Claude Vision to extract factual
-    // observations (plate legibility, signal state, sign visibility, etc.),
-    // then surface as a paragraph the letter generator can cite affirmatively.
-    // Replaces the old "we'll review the footage" boilerplate with actual
-    // findings from actual footage.
+    // 4b. Camera-ticket evidence — READ FROM CACHE ONLY.
+    //
+    // The actual scraping (Playwright against chicagophotociteweb.com /
+    // violationinfo.com) and Claude Vision analysis run on an ops box via
+    // `scripts/autopilot-scrape-camera-evidence.ts` on a systemd timer,
+    // NOT here. This is the same pattern as the existing CHI PAY portal
+    // scraper — Playwright is too heavy for Vercel serverless cold starts.
+    //
+    // If the cache row exists, we use the findings to write an affirmative
+    // paragraph. If it doesn't exist yet (scraper hasn't run for this
+    // ticket), the letter generates without camera findings — graceful
+    // degrade. Next time the scraper runs, future letters get the findings.
     if (violationType === 'red_light' || violationType === 'speed_camera') {
       evidencePromises.push((async () => {
         try {
-          const { runCameraEvidencePipeline, renderFindingsParagraph } = await import('../../../lib/camera-evidence-pipeline');
-          const result = await runCameraEvidencePipeline(supabase, {
-            id: contest.id,
-            user_id: user.id,
-            plate: (contest.license_plate || '').toUpperCase(),
-            ticket_number: contest.ticket_number,
-            violation_type: violationType,
-            violation_code: contest.violation_code,
-            violation_date: contest.ticket_date,
-            location: contest.ticket_location,
-          });
-          if (result.evidence?.findings) {
-            cameraEvidenceFindings = result.evidence.findings;
-            cameraEvidenceParagraph = renderFindingsParagraph(result.evidence.findings, (contest.license_plate || '').toUpperCase());
+          const { renderFindingsParagraph } = await import('../../../lib/camera-evidence-pipeline');
+          const { data: row, error: cacheErr } = await supabase
+            .from('camera_evidence' as any)
+            .select('findings')
+            .eq('ticket_id', contest.id)
+            .maybeSingle();
+          if (cacheErr) {
+            if (/does not exist|relation .* does not exist/i.test(cacheErr.message) || (cacheErr as any).code === '42P01') {
+              console.warn(`  Camera evidence: camera_evidence table missing — apply migrations/20260510_create_camera_evidence.sql`);
+            } else {
+              console.warn(`  Camera evidence cache lookup failed: ${cacheErr.message}`);
+            }
+            return;
           }
-          if (result.noEvidenceAvailable) {
-            console.log(`  Camera evidence: vendor portal returned no media for ticket ${contest.ticket_number}`);
-          }
-          if (result.persistenceUnavailable) {
-            console.warn(`  Camera evidence: scrape+analyze succeeded but camera_evidence table is missing — apply migrations/20260510_create_camera_evidence.sql`);
+          const findings = (row as any)?.findings;
+          if (findings) {
+            cameraEvidenceFindings = findings;
+            cameraEvidenceParagraph = renderFindingsParagraph(findings, (contest.license_plate || '').toUpperCase());
+            console.log(`  Camera evidence: cached findings used (recommended: ${findings.recommendDefense || 'none'})`);
+          } else {
+            console.log(`  Camera evidence: no cached findings yet for ticket ${contest.ticket_number} — scraper cron will fill in on next run`);
           }
         } catch (e: any) {
-          console.error('Camera evidence pipeline failed:', e.message);
+          console.error('Camera evidence cache lookup failed:', e.message);
         }
       })());
     }
@@ -1022,19 +1029,31 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
     // Wait for ALL evidence lookups to complete in parallel
     await Promise.all(evidencePromises);
 
-    // Look up detected_ticket plate data for defense analysis (ticket_plate, ticket_state, user plate, notice timing)
-    let detectedTicketData: { id?: string; ticket_plate?: string; ticket_state?: string; plate?: string; state?: string; created_at?: string; sweeper_verification?: any } | null = null;
+    // Look up detected_ticket plate data for defense analysis (ticket_plate, ticket_state, user plate, notice timing, stolen-plate flags)
+    let detectedTicketData: {
+      id?: string;
+      ticket_plate?: string;
+      ticket_state?: string;
+      plate?: string;
+      state?: string;
+      created_at?: string;
+      sweeper_verification?: any;
+      plate_stolen?: boolean | null;
+      plate_stolen_incident_date?: string | null;
+      plate_stolen_report_number?: string | null;
+      plate_stolen_report_agency?: string | null;
+      plate_stolen_report_date?: string | null;
+    } | null = null;
     if (contest.ticket_number) {
       try {
-        // Try to include sweeper_verification column (may not exist yet)
         const { data, error } = await supabase
           .from('detected_tickets')
-          .select('id, ticket_plate, ticket_state, plate, state, created_at, sweeper_verification')
+          .select('id, ticket_plate, ticket_state, plate, state, created_at, sweeper_verification, plate_stolen, plate_stolen_incident_date, plate_stolen_report_number, plate_stolen_report_agency, plate_stolen_report_date')
           .eq('ticket_number', contest.ticket_number)
           .limit(1)
           .maybeSingle();
-        if (error && error.message?.includes('sweeper_verification')) {
-          // Column doesn't exist yet — retry without it
+        if (error && (error.message?.includes('sweeper_verification') || error.message?.includes('plate_stolen'))) {
+          // One or more columns missing — fall back to safe baseline
           const { data: fallbackData } = await supabase
             .from('detected_tickets')
             .select('id, ticket_plate, ticket_state, plate, state, created_at')
@@ -1046,6 +1065,46 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
           detectedTicketData = data;
         }
       } catch (e) { /* non-fatal */ }
+    }
+
+    // =====================================================================
+    // STOLEN-PLATE DEFENSE — case-dispositive for camera tickets.
+    // Mirrors autopilot-generate-letters.ts:1396–1437. If the user's plate
+    // was reported stolen on or before the violation date AND the ticket is
+    // a camera/missing-plate type, this is the strongest single defense we
+    // have (§ 9-102-050(c) is a codified statutory exemption).
+    // =====================================================================
+    let stolenPlateDefense: {
+      applicable: boolean;
+      incidentDate: string | null;
+      reportNumber: string | null;
+      reportAgency: string | null;
+      reportDate: string | null;
+    } | null = null;
+    {
+      const dt = detectedTicketData as any;
+      const isCameraOrPlate =
+        violationType === 'red_light' ||
+        violationType === 'speed_camera' ||
+        violationType === 'missing_plate';
+      if (dt?.plate_stolen && isCameraOrPlate) {
+        const incidentStr: string | null = dt.plate_stolen_incident_date || dt.plate_stolen_report_date || null;
+        const violationDateOnly = contest.ticket_date ? String(contest.ticket_date).slice(0, 10) : null;
+        let incidentBeforeViolation = true;
+        if (incidentStr && violationDateOnly) {
+          incidentBeforeViolation = String(incidentStr).slice(0, 10) <= violationDateOnly;
+        }
+        if (incidentBeforeViolation) {
+          stolenPlateDefense = {
+            applicable: true,
+            incidentDate: incidentStr,
+            reportNumber: dt.plate_stolen_report_number || null,
+            reportAgency: dt.plate_stolen_report_agency || null,
+            reportDate: dt.plate_stolen_report_date || null,
+          };
+          console.log(`  ⚠️ Stolen-plate defense applies — leading letter with § 9-102-050(c)`);
+        }
+      }
     }
 
     // If sweeper data wasn't fetched live but was saved earlier (from autopilot cron),
@@ -1520,6 +1579,14 @@ CONFIDENCE: ${Math.round(kitEvaluation.confidence * 100)}%
 ${kitEvaluation.warnings.length > 0 ? `WARNINGS:\n${kitEvaluation.warnings.map(w => `- ${w}`).join('\n')}` : ''}
 
 INSTRUCTIONS: Use the argument template above as the CORE of your letter. Fill in any remaining [BRACKETED] placeholders with the ticket facts provided above. If a placeholder cannot be filled because the data is not available (e.g., [LOADING_DETAILS], [EMERGENCY_DESCRIPTION]), OMIT that entire paragraph rather than leaving the placeholder text or guessing. The template is based on proven successful arguments for this specific violation type.
+` : ''}
+${stolenPlateDefense?.applicable ? `
+=== STOLEN-PLATE DEFENSE — LEAD WITH THIS (CASE-DISPOSITIVE) ===
+The user's plate was reported stolen, lost, or used without permission${stolenPlateDefense.incidentDate ? ` on ${stolenPlateDefense.incidentDate}` : ''}${stolenPlateDefense.reportNumber ? `, with a police report on file (${stolenPlateDefense.reportAgency || 'police'}, RD # ${stolenPlateDefense.reportNumber}${stolenPlateDefense.reportDate ? `, filed ${stolenPlateDefense.reportDate}` : ''})` : ''}.
+
+LEGAL BASIS: Chicago Municipal Code § 9-102-050(c) is a codified statutory exemption: automated traffic-enforcement citations issued while a plate is stolen or used without the owner's consent are not attributable to the owner.
+
+INSTRUCTIONS: This is the LEAD argument — do not bury it. Two sentences are enough. State (1) the plate was stolen on or before the violation date${stolenPlateDefense.reportNumber ? ' and reference the RD number' : ''}, and (2) cite § 9-102-050(c) and request dismissal on that codified ground. Do NOT also argue yellow timing, vehicle ID, etc. — the stolen-plate defense alone is dispositive.
 ` : ''}
 ${weatherDefenseText}
 ${parkingEvidenceText}
@@ -2033,19 +2100,24 @@ INSTEAD, frame the letter as a written submission:
 - "I respectfully request a written determination dismissing this citation."
 - The hearing officer reviews mail-in contests on the papers and issues the determination by mail — there is no appearance.
 
-Generate a professional contest letter that:
-1. Clearly states the intent to contest the ticket BY MAIL
-2. References the specific violation code and ordinance
-3. ${courtData.hasData ? 'Uses arguments that have PROVEN successful in real cases (but without citing statistics)' : 'Presents the grounds for contest in a clear, factual manner'}
-4. ${courtData.hasData ? 'Subtly references similar successful cases using professional language (e.g., "Similar violations in this area have been successfully contested...")' : 'Cites relevant legal precedents or ordinance language if applicable'}
-5. Requests dismissal in writing (no hearing requested)
-6. Is respectful and professional in tone
-7. Includes proper formatting for a formal letter
-8. Addresses the recipient as "City of Chicago, Department of Finance" (not the Department of Administrative Hearings) — mail-in contests are processed by DOF and adjudicated by hearing officers on the written record
-9. ${courtData.hasData ? 'Writes like an experienced attorney who knows what works - confident but never citing percentages or internal data' : 'Uses standard legal contest language'}
-${courtData.hasData && courtData.similarCases.length > 0 ? '\n10. May briefly mention that "similar circumstances" or "comparable violations in this area" have led to dismissals when appropriate' : ''}
+Generate a contest letter that follows these rules. Hearing officers read short letters carefully and long letters badly — brevity is not optional.
 
-Use a formal letter format with proper salutation and closing.
+LENGTH AND STRUCTURE:
+1. Pick ONE codified defense and lead with it. Two sentences of substance: (a) state the codified defense by name, (b) state the fact + cite the ordinance section. If a stacked factual inconsistency (wrong plate / wrong state / wrong code) exists, you may include it as a second short paragraph — never more than two defenses total.
+2. Reference each attached exhibit by name in one sentence. Do not summarize the exhibit's content; the hearing officer will read it.
+3. ONE closing line: "I request a written determination dismissing this citation." That's it. Do not repeat "I respectfully request that this citation be dismissed" two or three times. Do not add "I look forward to a favorable resolution" or similar padding.
+4. Total body length target: roughly 150-250 words. If you exceed 300 words, you are doing it wrong.
+
+LANGUAGE:
+5. Use codified-list wording verbatim where it applies: "the facts alleged in the violation notice are inconsistent," "signs were missing or obscured," "affirmative compliance defense." These are the exact phrases hearing officers look for.
+6. Do NOT write narrative ("the signs were impossible to see," "this ticket isn't fair"). Write codified ("signs were missing or obscured," "the facts alleged in the violation notice are inconsistent").
+7. Address the recipient as "City of Chicago, Department of Finance" — this is a written mail-in submission, not a hearing.
+8. ${courtData.hasData ? 'You may reference that similar circumstances have led to dismissals — once, briefly, no statistics.' : 'Cite the specific ordinance section invoked.'}
+
+WHAT NOT TO DO:
+9. No FOIA boilerplate unless a FOIA-evidence block above explicitly instructs you to include one.
+10. No multi-paragraph narrative explaining what happened. State the codified defense and stop.
+11. No request for an in-person or virtual hearing — this is mail-in only.
 ${learningsText}${officerIntelText}`
             }
           ]
@@ -2268,6 +2340,25 @@ Generate an improved version of the letter that addresses all critical issues an
         status: 'pending_review',
       })
       .eq('id', contestId);
+
+    // Persist Street View exhibits so the Lob mailer (stripe-webhook.ts) can
+    // attach them as Exhibit A. Without this, the photos we just paid Google
+    // + Claude to generate are dropped on the floor between letter generation
+    // and mailing. Non-blocking: a missing column shouldn't fail letter save.
+    if (streetViewPackage?.hasImagery && streetViewPackage.exhibitUrls.length > 0) {
+      try {
+        await supabase
+          .from('ticket_contests')
+          .update({
+            street_view_exhibit_urls: streetViewPackage.exhibitUrls,
+            street_view_date: streetViewPackage.imageDate,
+            street_view_address: streetViewPackage.address,
+          })
+          .eq('id', contestId);
+      } catch (e) {
+        console.log('Street View exhibit persist skipped:', (e as any)?.message);
+      }
+    }
 
     // Secondary update: audit/gap columns (may not exist yet if migration not applied)
     // These are non-blocking — letter generation succeeds even without these columns.

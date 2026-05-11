@@ -173,7 +173,7 @@ Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defe
     type: 'speed_camera_defense',
     template: `I contest speed camera citation #{ticket_number} issued on {violation_date} at {location}.
 
-1. VEHICLE IDENTIFICATION. After review of the violation photos at chicago.gov/finance, the City must conclusively establish that the photographed vehicle is mine. The photos must clearly show the license plate number, and the vehicle make / model / color must match my registration. Vehicle identification errors are the most common reason speed-camera citations are dismissed.
+1. VEHICLE IDENTIFICATION. For this citation to be sustained, the City must conclusively establish from the violation photos that the photographed vehicle is mine — the license plate must be clearly legible in the photos and the vehicle make / model / color must match my registration. Vehicle identification errors are the most common reason speed-camera citations are dismissed.
 
 2. CHILDREN'S SAFETY ZONE DESIGNATION. Speed cameras are only authorized in designated Children's Safety Zones near schools and parks per Illinois Vehicle Code § 11-605.1 and Chicago Municipal Code § 9-102-020. I request the City produce documentation that this camera location is within a properly designated safety zone with appropriate signage.
 
