@@ -17,6 +17,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { scrapeCameraEvidence, type CameraEvidence } from './camera-evidence-scraper';
 import { analyzeCameraEvidence, type CameraEvidenceFindings } from './camera-evidence-analysis';
 import { formatViolationDate } from './contest-letter-date';
+import { computeEnteredOnYellowArgument } from './red-light-kinematics';
 
 export interface CachedEvidence {
   ticketId: string;
@@ -249,6 +250,14 @@ function mimeToExt(ct: string, fallback: string): string {
 /**
  * Turn AI findings into a paragraph the contest letter can cite.
  * Returns null when findings are too low-confidence to use affirmatively.
+ *
+ * When the photo metadata gives us amber duration + time-into-red, AND the
+ * AI estimates the vehicle's distance past the stop bar, we generate a
+ * full kinematic argument (the "math paragraph") that walks the hearing
+ * officer through the two scenarios — entered on amber vs entered on red
+ * — and shows that the entered-on-red scenario requires the driver to
+ * have been doing roughly double the posted speed limit. That's a
+ * decisive parsimony argument.
  */
 export function renderFindingsParagraph(findings: CameraEvidenceFindings | null, expectedPlate: string): string | null {
   if (!findings) return null;
@@ -271,11 +280,34 @@ export function renderFindingsParagraph(findings: CameraEvidenceFindings | null,
     );
   }
 
-  // Signal-state findings (e.g., entered on yellow)
-  const signalContestable = f.contestable.filter((c) => c.supports === 'signal_state' && c.confidence >= 0.6);
-  if (signalContestable.length > 0) {
-    const top = signalContestable[0];
-    lines.push(`Based on review of the City's own violation imagery and metadata: ${top.observation}`);
+  // Kinematic (entered-on-yellow) argument. Only fires when we have the
+  // signal metadata extracted from the photo and a posted speed limit.
+  // The argument is the strongest contest in this kit — when we can run
+  // the math, we lead with it.
+  const sig = f.signal;
+  if (
+    sig &&
+    sig.amberDurationSec !== null &&
+    sig.timeIntoRedPhaseSec !== null &&
+    sig.timeIntoRedPhaseSec < 1.5 // only meaningful when photo was taken in the first ~1.5s of red
+  ) {
+    const postedSpeed = sig.postedSpeedLimitMph ?? 30; // 30 mph is Chicago's default urban posted speed
+    const kin = computeEnteredOnYellowArgument({
+      amberSec: sig.amberDurationSec,
+      timeIntoRedSec: sig.timeIntoRedPhaseSec,
+      postedSpeedMph: postedSpeed,
+      estimatedFeetPastStopBar: sig.estimatedFeetPastStopBar,
+    });
+    if (kin.computed && kin.paragraph) {
+      lines.push(kin.paragraph);
+    }
+  } else {
+    // Fall back to AI's free-text signal observations when we can't run the math
+    const signalContestable = f.contestable.filter((c) => c.supports === 'signal_state' && c.confidence >= 0.6);
+    if (signalContestable.length > 0) {
+      const top = signalContestable[0];
+      lines.push(`Based on review of the City's own violation imagery and metadata: ${top.observation}`);
+    }
   }
 
   // Right-turn-on-red

@@ -32,6 +32,14 @@ export interface SignalObservation {
   signalState: 'red' | 'yellow' | 'green' | 'unknown';
   /** Confidence in the signal state, 0-1 */
   signalStateConfidence: number;
+  /** Amber/yellow phase duration in seconds, from the on-photo metadata strip */
+  amberDurationSec: number | null;
+  /** Seconds elapsed in the red phase when this photo was captured */
+  timeIntoRedPhaseSec: number | null;
+  /** Estimated feet the vehicle is past the stop bar in Photo 1. null when AI is unsure. */
+  estimatedFeetPastStopBar: number | null;
+  /** Posted speed limit (mph) visible on a posted sign in the photo, or known by intersection */
+  postedSpeedLimitMph: number | null;
 }
 
 export interface SceneObservation {
@@ -104,7 +112,11 @@ Return ONLY a JSON object with this exact shape (no markdown, no commentary):
   },
   "signal": {
     "signalState": "red" | "yellow" | "green" | "unknown",
-    "signalStateConfidence": 0.0 to 1.0
+    "signalStateConfidence": 0.0 to 1.0,
+    "amberDurationSec": <number from on-photo metadata "Amber time: X.X S", or null>,
+    "timeIntoRedPhaseSec": <number from on-photo metadata "Time into phase: X.X S", or null>,
+    "estimatedFeetPastStopBar": <integer estimate of how many feet past the painted stop bar / crosswalk the cited vehicle appears to be in Photo 1, or null. Use intersection-width landmarks: a single travel lane is ~12 ft, a four-lane road is ~48 ft curb-to-curb. Be conservative — if the car is just past the stop bar say 10-15, mid-intersection say 25-35, far side say 40-50.>,
+    "postedSpeedLimitMph": <integer from posted-speed sign visible in the photo, or null>
   } or null,
   "scene": {
     "visibleLocation": "Cross-streets if visible" or null,
@@ -242,6 +254,10 @@ function parseFindings(raw: string): Omit<CameraEvidenceFindings, 'rawResponse' 
         ? {
             signalState: ['red', 'yellow', 'green', 'unknown'].includes(obj.signal.signalState) ? obj.signal.signalState : 'unknown',
             signalStateConfidence: clamp01(obj.signal.signalStateConfidence),
+            amberDurationSec: typeof obj.signal.amberDurationSec === 'number' && obj.signal.amberDurationSec > 0 ? obj.signal.amberDurationSec : null,
+            timeIntoRedPhaseSec: typeof obj.signal.timeIntoRedPhaseSec === 'number' && obj.signal.timeIntoRedPhaseSec >= 0 ? obj.signal.timeIntoRedPhaseSec : null,
+            estimatedFeetPastStopBar: typeof obj.signal.estimatedFeetPastStopBar === 'number' && obj.signal.estimatedFeetPastStopBar > 0 ? Math.round(obj.signal.estimatedFeetPastStopBar) : null,
+            postedSpeedLimitMph: typeof obj.signal.postedSpeedLimitMph === 'number' && obj.signal.postedSpeedLimitMph > 0 ? Math.round(obj.signal.postedSpeedLimitMph) : null,
           }
         : null,
     scene: {
