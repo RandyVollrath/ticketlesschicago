@@ -45,49 +45,51 @@ function formatMoney(n: number | null | undefined): string {
 
 /**
  * Pre-charge email — fires when a contest letter flips to lost/reduced
- * and the user has Late Fee Protection on. We send this 24+ hours BEFORE
- * the actual Stripe charge so the user has a real chance to opt out by
- * toggling Late Fee Protection off in their settings.
+ * and the user has Late Fee Protection on. We send this 21 days BEFORE
+ * the actual Stripe charge so the user has the full city appeal window
+ * (Chicago's pay-or-contest deadline is 25 days after liability) plus a
+ * 4-day buffer to file an appeal or opt out by toggling Late Fee
+ * Protection off.
  *
- * The 24h grace is enforced in the autopilot-autopay-executor cron via
- * the autopay_pre_charge_notified_at column.
+ * The 21-day grace is enforced in the autopilot-autopay-executor cron
+ * via the autopay_pre_charge_notified_at column.
  */
 export async function sendAutopayPreChargeEmail(params: {
   to: string;
   firstName?: string | null;
   ticketNumber?: string | null;
   finalAmount: number;
-  scheduledChargeAt: Date;     // ~24h after this email
+  scheduledChargeAt: Date;     // 21 days after this email
   cancelUrl: string;           // link to /account/autopay
 }) {
   const fname = params.firstName ? params.firstName.split(' ')[0] : 'there';
   const ticketLabel = params.ticketNumber ? `ticket #${params.ticketNumber}` : 'your ticket';
   const amount = formatMoney(params.finalAmount);
   const chargeDate = params.scheduledChargeAt.toLocaleString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   });
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
-      <h1 style="font-size: 22px; margin: 0 0 8px;">Heads up — we're about to pay your ticket</h1>
+      <h1 style="font-size: 22px; margin: 0 0 8px;">Heads up — we'll pay your ticket in 21 days</h1>
       <p style="font-size: 15px; line-height: 1.6;">Hi ${fname},</p>
       <p style="font-size: 15px; line-height: 1.6;">
         Your contest for ${ticketLabel} was decided against you, and the city wants <strong>${amount}</strong>.
-        Because you have Late Fee Protection on, <strong>we're going to charge your card on file and pay the city for you on ${chargeDate}</strong> — a little over 24 hours from now.
+        Because you have Late Fee Protection on, <strong>we'll charge your card on file and pay the city for you on ${chargeDate}</strong> — 21 days from now.
       </p>
       <p style="font-size: 15px; line-height: 1.6;">
-        We're giving you this heads-up so you can stop the charge if you'd rather pay the city yourself.
+        We give you 21 days so you have time to file an appeal with the city if you want to, or to pay the ticket yourself. Chicago's pay-or-contest deadline is 25 days after a finding of liability — we leave a 4-day buffer so the charge still lands before late fees can double the fine.
       </p>
       <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 20px 0;">
-        <strong style="color: #78350f;">Want us to skip this one?</strong>
+        <strong style="color: #78350f;">Want to appeal, or pay it yourself?</strong>
         <p style="font-size: 14px; color: #78350f; margin: 6px 0 0;">
-          Turn off Late Fee Protection for this ticket before the charge time:
+          Turn off Late Fee Protection for this ticket any time before ${chargeDate}:
           <br>
           <a href="${params.cancelUrl}" style="color: #0052cc;">${params.cancelUrl}</a>
         </p>
       </div>
       <p style="font-size: 14px; color: #6b7280; line-height: 1.6;">
-        If you do nothing, we'll charge your card for ${amount} and pay the city. You'll get a receipt email once it's done.
+        If you do nothing, we'll charge your card for ${amount} on ${chargeDate} and pay the city. You'll get a receipt email once it's done.
       </p>
       <p style="font-size: 12px; color: #9ca3af; margin-top: 32px;">
         Questions? <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a>
@@ -98,35 +100,37 @@ export async function sendAutopayPreChargeEmail(params: {
 
 Your contest for ${ticketLabel} was decided against you. The city wants ${amount}.
 
-Because you have Late Fee Protection on, we'll charge your card and pay the city on ${chargeDate} — about 24 hours from now.
+Because you have Late Fee Protection on, we'll charge your card and pay the city on ${chargeDate} — 21 days from now.
 
-If you'd rather pay the city yourself, turn Late Fee Protection off for this ticket before that time:
+We give you 21 days so you have time to file an appeal with the city if you want to, or to pay the ticket yourself. Chicago's pay-or-contest deadline is 25 days after a finding of liability; we leave a 4-day buffer so the charge still lands before late fees can double the fine.
+
+If you'd rather pay the city yourself, or you want to appeal, turn Late Fee Protection off for this ticket any time before ${chargeDate}:
 ${params.cancelUrl}
 
-If you do nothing, we'll charge your card for ${amount} and pay the city. Receipt to follow.
+If you do nothing, we'll charge your card for ${amount} on ${chargeDate} and pay the city. Receipt to follow.
 
 Questions? ${SUPPORT_EMAIL}`;
 
   await sendResendEmail({
     to: params.to,
-    subject: `Heads up — we'll auto-pay your ${amount} ticket in 24 hours`,
+    subject: `Heads up — we'll auto-pay your ${amount} ticket in 21 days`,
     html,
     text,
   });
 
   // Admin notification: every pre-charge email gets a CC to randyvollrath@gmail.com
   // so a real autopay about to fire is visible. Lets us intervene during the
-  // 24h grace window if anything looks wrong.
+  // 21-day grace window if anything looks wrong.
   await sendResendEmail({
     to: 'randyvollrath@gmail.com',
-    subject: `[Autopay heads-up] ${params.to} - ${amount} in 24h`,
+    subject: `[Autopay heads-up] ${params.to} - ${amount} in 21 days`,
     html: `<p><strong>Pre-charge notice sent to user.</strong></p>
       <p>User: ${params.to}</p>
       <p>Ticket: ${ticketLabel}</p>
       <p>Amount: ${amount}</p>
       <p>Scheduled charge: ${chargeDate}</p>
-      <p>This is the 24h heads-up. The user has until then to opt out via /account/autopay.</p>`,
-    text: `Pre-charge notice sent to ${params.to} for ${amount} (${ticketLabel}). Scheduled charge: ${chargeDate}. User can opt out within 24h.`,
+      <p>This is the 21-day heads-up. The user has until then to appeal, pay the city themselves, or opt out via /account/autopay.</p>`,
+    text: `Pre-charge notice sent to ${params.to} for ${amount} (${ticketLabel}). Scheduled charge: ${chargeDate}. User has 21 days to appeal/opt-out.`,
   }).catch((e) => console.error('admin pre-charge cc failed:', e?.message || e));
 }
 
