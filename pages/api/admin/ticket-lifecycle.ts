@@ -148,9 +148,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (ticket.last_chance_sent_at) {
         communications.push({
           type: 'last_chance',
-          label: 'LAST CHANCE (Day 17)',
+          label: 'LAST CHANCE (Day 14)',
           date: ticket.last_chance_sent_at,
-          details: 'Letter will auto-send in 48 hours',
+          details: 'Letter will auto-send in 3 days',
         });
       }
 
@@ -169,7 +169,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (audit.action === 'auto_send_safety_net') {
           communications.push({
             type: 'auto_send',
-            label: 'Auto-Send Safety Net (Day 19)',
+            label: 'Auto-Send Safety Net (Day 17)',
             date: audit.created_at,
             details: audit.details?.reason || 'Auto-sending before deadline',
           });
