@@ -369,12 +369,36 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
         </div>
 
         {analysis.totalTickets === 0 && (
-          <div style={{ marginTop: 18, padding: 16, background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 10 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#065F46' }}>You have no open tickets on file.</div>
-            <div style={{ marginTop: 6, color: '#065F46', fontSize: 14 }}>
-              The City of Chicago payment portal returned no open receivables for this plate. Nothing to contest right now.
+          <>
+            <div style={{ marginTop: 18, padding: 16, background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 10 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#065F46' }}>You're in the clear right now — no open tickets on file.</div>
+              <div style={{ marginTop: 6, color: '#065F46', fontSize: 14 }}>
+                The City of Chicago payment portal returned no open receivables for this plate.
+              </div>
             </div>
-          </div>
+
+            <div style={{
+              marginTop: 18, padding: 22, background: COLORS.deepHarbor, borderRadius: 14,
+              color: '#fff',
+            }}>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>
+                Want Autopilot to keep it that way — and contest anything new?
+              </div>
+              <div style={{ marginTop: 10, fontSize: 14, color: '#CBD5E1', lineHeight: 1.6 }}>
+                For $79/year Autopilot checks your plate against the city portal twice a week, sends you street-cleaning,
+                snow-ban, and renewal alerts before tickets happen, and automatically files a mail-in contest letter for
+                every ticket that does land — with the FOIA requests, evidence packet, and citation tracking handled
+                end-to-end. Our 2023–2025 mail-in win rate is 57%.
+              </div>
+              <a href="/get-started" style={{
+                display: 'inline-block', marginTop: 16, padding: '12px 20px', borderRadius: 10,
+                background: COLORS.signal, color: '#04221A', fontWeight: 800, fontSize: 15,
+                textDecoration: 'none',
+              }}>
+                Start Autopilot — $79/year →
+              </a>
+            </div>
+          </>
         )}
 
         {analysis.bootStatus?.isBooted && (
