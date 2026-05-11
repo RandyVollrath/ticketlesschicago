@@ -405,13 +405,28 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
         {maybe.length > 0 && <TicketGroup title={`Worth a closer look (${maybe.length})`} tickets={maybe} accent={COLORS.warning} />}
         {skip.length > 0 && <TicketGroup title={`Probably not worth contesting (${skip.length})`} tickets={skip} accent={COLORS.slate} />}
 
-        <div style={{ marginTop: 28, padding: 18, background: COLORS.concrete, borderRadius: 12, border: `1px solid ${COLORS.border}` }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepHarbor }}>Want us to actually file these?</div>
-          <div style={{ marginTop: 6, fontSize: 14, color: COLORS.slate, lineHeight: 1.5 }}>
-            Autopilot files mail-in contests for every ticket it watches and includes these custom arguments
-            automatically. Our 2023–2025 mail-in win rate is 57%. <a href="/get-started" style={{ color: COLORS.regulatory, fontWeight: 600 }}>Start Autopilot →</a>
+        {(worthIt.length + maybe.length) > 0 && (
+          <div style={{
+            marginTop: 28, padding: 22, background: COLORS.deepHarbor, borderRadius: 14,
+            color: '#fff',
+          }}>
+            <div style={{ fontSize: 18, fontWeight: 800 }}>
+              Let Autopilot file {worthIt.length + maybe.length === 1 ? 'this contest' : `all ${worthIt.length + maybe.length} contests`} for you.
+            </div>
+            <div style={{ marginTop: 10, fontSize: 14, color: '#CBD5E1', lineHeight: 1.6 }}>
+              For $99/year Autopilot writes and mails the formal contest letter for every ticket on your plate, files
+              the FOIA requests with the City for the cited address and officer notes, attaches the evidence you provide,
+              and tracks the city's response through final determination. Our 2023–2025 mail-in win rate is 57%.
+            </div>
+            <a href="/get-started" style={{
+              display: 'inline-block', marginTop: 16, padding: '12px 20px', borderRadius: 10,
+              background: COLORS.signal, color: '#04221A', fontWeight: 800, fontSize: 15,
+              textDecoration: 'none',
+            }}>
+              Start Autopilot — $99/year →
+            </a>
           </div>
-        </div>
+        )}
       </div>
     </section>
   );
@@ -456,22 +471,35 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
       {t.beyondTemplate.length > 0 ? (
         <>
           {renderArgGroup(
-            'What Autopilot pulled from city data (you can\'t see this without us):',
+            'What Autopilot does for you on this ticket:',
             t.beyondTemplate.filter(a => a.kind === 'autopilot'),
           )}
           {renderArgGroup(
-            'Procedural facts from your ticket record:',
+            'What Autopilot writes into the contest letter automatically:',
             t.beyondTemplate.filter(a => (a.kind ?? 'fact') === 'fact'),
           )}
           {renderArgGroup(
-            'Steps you can take to strengthen the filing:',
+            'What you\'ll handle on your end (Autopilot still files the letter):',
             t.beyondTemplate.filter(a => a.kind === 'cure' || a.kind === 'evidence'),
           )}
         </>
       ) : (
         <div style={{ marginTop: 10, fontSize: 13, color: COLORS.slate }}>
-          No ticket-specific extras detected — the standard template is the strongest argument we have on this one.
+          No ticket-specific extras detected — Autopilot still uses our standard template and the citywide 57% mail-contest win rate applies.
         </div>
+      )}
+
+      {t.recommendation !== 'skip' && (
+        <a
+          href="/get-started"
+          style={{
+            display: 'block', marginTop: 14, padding: '12px 16px', borderRadius: 10,
+            background: COLORS.regulatory, color: '#fff', fontWeight: 700, fontSize: 14,
+            textAlign: 'center', textDecoration: 'none',
+          }}
+        >
+          Have Autopilot contest this ticket →
+        </a>
       )}
     </div>
   );
