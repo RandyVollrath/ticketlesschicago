@@ -40,6 +40,23 @@ export interface SignalObservation {
   estimatedFeetPastStopBar: number | null;
   /** Posted speed limit (mph) visible on a posted sign in the photo, or known by intersection */
   postedSpeedLimitMph: number | null;
+  /**
+   * Per the City of Chicago's own "Automated Red-Light Camera Enforcement
+   * Violation Processing Methods & Criteria" PDF (CDOT/DOF, eff. 03/15/2018):
+   *   "Photo 1 — shows the front tires of the vehicle BEFORE the stop bar
+   *    with the red signal indication visible in the photo"
+   *
+   * If the issued ticket's Photo 1 instead shows the front tires already
+   * PAST the stop bar / in the intersection, the issuance violates the
+   * City's own published processing criteria — a stand-alone ground for
+   * dismissal independent of the kinematic argument. The analyzer reports:
+   *   - 'before_stop_bar'  → spec-compliant
+   *   - 'past_stop_bar'    → spec violation, defense applies
+   *   - 'unclear'          → analyzer couldn't tell from the image
+   */
+  photo1FrontTiresPosition: 'before_stop_bar' | 'past_stop_bar' | 'unclear';
+  /** Confidence in the Photo 1 position observation, 0-1 */
+  photo1FrontTiresConfidence: number;
 }
 
 export interface SceneObservation {
@@ -63,6 +80,7 @@ export interface ContestableObservation {
     | 'signal_state'
     | 'sign_missing'
     | 'weather'
+    | 'photo1_spec_mismatch'
     | 'other';
   /** Confidence the analyzer has in this observation, 0-1 */
   confidence: number;
@@ -83,6 +101,7 @@ export interface CameraEvidenceFindings {
     | 'right_turn_on_red'
     | 'signal_state'
     | 'factually_inconsistent'
+    | 'photo1_spec_mismatch'
     | 'none';
   /** Plain-English summary the letter writer can paraphrase */
   summary: string;
@@ -100,6 +119,16 @@ CRITICAL RULES:
 3. The signal state must be what the photo actually shows facing the cited approach.
 4. "No Turn on Red" signage detection: only mark true if the SIGN IS CLEARLY VISIBLE in the photo. Mark "unknown" otherwise — never assume.
 5. Confidence 1.0 means "I can read this clearly." Confidence 0.5 means "I think so but the image is blurry." Anything below 0.3 should be null.
+6. PHOTO 1 SPEC COMPLIANCE CHECK — IMPORTANT NEW REQUIREMENT.
+   The City of Chicago's own published "Automated Red-Light Camera Enforcement Violation Processing Methods & Criteria" (CDOT/DOF, eff. 03/15/2018) specifies:
+     "Photo 1 — shows the front tires of the vehicle BEFORE the stop bar with the red signal indication visible in the photo"
+     "Photo 2 — shows the rear tires of the vehicle PAST the stop bar with a red signal indication visible in the photo"
+   Photos labeled "Photo 1 of 2" or "1 of 2" in the City's evidence package are supposed to show the vehicle's front tires NOT YET past the stop bar.
+   - If you see "Photo 1 of 2" / "1 of 2" AND the front tires are clearly already past the stop bar / well inside the intersection, set photo1FrontTiresPosition = "past_stop_bar". This is a SIGNIFICANT defense finding because it means the City's own processing criteria were not followed.
+   - If "Photo 1 of 2" shows the front tires before / at the stop bar (spec-compliant), set "before_stop_bar".
+   - If you cannot tell from the photo which is Photo 1, or the stop bar location isn't clearly visible, set "unclear".
+   - Be conservative: only mark "past_stop_bar" if you are clearly looking at Photo 1 (look for "Photo 1 of 2" or "1 of 2" labels on the image) AND the entire front tire is past the painted stop bar. When in doubt, mark "unclear".
+   When photo1FrontTiresPosition = "past_stop_bar" with confidence ≥ 0.6, ALSO add a contestable entry with supports="photo1_spec_mismatch".
 
 Return ONLY a JSON object with this exact shape (no markdown, no commentary):
 {
@@ -116,7 +145,9 @@ Return ONLY a JSON object with this exact shape (no markdown, no commentary):
     "amberDurationSec": <number from on-photo metadata "Amber time: X.X S", or null>,
     "timeIntoRedPhaseSec": <number from on-photo metadata "Time into phase: X.X S", or null>,
     "estimatedFeetPastStopBar": <integer estimate of how many feet past the painted stop bar / crosswalk the cited vehicle appears to be in Photo 1, or null. Use intersection-width landmarks: a single travel lane is ~12 ft, a four-lane road is ~48 ft curb-to-curb. Be conservative — if the car is just past the stop bar say 10-15, mid-intersection say 25-35, far side say 40-50.>,
-    "postedSpeedLimitMph": <integer from posted-speed sign visible in the photo, or null>
+    "postedSpeedLimitMph": <integer from posted-speed sign visible in the photo, or null>,
+    "photo1FrontTiresPosition": "before_stop_bar" | "past_stop_bar" | "unclear",
+    "photo1FrontTiresConfidence": 0.0 to 1.0
   } or null,
   "scene": {
     "visibleLocation": "Cross-streets if visible" or null,
@@ -127,11 +158,11 @@ Return ONLY a JSON object with this exact shape (no markdown, no commentary):
   "contestable": [
     {
       "observation": "<specific fact, e.g., 'vehicle came to a complete stop before the stop bar in frame 1, then made a right turn'>",
-      "supports": "vehicle_identification" | "right_turn_on_red" | "signal_state" | "sign_missing" | "weather" | "other",
+      "supports": "vehicle_identification" | "right_turn_on_red" | "signal_state" | "sign_missing" | "weather" | "photo1_spec_mismatch" | "other",
       "confidence": 0.0 to 1.0
     }
   ],
-  "recommendDefense": "vehicle_identification" | "right_turn_on_red" | "signal_state" | "factually_inconsistent" | "none",
+  "recommendDefense": "vehicle_identification" | "right_turn_on_red" | "signal_state" | "factually_inconsistent" | "photo1_spec_mismatch" | "none",
   "summary": "<2-3 sentence plain-English summary of what the photos actually show>"
 }
 
@@ -258,6 +289,10 @@ function parseFindings(raw: string): Omit<CameraEvidenceFindings, 'rawResponse' 
             timeIntoRedPhaseSec: typeof obj.signal.timeIntoRedPhaseSec === 'number' && obj.signal.timeIntoRedPhaseSec >= 0 ? obj.signal.timeIntoRedPhaseSec : null,
             estimatedFeetPastStopBar: typeof obj.signal.estimatedFeetPastStopBar === 'number' && obj.signal.estimatedFeetPastStopBar > 0 ? Math.round(obj.signal.estimatedFeetPastStopBar) : null,
             postedSpeedLimitMph: typeof obj.signal.postedSpeedLimitMph === 'number' && obj.signal.postedSpeedLimitMph > 0 ? Math.round(obj.signal.postedSpeedLimitMph) : null,
+            photo1FrontTiresPosition: ['before_stop_bar', 'past_stop_bar', 'unclear'].includes(obj.signal.photo1FrontTiresPosition)
+              ? obj.signal.photo1FrontTiresPosition
+              : 'unclear',
+            photo1FrontTiresConfidence: clamp01(obj.signal.photo1FrontTiresConfidence),
           }
         : null,
     scene: {
@@ -283,6 +318,7 @@ function parseFindings(raw: string): Omit<CameraEvidenceFindings, 'rawResponse' 
               'sign_missing',
               'weather',
               'other',
+              'photo1_spec_mismatch',
             ].includes(c.supports) ? c.supports : 'other',
             confidence: clamp01(c.confidence),
           }))
@@ -292,6 +328,7 @@ function parseFindings(raw: string): Omit<CameraEvidenceFindings, 'rawResponse' 
       'right_turn_on_red',
       'signal_state',
       'factually_inconsistent',
+      'photo1_spec_mismatch',
       'none',
     ].includes(obj.recommendDefense) ? obj.recommendDefense : 'none',
     summary: typeof obj.summary === 'string' ? obj.summary : '',
