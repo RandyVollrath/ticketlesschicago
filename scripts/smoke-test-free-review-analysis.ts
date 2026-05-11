@@ -228,6 +228,11 @@ expect(
   'expired plates (89% baseline) + cure path → CONTEST',
 );
 
+// 7. Tickets without FOIA enrichment should surface the FOIA-on-behalf finding
+const epFoiaPath = ep.beyondTemplate.find(b => b.id === 'autopilot_foia_request');
+expect(!!epFoiaPath, 'should surface FOIA-on-behalf finding when ticket is not in our historical dataset');
+expect(epFoiaPath?.kind === 'autopilot', 'FOIA-on-behalf finding must be tier=autopilot');
+
 // Cross-ticket: 2 camera tickets → calibration request pattern
 expect(
   analysis.crossTicket.some(c => c.id === 'pattern_camera_repeat'),

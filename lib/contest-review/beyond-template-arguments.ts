@@ -505,21 +505,32 @@ export function buildAutopilotFindings(
 ): AutopilotFinding[] {
   const out: AutopilotFinding[] = [];
 
-  // ── FOIA address resolution ──────────────────────────────────────
-  // The portal does NOT show the cited address. Autopilot pulls it
-  // from the City's FOIA-released ticket database. This alone is
-  // value the user could not get on their own without filing a FOIA
-  // request and waiting weeks.
+  // ── Address resolution — two paths ───────────────────────────────
+  // The CHI PAY portal does NOT show the cited address. Either we
+  // already have it (older ticket in our historical dataset) OR we
+  // need to FOIA the city on the user's behalf to get it. Either way
+  // it's data the user cannot get without us.
   if (enrichment.foundInFoia && enrichment.citedAddress) {
     out.push({
       id: 'autopilot_address_resolved',
-      title: `We pulled the cited address from city data: ${enrichment.citedAddress}`,
+      title: `We already have the cited address: ${enrichment.citedAddress}`,
       explanation:
-        `The Chicago payment portal does not show you the address where this ticket was issued — only the violation type and the fine. ` +
-        `Autopilot cross-references the ticket number against the City of Chicago's FOIA-released ticket database (35.7 million rows) to recover the actual cited block. We use this to run the location-specific defenses below.`,
+        'The Chicago payment portal does not show you the address where the ticket was issued — only the violation type and the fine. We have the address from prior city records and use it to run the location-specific defenses below.',
       uplift:
-        'Knowing the cited address is the gating step for every location-specific defense (permit-zone check, sweeper-schedule check, signage record). Without it, you are filing a generic letter.',
-      estimatedUpliftPct: 0.0, // The address itself is enabling, not a defense
+        'The cited address is the gating step for every location-specific defense (permit-zone check, sweeper-schedule check, signage records). Without it, you are filing a generic letter.',
+      estimatedUpliftPct: 0.0,
+      strength: 'strong',
+      kind: 'autopilot',
+    });
+  } else {
+    out.push({
+      id: 'autopilot_foia_request',
+      title: 'Autopilot will FOIA the City for the cited address and the officer\'s notes',
+      explanation:
+        'When you sign up, Autopilot emails a formal Freedom of Information Act request (Illinois FOIA, 5 ILCS 140) to the Chicago Department of Finance asking for the exact location recorded by the issuing officer, the officer\'s field notes, any photographs taken at the time of citation, and the handheld-device data. The city has 5 business days to respond. Whatever they produce — or fail to produce — becomes part of your contest record.',
+      uplift:
+        'A missing or unresponsive FOIA answer is itself a codified defense ground (§ 9-100-060(a)(4)). When the city DOES produce records, the materials almost always contain inconsistencies the standard template cannot anticipate. Users cannot send these FOIAs themselves without legal-form expertise and follow-up handling.',
+      estimatedUpliftPct: 0.15,
       strength: 'strong',
       kind: 'autopilot',
     });
