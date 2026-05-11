@@ -142,9 +142,7 @@ When I parked at this location, I observed:
 
 Handicapped parking spaces must be clearly marked with both signage and pavement markings. Without these indicators, I had no way to know this was a designated handicapped space.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
       requiredFacts: ['location', 'signageObservations'],
       winRate: 0.55,
       conditions: [
@@ -206,9 +204,7 @@ I had a valid handicapped placard (#[PLACARD_NUMBER]) that was in my vehicle. At
 
 [POLICE_REPORT_REFERENCE]
 
-I have since filed a police report and am in the process of obtaining a replacement placard. I should not be penalized for the criminal act of another person.
-
-I respectfully request that this citation be dismissed.`,
+I have since filed a police report and am in the process of obtaining a replacement placard. I should not be penalized for the criminal act of another person.`,
         requiredFacts: ['placardNumber'],
         winRate: 0.45,
         conditions: [
@@ -226,9 +222,7 @@ On [DATE], I was [LOADING_DESCRIPTION] for [DISABLED_PERSON]. This required temp
 
 [SUPPORTING_DOCUMENTATION]
 
-I was not parking but rather actively assisting a disabled individual. This temporary stop should not result in a parking citation.
-
-I respectfully request that this citation be dismissed.`,
+I was not parking but rather actively assisting a disabled individual. This temporary stop should not result in a parking citation.`,
         requiredFacts: ['location', 'date', 'loadingDescription'],
         winRate: 0.40,
         conditions: [

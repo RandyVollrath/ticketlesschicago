@@ -103,9 +103,7 @@ At the time of the citation:
 
 I was conducting a necessary loading operation and was not "parked" in the traditional sense. I had my hazard lights on and remained with or near the vehicle.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
       requiredFacts: ['location', 'loadingDetails'],
       winRate: 0.35,
       conditions: [
@@ -124,9 +122,7 @@ On [DATE], I experienced [EMERGENCY_DESCRIPTION]. This emergency left me no choi
 
 [EMERGENCY_DOCUMENTATION]
 
-I did not willfully double park but was responding to circumstances beyond my control.
-
-I respectfully request that this citation be dismissed.`,
+I did not willfully double park but was responding to circumstances beyond my control.`,
       requiredFacts: ['location', 'date', 'emergencyDescription'],
       winRate: 0.30,
       conditions: [
@@ -166,9 +162,7 @@ My vehicle [DISABILITY_DESCRIPTION]. I was in the process of getting assistance 
 
 [DISABILITY_DOCUMENTATION]
 
-I did not choose to double park. The vehicle breakdown left me stranded in traffic.
-
-I respectfully request that this citation be dismissed.`,
+I did not choose to double park. The vehicle breakdown left me stranded in traffic.`,
         requiredFacts: ['location', 'date', 'disabilityDescription'],
         winRate: 0.32,
         conditions: [
@@ -206,9 +200,7 @@ On [DATE], [MEDICAL_EMERGENCY_DETAILS]. I had no choice but to stop immediately 
 
 [MEDICAL_DOCUMENTATION]
 
-The safety and health of those involved took priority over parking regulations in this emergency.
-
-I respectfully request that this citation be dismissed.`,
+The safety and health of those involved took priority over parking regulations in this emergency.`,
         requiredFacts: ['location', 'date', 'medicalEmergencyDetails'],
         winRate: 0.35,
         conditions: [

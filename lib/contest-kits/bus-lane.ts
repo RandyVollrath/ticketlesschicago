@@ -147,9 +147,7 @@ On [DATE], I briefly stopped in the bus lane to [pick up/drop off] a passenger. 
 
 [EVIDENCE_REFERENCE]
 
-Per CMC 9-103-020(a), stopping to expeditiously load or unload passengers without interfering with bus operations is a statutory defense to this violation.
-
-I respectfully request that this citation be dismissed.`,
+Per CMC 9-103-020(a), stopping to expeditiously load or unload passengers without interfering with bus operations is a statutory defense to this violation.`,
       requiredFacts: ['location', 'date'],
       winRate: 0.30,
       conditions: [
@@ -169,9 +167,7 @@ When I entered this lane on [DATE], I was unable to identify it as a bus-only la
 
 Bus lane restrictions require clear, visible signage and markings. Without adequate notice, motorists cannot be expected to know they are entering a restricted lane, especially if approaching from a direction where signs are not visible.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
       requiredFacts: ['location', 'date', 'signageObservations'],
       winRate: 0.30,
       conditions: [
@@ -215,9 +211,7 @@ The bus lane at [LOCATION] is restricted during [POSTED_HOURS]. This citation wa
 
 [EVIDENCE_REFERENCE]
 
-Since my vehicle was in the lane during unrestricted hours, no violation occurred.
-
-I respectfully request that this citation be dismissed.`,
+Since my vehicle was in the lane during unrestricted hours, no violation occurred.`,
         requiredFacts: ['location', 'postedHours', 'ticketTime'],
         winRate: 0.60,
         conditions: [
@@ -236,9 +230,7 @@ Upon reviewing the citation photos:
 
 The Smart Streets automated enforcement system uses Hayden AI cameras which are known to produce erroneous citations. In New York City, the same technology produced over 800 erroneous tickets due to programming errors in 2024.
 
-I request the full video evidence (not just still photos), camera calibration records, and the Hayden AI manual review documentation for this specific citation.
-
-I respectfully request that this citation be dismissed.`,
+I request the full video evidence (not just still photos), camera calibration records, and the Hayden AI manual review documentation for this specific citation.`,
         requiredFacts: ['errorDescription'],
         winRate: 0.70,
         conditions: [
@@ -256,9 +248,7 @@ On [DATE], my vehicle [DISABILITY_DESCRIPTION]. I was in the process of arrangin
 
 [DISABILITY_DOCUMENTATION]
 
-My presence in the bus lane was involuntary and due to a vehicle emergency beyond my control.
-
-I respectfully request that this citation be dismissed.`,
+My presence in the bus lane was involuntary and due to a vehicle emergency beyond my control.`,
         requiredFacts: ['location', 'date', 'disabilityDescription'],
         winRate: 0.30,
         conditions: [
@@ -276,9 +266,7 @@ I respectfully request that this citation be dismissed.`,
 
 The [snow/rain/debris] covered the red pavement markings and "BUS ONLY" stencils, making it impossible to identify this as a restricted bus lane. I exercised reasonable care but could not determine the lane restriction.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
         requiredFacts: ['date', 'location', 'weatherDescription'],
         winRate: 0.28,
         conditions: [

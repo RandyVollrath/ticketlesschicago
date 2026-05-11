@@ -247,9 +247,7 @@ I had properly purchased and displayed a valid Chicago city sticker on my vehicl
 
 [POLICE_REPORT_INFO]
 
-I have since purchased a replacement sticker. Vehicle sticker theft is an unfortunate but common occurrence in Chicago. I should not be penalized for being a victim of theft when I had complied with the city sticker requirement.
-
-I respectfully request that this citation be dismissed.`,
+I have since purchased a replacement sticker. Vehicle sticker theft is an unfortunate but common occurrence in Chicago. I should not be penalized for being a victim of theft when I had complied with the city sticker requirement.`,
         requiredFacts: ['theftDate'],
         winRate: 0.70, // With police report, very strong
         conditions: [

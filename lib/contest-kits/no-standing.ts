@@ -105,9 +105,7 @@ Upon inspecting the area where I parked, I found:
 
 Chicago Municipal Code requires clear, visible signage to enforce parking restrictions. Without adequate notice of the restrictions, motorists cannot reasonably comply.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
       requiredFacts: ['location', 'signageIssue', 'signageDetails'],
       winRate: 0.62,
       conditions: [
@@ -129,9 +127,7 @@ The posted restriction at this location is [POSTED_LIMIT]. According to my recor
 
 [TIME_EVIDENCE]
 
-I was within the allowed parking time and should not have received this citation.
-
-I respectfully request that this citation be dismissed.`,
+I was within the allowed parking time and should not have received this citation.`,
       requiredFacts: ['location', 'postedLimit', 'parkTime', 'ticketTime', 'totalTime'],
       winRate: 0.65,
       conditions: [
@@ -176,9 +172,7 @@ If the City cannot establish that the restriction was lawfully posted, in effect
 
 I was not parked but rather engaged in active loading/unloading activity.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
         requiredFacts: ['location', 'loadingDetails'],
         winRate: 0.55,
         conditions: [
@@ -217,9 +211,7 @@ When I parked, I observed multiple signs that indicated:
 
 These conflicting signs made it impossible to determine the actual parking restrictions. I attempted to comply but could not reasonably interpret the requirements.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
         requiredFacts: ['location', 'signConfusionDetails'],
         winRate: 0.58,
         conditions: [

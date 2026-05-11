@@ -117,9 +117,7 @@ My vehicle (plate #[LICENSE_PLATE]) had valid registration through [REGISTRATION
 
 [EVIDENCE_REFERENCE]
 
-I believe there may have been an error in reading my registration sticker or verifying my registration status. The attached documentation proves my registration was current.
-
-I respectfully request that this citation be dismissed.`,
+I believe there may have been an error in reading my registration sticker or verifying my registration status. The attached documentation proves my registration was current.`,
       requiredFacts: ['licensePlate', 'registrationExpiration', 'ticketDate'],
       winRate: 0.82, // Very strong with proof
       conditions: [
@@ -179,9 +177,7 @@ I am a resident of [STATE] and my vehicle is registered there. The registration 
 
 [OUT_OF_STATE_EVIDENCE]
 
-As a non-resident with valid out-of-state registration, my vehicle was properly registered according to my state's requirements.
-
-I respectfully request that this citation be dismissed.`,
+As a non-resident with valid out-of-state registration, my vehicle was properly registered according to my state's requirements.`,
         requiredFacts: ['state', 'licensePlate', 'registrationExpiration'],
         winRate: 0.75,
         conditions: [
@@ -199,9 +195,7 @@ I renewed my registration on [RENEWAL_DATE], which was before this citation was 
 
 [RENEWAL_EVIDENCE]
 
-Illinois provides a grace period for registration stickers to arrive after renewal. My registration was legally current; only the physical sticker was delayed.
-
-I respectfully request that this citation be dismissed.`,
+Illinois provides a grace period for registration stickers to arrive after renewal. My registration was legally current; only the physical sticker was delayed.`,
         requiredFacts: ['renewalDate', 'ticketDate'],
         winRate: 0.72,
         conditions: [
@@ -219,9 +213,7 @@ I purchased this vehicle on [PURCHASE_DATE]. Illinois law allows [GRACE_PERIOD] 
 
 [PURCHASE_EVIDENCE]
 
-I was legally operating the vehicle within the registration grace period.
-
-I respectfully request that this citation be dismissed.`,
+I was legally operating the vehicle within the registration grace period.`,
         requiredFacts: ['purchaseDate', 'ticketDate'],
         winRate: 0.68,
         conditions: [

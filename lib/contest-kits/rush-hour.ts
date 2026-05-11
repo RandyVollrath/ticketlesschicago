@@ -137,9 +137,7 @@ The citation was issued on [DATE] at [LOCATION]. According to the posted signs, 
 
 [WEATHER_CONTEXT]
 
-If the citation was issued outside the posted restriction window, even by one minute, the citation was issued in error and should be dismissed.
-
-I respectfully request that this citation be dismissed.`,
+If the citation was issued outside the posted restriction window, even by one minute, the citation was issued in error and should be dismissed.`,
       requiredFacts: ['date', 'location'],
       winRate: 0.42,
       conditions: [],
@@ -193,9 +191,7 @@ If the City cannot establish that the restriction was posted, in effect on [DATE
         name: 'Weekend or Holiday — Restriction Not in Effect',
         template: `I respectfully contest this citation on the grounds that it was issued on [DATE], which was a [DAY_TYPE].
 
-Rush hour parking restrictions in Chicago apply only on weekdays (Monday through Friday) and are suspended on official City of Chicago holidays. Since this citation was issued on a day when rush hour restrictions were not in effect, it was issued in error.
-
-I respectfully request that this citation be dismissed.`,
+Rush hour parking restrictions in Chicago apply only on weekdays (Monday through Friday) and are suspended on official City of Chicago holidays. Since this citation was issued on a day when rush hour restrictions were not in effect, it was issued in error.`,
         requiredFacts: ['date'],
         winRate: 0.55,
         conditions: [

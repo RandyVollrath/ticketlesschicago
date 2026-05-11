@@ -117,9 +117,7 @@ When I parked at this location, I observed:
 
 Chicago Municipal Code requires clear signage to designate bus stops. Without proper notice, motorists cannot reasonably know they are in a bus stop zone.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
       requiredFacts: ['location', 'signageObservations'],
       winRate: 0.30,
       conditions: [
@@ -139,9 +137,7 @@ The curb at this location:
 
 Bus stop zones should be clearly marked with curb paint. The poor condition of the markings made it impossible to identify this as a bus stop.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
       requiredFacts: ['location', 'markingCondition'],
       winRate: 0.25,
       conditions: [
@@ -183,9 +179,7 @@ On [DATE], my vehicle [DISABILITY_DESCRIPTION]. I was in the process of arrangin
 
 [DISABILITY_DOCUMENTATION]
 
-I did not intentionally park in a bus stop. The vehicle breakdown was beyond my control.
-
-I respectfully request that this citation be dismissed.`,
+I did not intentionally park in a bus stop. The vehicle breakdown was beyond my control.`,
         requiredFacts: ['location', 'date', 'disabilityDescription'],
         winRate: 0.28,
         conditions: [
@@ -202,9 +196,7 @@ I respectfully request that this citation be dismissed.`,
 According to CTA information:
 [CTA_EVIDENCE]
 
-If this location is no longer serviced by CTA buses, the bus stop designation should not be enforced.
-
-I respectfully request that this citation be dismissed.`,
+If this location is no longer serviced by CTA buses, the bus stop designation should not be enforced.`,
         requiredFacts: ['location'],
         winRate: 0.35,
         conditions: [
@@ -222,9 +214,7 @@ I respectfully request that this citation be dismissed.`,
 
 The [snow/debris/conditions] made it impossible to see the curb markings that would indicate a bus stop. I exercised reasonable care but could not identify this as a bus stop.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
         requiredFacts: ['date', 'location', 'weatherDescription'],
         winRate: 0.25,
         conditions: [

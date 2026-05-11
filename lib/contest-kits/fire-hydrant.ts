@@ -178,9 +178,7 @@ Many Chicago streets have yellow or red curb paint to indicate fire hydrant zone
 
 Without visual cues to indicate the restricted zone, I had no reasonable way to know I was within 15 feet of a hydrant.
 
-[EVIDENCE_REFERENCE]
-
-I respectfully request that this citation be dismissed.`,
+[EVIDENCE_REFERENCE]`,
         requiredFacts: ['location', 'markingDescription'],
         winRate: 0.42,
         conditions: [
@@ -198,9 +196,7 @@ I respectfully request that this citation be dismissed.`,
 
 These conditions prevented me from seeing the hydrant when I parked. I exercised reasonable care but could not have known a hydrant was present.
 
-[WEATHER_DATA]
-
-I respectfully request that this citation be dismissed.`,
+[WEATHER_DATA]`,
         requiredFacts: ['date', 'location', 'weatherDescription'],
         winRate: 0.45,
         conditions: [

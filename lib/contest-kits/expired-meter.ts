@@ -128,9 +128,7 @@ When I attempted to pay for parking, the meter [MALFUNCTION_DESCRIPTION]. Despit
 
 [EVIDENCE_REFERENCE]
 
-Chicago Municipal Code should not penalize motorists for equipment failures beyond their control. I attempted to comply with parking regulations but was prevented from doing so by a faulty meter.
-
-I respectfully request that this citation be dismissed.`,
+Chicago Municipal Code should not penalize motorists for equipment failures beyond their control. I attempted to comply with parking regulations but was prevented from doing so by a faulty meter.`,
       requiredFacts: ['location', 'malfunctionDescription'],
       winRate: 0.70, // Meter malfunction is very strong
       conditions: [
@@ -196,9 +194,7 @@ On [DATE] at [TIME], I attempted to initiate payment for meter/zone [METER_ZONE]
 
 [APP_EVIDENCE]
 
-I made a good-faith effort to pay for parking using the city's official payment system. Technical errors in the city's payment infrastructure should not result in penalties for motorists who attempt to comply.
-
-I respectfully request that this citation be dismissed.`,
+I made a good-faith effort to pay for parking using the city's official payment system. Technical errors in the city's payment infrastructure should not result in penalties for motorists who attempt to comply.`,
         requiredFacts: ['date', 'time', 'meterZone', 'errorDescription'],
         winRate: 0.65,
         conditions: [
@@ -216,9 +212,7 @@ When I parked at this location, the meter [RATES_ISSUE]. Without clear informati
 
 [EVIDENCE_REFERENCE]
 
-Chicago requires meters to display rate information. Without this information, I could not reasonably comply with payment requirements.
-
-I respectfully request that this citation be dismissed.`,
+Chicago requires meters to display rate information. Without this information, I could not reasonably comply with payment requirements.`,
         requiredFacts: ['location', 'ratesIssue'],
         winRate: 0.55,
         conditions: [
@@ -254,9 +248,7 @@ I attempted to pay using [PAYMENT_METHOD], but the meter [REJECTION_DESCRIPTION]
 
 [EVIDENCE_REFERENCE]
 
-I made a good-faith effort to pay for parking. The meter's refusal to accept valid payment should not result in a citation.
-
-I respectfully request that this citation be dismissed.`,
+I made a good-faith effort to pay for parking. The meter's refusal to accept valid payment should not result in a citation.`,
         requiredFacts: ['location', 'paymentMethod', 'rejectionDescription'],
         winRate: 0.60,
         conditions: [
