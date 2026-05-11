@@ -26,6 +26,8 @@ interface BeyondTemplateArgument {
   uplift: string;
   estimatedUpliftPct: number;
   strength: Strength;
+  kind?: 'fact' | 'cure' | 'evidence';
+  actionForUser?: string;
 }
 
 interface CrossTicketFinding {
@@ -452,31 +454,70 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
       )}
 
       {t.beyondTemplate.length > 0 ? (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.deepHarbor, marginBottom: 8 }}>
-            Beyond the template — specific to your ticket:
-          </div>
-          {t.beyondTemplate.map(arg => (
-            <div key={arg.id} style={{
-              padding: 12, border: `1px solid ${COLORS.border}`, borderRadius: 10, marginBottom: 8,
-              background: arg.strength === 'strong' ? '#F0FDF4' : '#FFFBEB',
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: arg.strength === 'strong' ? '#065F46' : '#78350F' }}>
-                {arg.title}
-                <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: arg.strength === 'strong' ? '#065F46' : '#78350F' }}>
-                  +{Math.round(arg.estimatedUpliftPct * 100)} pp uplift · {arg.strength}
-                </span>
-              </div>
-              <div style={{ marginTop: 6, fontSize: 13, color: COLORS.graphite, lineHeight: 1.5 }}>{arg.explanation}</div>
-              <div style={{ marginTop: 6, fontSize: 12, color: COLORS.slate, lineHeight: 1.5 }}>{arg.uplift}</div>
-            </div>
-          ))}
-        </div>
+        <>
+          {renderArgGroup(
+            'What we already know is true (from the city portal):',
+            t.beyondTemplate.filter(a => (a.kind ?? 'fact') === 'fact'),
+          )}
+          {renderArgGroup(
+            'What you can do or attach to make this much stronger:',
+            t.beyondTemplate.filter(a => (a.kind ?? 'fact') !== 'fact'),
+          )}
+        </>
       ) : (
         <div style={{ marginTop: 10, fontSize: 13, color: COLORS.slate }}>
           No ticket-specific extras detected — the standard template is the strongest argument we have on this one.
         </div>
       )}
+    </div>
+  );
+}
+
+function renderArgGroup(heading: string, args: BeyondTemplateArgument[]) {
+  if (args.length === 0) return null;
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.deepHarbor, marginBottom: 8 }}>
+        {heading}
+      </div>
+      {args.map(arg => {
+        const kind = arg.kind ?? 'fact';
+        const isAction = kind !== 'fact';
+        const palette = arg.strength === 'strong'
+          ? { bg: isAction ? '#EFF6FF' : '#F0FDF4', border: isAction ? '#BFDBFE' : '#A7F3D0', accent: isAction ? '#1E3A8A' : '#065F46' }
+          : arg.strength === 'moderate'
+            ? { bg: '#FFFBEB', border: '#FDE68A', accent: '#78350F' }
+            : { bg: '#F1F5F9', border: '#CBD5E1', accent: '#334155' };
+        return (
+          <div key={arg.id} style={{
+            padding: 12, border: `1px solid ${palette.border}`, borderRadius: 10, marginBottom: 8,
+            background: palette.bg,
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: palette.accent }}>
+              {isAction && (
+                <span style={{
+                  display: 'inline-block', fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                  letterSpacing: 0.5, padding: '2px 6px', borderRadius: 4, marginRight: 8,
+                  background: palette.accent, color: '#fff',
+                }}>
+                  {kind === 'cure' ? 'Action' : 'Evidence'}
+                </span>
+              )}
+              {arg.title}
+              <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: palette.accent }}>
+                +{Math.round(arg.estimatedUpliftPct * 100)} pp · {arg.strength}
+              </span>
+            </div>
+            <div style={{ marginTop: 6, fontSize: 13, color: COLORS.graphite, lineHeight: 1.5 }}>{arg.explanation}</div>
+            {arg.actionForUser && (
+              <div style={{ marginTop: 8, padding: '8px 10px', background: '#fff', borderRadius: 6, fontSize: 13, color: COLORS.deepHarbor, lineHeight: 1.5 }}>
+                <strong>Do this:</strong> {arg.actionForUser}
+              </div>
+            )}
+            <div style={{ marginTop: 6, fontSize: 12, color: COLORS.slate, lineHeight: 1.5 }}>{arg.uplift}</div>
+          </div>
+        );
+      })}
     </div>
   );
 }

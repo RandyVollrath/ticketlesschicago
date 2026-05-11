@@ -12,6 +12,7 @@ import {
 } from './violation-classifier';
 import {
   detectBeyondTemplateArguments,
+  detectCureAndEvidencePaths,
   detectCrossTicketPatterns,
   BeyondTemplateArgument,
   CrossTicketFinding,
@@ -59,7 +60,9 @@ export function buildAnalysis(lookup: LookupResult, ctx: ReviewContext): FreeRev
     const classified = classifyPortalViolation(t.violation_description, t.ticket_type);
     classifications.set(t.ticket_number, classified);
     const kit = classified.violationCode ? getContestKit(classified.violationCode) : null;
-    const beyond = detectBeyondTemplateArguments(t, classified, ctx);
+    const factFindings = detectBeyondTemplateArguments(t, classified, ctx);
+    const cureFindings = detectCureAndEvidencePaths(t, classified);
+    const beyond = [...factFindings, ...cureFindings];
     const { recommendation, reason } = recommendForTicket(t, classified, beyond);
 
     perTicket.push({
@@ -113,8 +116,14 @@ function recommendForTicket(
   beyond: BeyondTemplateArgument[],
 ): { recommendation: 'contest' | 'maybe' | 'skip'; reason: string } {
   const daysSince = daysSinceIssue(t.issue_date);
-  const hasStrong = beyond.some(b => b.strength === 'strong');
-  const hasModerate = beyond.some(b => b.strength === 'moderate');
+  // Separate portal-fact findings from user-action findings — only facts
+  // count toward "contest" status. A cure path requires the user to do work
+  // so we only let it lift a ticket to "maybe".
+  const facts = beyond.filter(b => (b.kind ?? 'fact') === 'fact');
+  const userActions = beyond.filter(b => (b.kind ?? 'fact') !== 'fact');
+  const hasStrongFact = facts.some(b => b.strength === 'strong');
+  const hasModerateFact = facts.some(b => b.strength === 'moderate');
+  const hasStrongCure = userActions.some(b => b.strength === 'strong');
   const kit = classified.violationCode ? getContestKit(classified.violationCode) : null;
   const baseWin = kit?.baseWinRate ?? null;
 
@@ -131,36 +140,49 @@ function recommendForTicket(
   }
 
   // Past the 21-day mail window AND past 60 days → skip the mail path
-  if (daysSince !== null && daysSince > 60 && !hasStrong) {
+  // unless there's a strong portal-fact defense (cures still need a hearing).
+  if (daysSince !== null && daysSince > 60 && !hasStrongFact) {
     return {
       recommendation: 'skip',
       reason: `Filed ${daysSince} days ago — the mail-contest window closed at day 21 and the late-hearing window is closing too. Without a strong defense (we didn't detect one), contesting is unlikely to succeed.`,
     };
   }
 
-  // Strong beyond-template argument → contest
-  if (hasStrong) {
-    const top = beyond.find(b => b.strength === 'strong')!;
+  // Strong portal-fact argument → contest
+  if (hasStrongFact) {
+    const top = facts.find(b => b.strength === 'strong')!;
     return {
       recommendation: 'contest',
       reason: `${top.title} — that argument alone usually wins this kind of ticket.`,
     };
   }
 
-  // High base win rate → contest
+  // High base win rate + at least one user-actionable path → contest
   if (baseWin !== null && baseWin >= 0.55) {
     return {
       recommendation: 'contest',
-      reason: `Tickets of this type win at ${Math.round(baseWin * 100)}% on mail-in contests${hasModerate ? ', and we found ticket-specific arguments that lift it further' : ''}.`,
+      reason: `Tickets of this type win at ${Math.round(baseWin * 100)}% on mail-in contests${userActions.length ? '. We also surfaced concrete steps you can take to strengthen the filing further' : ''}.`,
     };
   }
 
-  // Moderate beyond-template argument with a contestable base rate
-  if (hasModerate && (baseWin === null || baseWin >= 0.30)) {
-    const top = beyond.find(b => b.strength === 'moderate')!;
+  // Strong cure path (buy sticker, renew plates, placard photo) → contest
+  // because the cure is so reliable hearing officers rarely deny it.
+  if (hasStrongCure && (baseWin === null || baseWin >= 0.40)) {
+    const top = userActions.find(b => b.strength === 'strong')!;
+    return {
+      recommendation: 'contest',
+      reason: `${top.title} — once you do that, the contest is close to automatic.`,
+    };
+  }
+
+  // Moderate fact OR strong cure-path on a lower-baseline type → maybe
+  if (hasModerateFact || hasStrongCure) {
+    const top =
+      facts.find(b => b.strength === 'moderate') ||
+      userActions.find(b => b.strength === 'strong');
     return {
       recommendation: 'maybe',
-      reason: `${top.title}. Combined with the standard template this is worth filing.`,
+      reason: `${top!.title}. Combined with the standard template this is worth filing.`,
     };
   }
 
@@ -175,7 +197,17 @@ function recommendForTicket(
   if (baseWin !== null && baseWin >= 0.30) {
     return {
       recommendation: 'maybe',
-      reason: `Mail-in contests for this type win at ${Math.round(baseWin * 100)}% — better than the cost of letting it stand, but no ticket-specific extras detected.`,
+      reason: `Mail-in contests for this type win at ${Math.round(baseWin * 100)}% — better than the cost of letting it stand${userActions.length ? ', and we surfaced evidence you can gather to push it higher' : '. No ticket-specific extras detected.'}.`,
+    };
+  }
+
+  // Even when baseline is low, if there's any user-actionable path we
+  // should not call it "skip" — the user has a real lever to pull.
+  if (userActions.length) {
+    const top = userActions[0];
+    return {
+      recommendation: 'maybe',
+      reason: `${top.title} — that lifts an otherwise low-win ticket into worth-trying territory.`,
     };
   }
 
