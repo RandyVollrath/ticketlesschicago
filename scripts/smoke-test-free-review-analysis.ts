@@ -14,6 +14,7 @@
 
 import type { LookupResult, PortalTicket } from '../lib/chicago-portal-scraper';
 import { buildAnalysis } from '../lib/contest-review/build-analysis';
+import type { AutopilotEnrichment } from '../lib/contest-review/beyond-template-arguments';
 
 function ticket(overrides: Partial<PortalTicket>): PortalTicket {
   return {
@@ -121,11 +122,31 @@ const fakeLookup: LookupResult = {
   boot_eligibility: null,
 };
 
-const analysis = buildAnalysis(fakeLookup, {
-  queriedPlate: 'ABC1234',
-  queriedState: 'IL',
-  queriedLastName: 'TESTUSER',
-});
+// Synthetic Autopilot enrichment for ticket #900000001 (street cleaning):
+// FOIA showed a strong block-level dismissal pattern at the cited block.
+const enrichmentMap = new Map<string, AutopilotEnrichment>([
+  ['900000001', {
+    foundInFoia: true,
+    citedAddress: '4322 S VANDERPOEL',
+    officerId: '19422',
+    officerSameTypeContested: 8,
+    officerSameTypeDismissalRate: 0.75, // 75% — well above 57% baseline
+    blockLabel: '4300–4399 S VANDERPOEL',
+    blockTotalContested: 12,
+    blockNotLiable: 9,
+    blockDismissalRate: 0.75,
+  }],
+]);
+
+const analysis = buildAnalysis(
+  fakeLookup,
+  {
+    queriedPlate: 'ABC1234',
+    queriedState: 'IL',
+    queriedLastName: 'TESTUSER',
+  },
+  enrichmentMap,
+);
 
 const failures: string[] = [];
 function expect(cond: boolean, msg: string) {
@@ -135,17 +156,28 @@ function expect(cond: boolean, msg: string) {
 // Per-ticket lookups
 const byNum = new Map(analysis.perTicket.map(t => [t.ticketNumber, t]));
 
-// 1. Street cleaning, fresh, no extras → MAYBE plus a signage-photo evidence path
+// 1. Street cleaning + Autopilot enrichment → CONTEST with autopilot block pattern
 const sc = byNum.get('900000001')!;
 expect(sc.violationCode === '9-64-010', 'street cleaning violation code');
-expect(sc.recommendation !== 'skip', 'street cleaning fresh ticket should not be "skip"');
 expect(
-  sc.beyondTemplate.some(b => b.id === 'evidence_signage_photos'),
-  'street cleaning should surface the signage-photo evidence path',
+  sc.beyondTemplate.some(b => b.kind === 'autopilot' && b.id === 'autopilot_address_resolved'),
+  'should surface Autopilot address-resolved finding when FOIA enrichment is present',
 );
 expect(
-  sc.beyondTemplate.some(b => b.id === 'evidence_witness_statement'),
-  'every classified violation should surface the witness-statement path',
+  sc.beyondTemplate.some(b => b.kind === 'autopilot' && b.id === 'autopilot_block_pattern'),
+  'should surface Autopilot block-pattern finding when FOIA shows high block dismissal',
+);
+expect(
+  sc.beyondTemplate.some(b => b.kind === 'autopilot' && b.id === 'autopilot_officer_dismissal_rate'),
+  'should surface officer dismissal rate when officer same-type rate is materially above baseline',
+);
+expect(
+  sc.recommendation === 'contest',
+  'street cleaning with Autopilot block pattern should be CONTEST',
+);
+expect(
+  !sc.beyondTemplate.some(b => b.id === 'evidence_witness_statement'),
+  'witness statement should be dropped entirely',
 );
 
 // 2. City sticker with out-of-Chicago registered address → contest, non-resident

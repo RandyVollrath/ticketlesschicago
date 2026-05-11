@@ -26,7 +26,7 @@ interface BeyondTemplateArgument {
   uplift: string;
   estimatedUpliftPct: number;
   strength: Strength;
-  kind?: 'fact' | 'cure' | 'evidence';
+  kind?: 'autopilot' | 'fact' | 'cure' | 'evidence';
   actionForUser?: string;
 }
 
@@ -456,12 +456,16 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
       {t.beyondTemplate.length > 0 ? (
         <>
           {renderArgGroup(
-            'What we already know is true (from the city portal):',
+            'What Autopilot pulled from city data (you can\'t see this without us):',
+            t.beyondTemplate.filter(a => a.kind === 'autopilot'),
+          )}
+          {renderArgGroup(
+            'Procedural facts from your ticket record:',
             t.beyondTemplate.filter(a => (a.kind ?? 'fact') === 'fact'),
           )}
           {renderArgGroup(
-            'What you can do or attach to make this much stronger:',
-            t.beyondTemplate.filter(a => (a.kind ?? 'fact') !== 'fact'),
+            'Steps you can take to strengthen the filing:',
+            t.beyondTemplate.filter(a => a.kind === 'cure' || a.kind === 'evidence'),
           )}
         </>
       ) : (
@@ -482,18 +486,30 @@ function renderArgGroup(heading: string, args: BeyondTemplateArgument[]) {
       </div>
       {args.map(arg => {
         const kind = arg.kind ?? 'fact';
-        const isAction = kind !== 'fact';
-        const palette = arg.strength === 'strong'
-          ? { bg: isAction ? '#EFF6FF' : '#F0FDF4', border: isAction ? '#BFDBFE' : '#A7F3D0', accent: isAction ? '#1E3A8A' : '#065F46' }
-          : arg.strength === 'moderate'
-            ? { bg: '#FFFBEB', border: '#FDE68A', accent: '#78350F' }
-            : { bg: '#F1F5F9', border: '#CBD5E1', accent: '#334155' };
+        const isAutopilot = kind === 'autopilot';
+        const isAction = kind === 'cure' || kind === 'evidence';
+        const palette = isAutopilot
+          ? { bg: '#EEF2FF', border: '#C7D2FE', accent: '#3730A3' } // indigo — distinctive Autopilot tier
+          : arg.strength === 'strong'
+            ? { bg: '#F0FDF4', border: '#A7F3D0', accent: '#065F46' }
+            : arg.strength === 'moderate'
+              ? { bg: '#FFFBEB', border: '#FDE68A', accent: '#78350F' }
+              : { bg: '#F1F5F9', border: '#CBD5E1', accent: '#334155' };
         return (
           <div key={arg.id} style={{
             padding: 12, border: `1px solid ${palette.border}`, borderRadius: 10, marginBottom: 8,
             background: palette.bg,
           }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: palette.accent }}>
+              {isAutopilot && (
+                <span style={{
+                  display: 'inline-block', fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                  letterSpacing: 0.5, padding: '2px 6px', borderRadius: 4, marginRight: 8,
+                  background: palette.accent, color: '#fff',
+                }}>
+                  Autopilot
+                </span>
+              )}
               {isAction && (
                 <span style={{
                   display: 'inline-block', fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
