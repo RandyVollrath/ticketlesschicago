@@ -523,15 +523,20 @@ export function buildAutopilotFindings(
       kind: 'autopilot',
     });
   } else {
+    // FOIA-on-behalf is a capability promise that fires on every ticket
+    // we don't already have records for. It is genuinely valuable, but it
+    // is not a per-ticket defense — it is the same offer on every ticket.
+    // Strength stays MODERATE so it doesn't override the recommendation
+    // logic for tickets that have no other defense signal.
     out.push({
       id: 'autopilot_foia_request',
       title: 'Autopilot will FOIA the City for the cited address and the officer\'s notes',
       explanation:
         'When you sign up, Autopilot emails a formal Freedom of Information Act request (Illinois FOIA, 5 ILCS 140) to the Chicago Department of Finance asking for the exact location recorded by the issuing officer, the officer\'s field notes, any photographs taken at the time of citation, and the handheld-device data. The city has 5 business days to respond. Whatever they produce — or fail to produce — becomes part of your contest record.',
       uplift:
-        'A missing or unresponsive FOIA answer is itself a codified defense ground (§ 9-100-060(a)(4)). When the city DOES produce records, the materials almost always contain inconsistencies the standard template cannot anticipate. Users cannot send these FOIAs themselves without legal-form expertise and follow-up handling.',
-      estimatedUpliftPct: 0.15,
-      strength: 'strong',
+        'A missing or unresponsive FOIA answer is itself a codified defense ground (§ 9-100-060(a)(4)). When the city DOES produce records, the materials often contain inconsistencies. Users cannot send these FOIAs themselves without legal-form expertise and follow-up handling.',
+      estimatedUpliftPct: 0.08,
+      strength: 'moderate',
       kind: 'autopilot',
     });
   }
