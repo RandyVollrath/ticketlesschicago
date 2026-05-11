@@ -27,7 +27,7 @@ export type ArgumentStrength = 'strong' | 'moderate' | 'weak';
  * by itself (the user still has to do the work), but it always lifts a
  * "skip" up to at least "maybe".
  */
-export type ArgumentKind = 'fact' | 'cure' | 'evidence';
+export type ArgumentKind = 'autopilot' | 'fact' | 'cure' | 'evidence';
 
 export interface BeyondTemplateArgument {
   id: string;
@@ -42,9 +42,11 @@ export interface BeyondTemplateArgument {
   strength: ArgumentStrength;
   /**
    * What kind of finding:
-   * - 'fact'     : portal-data anomaly we already know is true
-   * - 'cure'     : something you can DO now to fix the underlying issue (buy sticker, renew plates)
-   * - 'evidence' : something you can GATHER (signage photos, receipts, witness)
+   * - 'autopilot' : Autopilot pulled this from a data source the user can't access
+   *                 (FOIA, sweeper-tracker, permit-zone polygons, weather records)
+   * - 'fact'      : portal-data anomaly we already know is true from CHI PAY
+   * - 'cure'      : something you can DO now to fix the underlying issue
+   * - 'evidence'  : something you can gather (supplementary; user-supplied)
    * Defaults to 'fact' for back-compat with the original findings.
    */
   kind?: ArgumentKind;
@@ -335,7 +337,7 @@ export function detectCureAndEvidencePaths(
       uplift:
         'A documented valid placard is dispositive evidence — the violation cannot stand against it.',
       estimatedUpliftPct: 0.30,
-      strength: 'strong',
+      strength: 'moderate',
       kind: 'evidence',
       actionForUser: 'Photograph both sides of the placard + the wallet card the state issued with it.',
     });
@@ -351,7 +353,7 @@ export function detectCureAndEvidencePaths(
       uplift:
         'The standard template argues "I had a permit" — actual proof from the city clerk\'s record converts that argument into a fact the hearing officer can verify directly.',
       estimatedUpliftPct: 0.20,
-      strength: 'strong',
+      strength: 'moderate',
       kind: 'evidence',
       actionForUser: 'Look up your permit at chicityclerk.com and screenshot the active record for the cited zone.',
     });
@@ -368,7 +370,7 @@ export function detectCureAndEvidencePaths(
       uplift:
         'A measurement photo showing 15+ feet defeats the ticket outright. The standard template asks the city to prove the distance — having your own measurement reverses the burden.',
       estimatedUpliftPct: 0.25,
-      strength: 'strong',
+      strength: 'moderate',
       kind: 'evidence',
       actionForUser: 'Return to the location with a tape measure (or a measuring app). Take a photo showing the hydrant, the spot you parked, and the measured distance.',
     });
@@ -400,7 +402,7 @@ export function detectCureAndEvidencePaths(
       uplift:
         'Documented sign-condition photos shift the burden to the city to produce maintenance and replacement records — which it often cannot.',
       estimatedUpliftPct: 0.20,
-      strength: 'strong',
+      strength: 'moderate',
       kind: 'evidence',
       actionForUser:
         'Walk the cited block face. Photograph every sign on both sides of the street. Get wide shots and close-ups. If a sign is missing, photograph the empty post or wall.',
@@ -459,23 +461,121 @@ export function detectCureAndEvidencePaths(
     });
   }
 
-  // ── Universal evidence prompt: witness / passenger statement ──────
-  // Light up for any classified violation — many users had a passenger
-  // who can attest to time, location, conduct. This is a fallback
-  // "evidence" path the template does not surface.
-  if (code) {
+  return out;
+}
+
+/**
+ * Build the Autopilot-exclusive findings — the "we pulled this from a
+ * data source you can't access on your own" tier. These are the value
+ * prop. Called by the worker AFTER FOIA enrichment runs (so we have
+ * cited address + officer + violation_code + block stats).
+ *
+ * Anything in here MUST be sourced from real city/FOIA data, not from
+ * the user typing something. That's the whole point.
+ */
+export interface AutopilotFinding extends BeyondTemplateArgument {
+  kind: 'autopilot';
+}
+
+export interface AutopilotEnrichment {
+  /** The cited address pulled from FOIA */
+  citedAddress?: string | null;
+  /** The issuing officer's ID */
+  officerId?: string | null;
+  /** Officer dismissal rate across all their contests (0–1) */
+  officerOverallDismissalRate?: number | null;
+  officerOverallContested?: number | null;
+  /** Officer dismissal rate filtered to the same violation type */
+  officerSameTypeDismissalRate?: number | null;
+  officerSameTypeContested?: number | null;
+  /** Block-face dismissal rate for the same violation type */
+  blockLabel?: string | null;
+  blockTotalContested?: number | null;
+  blockNotLiable?: number | null;
+  blockDismissalRate?: number | null;
+  /** Optional flag: ticket was matched in FOIA at all */
+  foundInFoia: boolean;
+}
+
+const CITYWIDE_MAIL_BASELINE = 0.57; // From CLAUDE.md memory: locked-in stat
+
+export function buildAutopilotFindings(
+  enrichment: AutopilotEnrichment,
+  classified: ClassifiedViolation,
+): AutopilotFinding[] {
+  const out: AutopilotFinding[] = [];
+
+  // ── FOIA address resolution ──────────────────────────────────────
+  // The portal does NOT show the cited address. Autopilot pulls it
+  // from the City's FOIA-released ticket database. This alone is
+  // value the user could not get on their own without filing a FOIA
+  // request and waiting weeks.
+  if (enrichment.foundInFoia && enrichment.citedAddress) {
     out.push({
-      id: 'evidence_witness_statement',
-      title: 'Get a signed statement from anyone who was with you',
+      id: 'autopilot_address_resolved',
+      title: `We pulled the cited address from city data: ${enrichment.citedAddress}`,
       explanation:
-        'If you had a passenger, spouse, coworker, or anyone with you when the ticket was issued — or who can speak to the timing, the location, the signage condition, or any relevant circumstance — a short signed and dated statement carries real weight with hearing officers. It does not need to be notarized.',
+        `The Chicago payment portal does not show you the address where this ticket was issued — only the violation type and the fine. ` +
+        `Autopilot cross-references the ticket number against the City of Chicago's FOIA-released ticket database (35.7 million rows) to recover the actual cited block. We use this to run the location-specific defenses below.`,
       uplift:
-        'Witness statements add corroboration to whatever defense you are running. The template never asks for one; attaching one is a discrete uplift over template-only filings.',
-      estimatedUpliftPct: 0.05,
-      strength: 'weak',
-      kind: 'evidence',
-      actionForUser:
-        'Ask anyone who was with you for a one-paragraph signed and dated statement. Plain text email is fine; attach a PDF or screenshot.',
+        'Knowing the cited address is the gating step for every location-specific defense (permit-zone check, sweeper-schedule check, signage record). Without it, you are filing a generic letter.',
+      estimatedUpliftPct: 0.0, // The address itself is enabling, not a defense
+      strength: 'strong',
+      kind: 'autopilot',
+    });
+  }
+
+  // ── Officer's historical dismissal rate ──────────────────────────
+  // For tickets we matched to FOIA, we can compute how often this
+  // specific officer's contests get dismissed. A high dismissal rate
+  // tells the hearing officer the issuing officer has a pattern.
+  if (
+    enrichment.foundInFoia &&
+    enrichment.officerId &&
+    enrichment.officerSameTypeContested != null &&
+    enrichment.officerSameTypeContested >= 3 &&
+    enrichment.officerSameTypeDismissalRate != null &&
+    enrichment.officerSameTypeDismissalRate >= CITYWIDE_MAIL_BASELINE + 0.10
+  ) {
+    const pct = Math.round((enrichment.officerSameTypeDismissalRate || 0) * 100);
+    out.push({
+      id: 'autopilot_officer_dismissal_rate',
+      title: `The officer who wrote your ticket loses ${pct}% of contested ${classified.violationName} cases`,
+      explanation:
+        `Across ${enrichment.officerSameTypeContested} previously contested ${classified.violationName} tickets written by officer ${enrichment.officerId}, ${enrichment.officerSameTypeContested - Math.round((enrichment.officerSameTypeContested || 0) * (1 - (enrichment.officerSameTypeDismissalRate || 0)))} have been dismissed. Citywide the mail-contest dismissal rate is about ${Math.round(CITYWIDE_MAIL_BASELINE * 100)}%, so this officer's record is materially worse than average for this violation type. ` +
+        `Citing the pattern in your contest letter — which Autopilot does automatically — is dispositive on close cases.`,
+      uplift:
+        'The standard template never references the issuing officer. Naming the pattern of issuance and the historical loss rate shifts the analysis from "is the officer credible?" to "should the city be defending this officer\'s tickets at all?"',
+      estimatedUpliftPct: 0.20,
+      strength: 'strong',
+      kind: 'autopilot',
+    });
+  }
+
+  // ── Block-face contest pattern ───────────────────────────────────
+  // When the block has a high dismissal rate, the hearing officer
+  // has seen this fact pattern before and frequently rules for the
+  // motorist. We surface the historical numbers.
+  if (
+    enrichment.foundInFoia &&
+    enrichment.blockLabel &&
+    enrichment.blockTotalContested != null &&
+    enrichment.blockTotalContested >= 5 &&
+    enrichment.blockDismissalRate != null &&
+    enrichment.blockDismissalRate >= CITYWIDE_MAIL_BASELINE + 0.05
+  ) {
+    const pct = Math.round((enrichment.blockDismissalRate || 0) * 100);
+    out.push({
+      id: 'autopilot_block_pattern',
+      title: `Tickets at ${enrichment.blockLabel} get dismissed ${pct}% of the time on contest`,
+      explanation:
+        `Across ${enrichment.blockTotalContested} contested ${classified.violationName} tickets at the cited block face, ${enrichment.blockNotLiable} have been ruled "Not Liable." That is ${pct - Math.round(CITYWIDE_MAIL_BASELINE * 100)} points above the ${Math.round(CITYWIDE_MAIL_BASELINE * 100)}% citywide mail-contest dismissal baseline. ` +
+        `This is a documented signage or enforcement pattern at the location — the kind of evidence the template never surfaces because it requires joining the city's hearing data to its ticket data.`,
+      uplift:
+        'A block-level dismissal pattern is one of the strongest non-merits defenses available. Hearing officers see the FOIA numbers in the letter and tend to follow the prior pattern.',
+      estimatedUpliftPct: 0.15,
+      strength: 'strong',
+      kind: 'autopilot',
     });
   }
 

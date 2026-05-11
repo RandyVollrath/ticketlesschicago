@@ -22,6 +22,12 @@ import * as path from 'path';
 import * as os from 'os';
 import { lookupPlateOnPortal } from '../lib/chicago-portal-scraper';
 import { buildAnalysis } from '../lib/contest-review/build-analysis';
+import {
+  enrichTicketFromFoia,
+  getIssuingOfficerStats,
+  getBlockStats,
+} from '../lib/contest-review/foia-enrichment';
+import type { AutopilotEnrichment } from '../lib/contest-review/beyond-template-arguments';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -91,11 +97,44 @@ async function processOne(row: { id: string; plate: string; state: string; last_
     return;
   }
 
-  const analysis = buildAnalysis(lookup, {
-    queriedPlate: row.plate,
-    queriedState: row.state,
-    queriedLastName: row.last_name,
-  });
+  // For each ticket the portal returned, try to enrich it from FOIA
+  // (cited address + officer + officer/block dismissal stats). This is the
+  // Autopilot-exclusive tier — data the user can't get on their own.
+  const enrichmentByTicket = new Map<string, AutopilotEnrichment>();
+  for (const t of lookup.tickets) {
+    const foia = enrichTicketFromFoia(t.ticket_number);
+    if (!foia) {
+      enrichmentByTicket.set(t.ticket_number, { foundInFoia: false });
+      continue;
+    }
+    const officer = foia.officer && foia.violationDesc
+      ? getIssuingOfficerStats(foia.officer, foia.violationDesc)
+      : null;
+    const block = getBlockStats(foia);
+    enrichmentByTicket.set(t.ticket_number, {
+      foundInFoia: true,
+      citedAddress: foia.fullAddress,
+      officerId: foia.officer,
+      officerOverallDismissalRate: officer?.dismissalRate ?? null,
+      officerOverallContested: officer?.totalContested ?? null,
+      officerSameTypeDismissalRate: officer?.sameTypeDismissalRate ?? null,
+      officerSameTypeContested: officer?.sameTypeContested ?? null,
+      blockLabel: block?.blockLabel ?? null,
+      blockTotalContested: block?.ticketsAtBlock ?? null,
+      blockNotLiable: block?.notLiableAtBlock ?? null,
+      blockDismissalRate: block?.dismissalRateAtBlock ?? null,
+    });
+  }
+
+  const analysis = buildAnalysis(
+    lookup,
+    {
+      queriedPlate: row.plate,
+      queriedState: row.state,
+      queriedLastName: row.last_name,
+    },
+    enrichmentByTicket,
+  );
 
   console.log(`[${row.id}] done — ${analysis.totalTickets} tickets, ${analysis.perTicket.filter(t => t.recommendation === 'contest').length} worth contesting`);
 
