@@ -273,6 +273,13 @@ interface EvidenceBundle {
   cameraMalfunction: CameraMalfunctionFinding | null;
   ctaBusActivity: CtaBusActivityFinding | null;
   permitZone: PermitZoneFinding | null;
+  // Camera evidence cache — populated by the scraper cron, consumed here.
+  // findings = AI vision analysis of the City's evidence photos.
+  // paragraph = pre-rendered hearing-officer math note, optionally
+  // augmented with the user's mobile-app GPS data (approach speed,
+  // full-stop detection) when red_light_receipts row is present.
+  cameraEvidenceFindings: import('../../../lib/camera-evidence-analysis').CameraEvidenceFindings | null;
+  cameraEvidenceParagraph: string | null;
 }
 
 // ─── Levenshtein Distance (for clerical error detection) ────
@@ -520,6 +527,8 @@ async function gatherAllEvidence(
     cameraMalfunction: null,
     ctaBusActivity: null,
     permitZone: null,
+    cameraEvidenceFindings: null,
+    cameraEvidenceParagraph: null,
   };
 
   // Zone-boundary defense for fire hydrant / bus stop / no-standing /
@@ -702,6 +711,40 @@ async function gatherAllEvidence(
           console.log(`    Camera receipt found (${ticket.violation_type}): speed=${matching.speed_mph}mph, stop=${matching.full_stop_detected}`);
         }
       } catch (e) { console.error('    Camera receipt lookup failed:', e); }
+    })());
+  }
+
+  // 5b. Camera evidence cache (City photos AI-analyzed by separate cron).
+  // Read-only here: the actual scrape + AI analysis runs on the ops box
+  // via `scripts/autopilot-scrape-camera-evidence.ts` on a systemd timer.
+  // If the cache row exists, we fold its findings into the letter; if
+  // not, the letter still generates without it (graceful degrade).
+  if (ticket.violation_type === 'red_light' || ticket.violation_type === 'speed_camera') {
+    promises.push((async () => {
+      try {
+        const { data: row, error: cacheErr } = await supabaseAdmin
+          .from('camera_evidence' as any)
+          .select('findings')
+          .eq('ticket_id', ticket.id)
+          .maybeSingle();
+        if (cacheErr) {
+          if (/does not exist|relation .* does not exist/i.test(cacheErr.message) || (cacheErr as any).code === '42P01') {
+            console.warn('    Camera evidence: camera_evidence table missing — apply migrations/20260510_create_camera_evidence.sql');
+          } else {
+            console.warn(`    Camera evidence cache lookup failed: ${cacheErr.message}`);
+          }
+          return;
+        }
+        const findings = (row as any)?.findings;
+        if (findings) {
+          bundle.cameraEvidenceFindings = findings;
+          console.log(`    Camera evidence: cached findings loaded (recommended: ${findings.recommendDefense || 'none'})`);
+        } else {
+          console.log(`    Camera evidence: no cached findings yet for ticket ${ticket.ticket_number} — scraper cron will fill on next run`);
+        }
+      } catch (e: any) {
+        console.error('    Camera evidence cache lookup failed:', e?.message || e);
+      }
     })());
   }
 
@@ -1293,6 +1336,41 @@ async function gatherAllEvidence(
   // Wait for all evidence lookups to complete
   await Promise.all(promises);
 
+  // Render the camera-evidence math paragraph now that BOTH the vendor
+  // findings AND the user's mobile-app GPS receipt (red_light_receipts)
+  // have been loaded. When the user had Autopilot America running at the
+  // time of the alleged violation, the GPS data goes into the math as
+  // second-source evidence — strongest possible defense layer.
+  if (
+    (ticket.violation_type === 'red_light' || ticket.violation_type === 'speed_camera') &&
+    (bundle.cameraEvidenceFindings || bundle.redLightReceipt)
+  ) {
+    try {
+      const { renderFindingsParagraph } = await import('../../../lib/camera-evidence-pipeline');
+      const r = bundle.redLightReceipt;
+      const userAppGps = r
+        ? {
+            approachSpeedMph: r.approach_speed_mph ?? null,
+            minSpeedMph: r.min_speed_mph ?? null,
+            fullStopDetected: r.full_stop_detected ?? false,
+            fullStopDurationSec: r.full_stop_duration_sec ?? null,
+            speedDeltaMph: r.speed_delta_mph ?? null,
+            deviceTimestamp: r.device_timestamp || r.detected_at || r.created_at || null,
+          }
+        : null;
+      bundle.cameraEvidenceParagraph = renderFindingsParagraph(
+        bundle.cameraEvidenceFindings,
+        ((ticket as any).plate || '').toUpperCase(),
+        userAppGps,
+      );
+      if (bundle.cameraEvidenceParagraph) {
+        console.log(`    Camera evidence paragraph rendered (${bundle.cameraEvidenceParagraph.length} chars, GPS=${!!userAppGps})`);
+      }
+    } catch (e: any) {
+      console.error('    Camera evidence paragraph render failed:', e?.message || e);
+    }
+  }
+
   // Re-evaluate contest kit if sweeper verification shows cleaning did NOT occur.
   // The kit evaluation (step 9) and sweeper verification (step 10b) run concurrently,
   // so the initial evaluation doesn't have cleaningDidNotOccur. This re-evaluation
@@ -1762,6 +1840,28 @@ ${r.speed_mph && r.speed_mph < 20 ? '- The user was traveling at a low speed, su
 - Request the city provide the camera calibration records and full video evidence
 - If the yellow light duration was less than the MUTCD minimum (3.0s for 25mph zones, 3.6s for 30mph), argue the intersection timing was inadequate
 - This GPS data from the user's vehicle contradicts or contextualizes the camera's automated determination`);
+  }
+
+  // ── Section 8a: Camera Violation Footage (City's own evidence) ──
+  // When the scraper cron has cached findings for this ticket, drop the
+  // pre-rendered math paragraph straight into the prompt and instruct the
+  // AI to reproduce it verbatim. This is load-bearing — the hearing
+  // officer needs to see the same numbers and step-by-step reasoning we
+  // computed, not a paraphrase.
+  if (evidence.cameraEvidenceParagraph) {
+    const recommend = evidence.cameraEvidenceFindings?.recommendDefense;
+    sections.push(`=== CAMERA VIOLATION FOOTAGE — DIRECT REVIEW OF CITY'S OWN EVIDENCE ===
+We pulled the actual violation photos and video the City uses from the public vendor portal (chicagophotociteweb.com / violationinfo.com). Claude Vision reviewed the imagery and produced the factual observations below. Treat these as load-bearing — the letter should incorporate them in full, NOT request the footage (we already have it).
+
+${evidence.cameraEvidenceParagraph}
+
+${recommend && recommend !== 'none' ? `RECOMMENDED DEFENSE BASED ON FOOTAGE: ${recommend}` : ''}
+
+INSTRUCTIONS — READ CAREFULLY:
+- The analyzer output above may contain a block beginning "HEARING-OFFICER MATH NOTE" or "INDEPENDENT GPS EVIDENCE" or "FULL-STOP CONFIRMED BY GPS". You MUST reproduce that block VERBATIM in the letter, in a clearly demarcated section. Do not paraphrase, summarize, shorten, re-order, or restate the math in your own words. The hearing officer needs to see the same numbers and the same step-by-step reasoning we computed — paraphrasing erodes the load-bearing value of the calculation.
+- Place the verbatim block under a heading such as "Hearing-Officer Math Note (based on the City's own photo metadata)" or, when GPS is present, "Independent GPS Evidence from the Driver's Mobile App." Use the exact bullet points and exact numbers from the block above.
+- The video, when available, is attached as a physical exhibit. The letter may reference "the attached violation video" or "the City's own photo evidence."
+- Do NOT add details not present in the findings above — the analyzer is the source of truth.`);
   }
 
   // ── Section 8b: Advanced Red Light Defense Analysis ──

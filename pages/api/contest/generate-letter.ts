@@ -784,7 +784,6 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
     if (violationType === 'red_light' || violationType === 'speed_camera') {
       evidencePromises.push((async () => {
         try {
-          const { renderFindingsParagraph } = await import('../../../lib/camera-evidence-pipeline');
           const { data: row, error: cacheErr } = await supabase
             .from('camera_evidence' as any)
             .select('findings')
@@ -801,8 +800,7 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
           const findings = (row as any)?.findings;
           if (findings) {
             cameraEvidenceFindings = findings;
-            cameraEvidenceParagraph = renderFindingsParagraph(findings, (contest.license_plate || '').toUpperCase());
-            console.log(`  Camera evidence: cached findings used (recommended: ${findings.recommendDefense || 'none'})`);
+            console.log(`  Camera evidence: cached findings loaded (recommended: ${findings.recommendDefense || 'none'})`);
           } else {
             console.log(`  Camera evidence: no cached findings yet for ticket ${contest.ticket_number} — scraper cron will fill in on next run`);
           }
@@ -1028,6 +1026,41 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
 
     // Wait for ALL evidence lookups to complete in parallel
     await Promise.all(evidencePromises);
+
+    // Render the camera-evidence math paragraph NOW that both the vendor
+    // findings AND the red_light_receipts GPS data have been loaded. The
+    // kinematic calculator uses GPS data (approach speed, full-stop
+    // detection) as second-source evidence when it's available — this
+    // is the strongest possible defense layer for users who had the
+    // Autopilot America app running at the time of the alleged violation.
+    if (
+      (violationType === 'red_light' || violationType === 'speed_camera') &&
+      (cameraEvidenceFindings || redLightReceipt)
+    ) {
+      try {
+        const { renderFindingsParagraph } = await import('../../../lib/camera-evidence-pipeline');
+        const userAppGps = redLightReceipt
+          ? {
+              approachSpeedMph: redLightReceipt.approach_speed_mph ?? null,
+              minSpeedMph: redLightReceipt.min_speed_mph ?? null,
+              fullStopDetected: redLightReceipt.full_stop_detected ?? false,
+              fullStopDurationSec: redLightReceipt.full_stop_duration_sec ?? null,
+              speedDeltaMph: redLightReceipt.speed_delta_mph ?? null,
+              deviceTimestamp: redLightReceipt.device_timestamp || redLightReceipt.detected_at || redLightReceipt.created_at || null,
+            }
+          : null;
+        cameraEvidenceParagraph = renderFindingsParagraph(
+          cameraEvidenceFindings,
+          (contest.license_plate || '').toUpperCase(),
+          userAppGps,
+        );
+        if (cameraEvidenceParagraph) {
+          console.log(`  Camera evidence paragraph rendered (${cameraEvidenceParagraph.length} chars, GPS=${!!userAppGps})`);
+        }
+      } catch (e: any) {
+        console.error('Camera evidence paragraph render failed:', e?.message || e);
+      }
+    }
 
     // Look up detected_ticket plate data for defense analysis (ticket_plate, ticket_state, user plate, notice timing, stolen-plate flags)
     let detectedTicketData: {
@@ -1816,15 +1849,16 @@ ${streetViewEvidence.signageObservation || ''}
 INSTRUCTIONS: Suggest the hearing officer verify signage presence/visibility using Google Street View for this location. Present as publicly available evidence that can be independently verified.` : ''}
 ${cameraEvidenceParagraph ? `
 === CAMERA VIOLATION FOOTAGE — DIRECT REVIEW OF CITY'S OWN EVIDENCE ===
-We pulled the actual violation photos and video the City uses from the public vendor portal (chicagophotociteweb.com / violationinfo.com). Claude Vision reviewed the imagery and produced the factual observations below. Treat these as load-bearing — the letter should incorporate them verbatim or paraphrased, NOT request the footage (we already have it).
+We pulled the actual violation photos and video the City uses from the public vendor portal (chicagophotociteweb.com / violationinfo.com). Claude Vision reviewed the imagery and produced the factual observations below. Treat these as load-bearing — the letter should incorporate them in full, NOT request the footage (we already have it).
 
 ${cameraEvidenceParagraph}
 
 ${cameraEvidenceFindings?.recommendDefense && cameraEvidenceFindings.recommendDefense !== 'none' ? `RECOMMENDED DEFENSE BASED ON FOOTAGE: ${cameraEvidenceFindings.recommendDefense}` : ''}
 
-INSTRUCTIONS:
-- The above is grounded in the actual photos/video — assert it affirmatively, e.g., "Review of the violation photos shows..." not "the City should produce the photos."
-- The video is being attached as a physical exhibit. The letter may reference "the attached violation video" or "the City's own photo evidence."
+INSTRUCTIONS — READ CAREFULLY:
+- The text between "=== CAMERA VIOLATION FOOTAGE ===" and the next "===" header above is the ANALYZER OUTPUT. When the analyzer produced a block beginning "HEARING-OFFICER MATH NOTE" or "INDEPENDENT GPS EVIDENCE" or "FULL-STOP CONFIRMED BY GPS", you MUST reproduce that block VERBATIM in the letter, in a clearly demarcated section. Do not paraphrase, summarize, shorten, re-order, or restate the math in your own words. The hearing officer needs to see the same numbers and the same step-by-step reasoning we computed — paraphrasing erodes the load-bearing value of the calculation.
+- Place the verbatim block under a heading such as "Hearing-Officer Math Note (based on the City's own photo metadata)" or, when GPS is present, "Independent GPS Evidence from the Driver's Mobile App." Use the exact bullet points and exact numbers from the block above.
+- The video, when available, is attached as a physical exhibit. The letter may reference "the attached violation video" or "the City's own photo evidence."
 - Do NOT add details not present in the findings above — the analyzer is the source of truth.
 ` : ''}
 ${foiaData.hasData ? `

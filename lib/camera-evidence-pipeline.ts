@@ -17,7 +17,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { scrapeCameraEvidence, type CameraEvidence } from './camera-evidence-scraper';
 import { analyzeCameraEvidence, type CameraEvidenceFindings } from './camera-evidence-analysis';
 import { formatViolationDate } from './contest-letter-date';
-import { computeEnteredOnYellowArgument } from './red-light-kinematics';
+import { computeEnteredOnYellowArgument, type UserAppGpsEvidence } from './red-light-kinematics';
 
 export interface CachedEvidence {
   ticketId: string;
@@ -259,8 +259,17 @@ function mimeToExt(ct: string, fallback: string): string {
  * have been doing roughly double the posted speed limit. That's a
  * decisive parsimony argument.
  */
-export function renderFindingsParagraph(findings: CameraEvidenceFindings | null, expectedPlate: string): string | null {
-  if (!findings) return null;
+export function renderFindingsParagraph(
+  findings: CameraEvidenceFindings | null,
+  expectedPlate: string,
+  userAppGps?: UserAppGpsEvidence | null,
+): string | null {
+  if (!findings && !userAppGps) return null;
+  if (!findings) {
+    // No vendor findings, but we do have GPS — emit a GPS-only paragraph
+    // so the user's app data still lands in the letter.
+    return renderGpsOnlyParagraph(userAppGps!);
+  }
 
   const lines: string[] = [];
   const f = findings;
@@ -297,10 +306,15 @@ export function renderFindingsParagraph(findings: CameraEvidenceFindings | null,
       timeIntoRedSec: sig.timeIntoRedPhaseSec,
       postedSpeedMph: postedSpeed,
       estimatedFeetPastStopBar: sig.estimatedFeetPastStopBar,
+      userAppGps: userAppGps ?? null,
     });
     if (kin.computed && kin.paragraph) {
       lines.push(kin.paragraph);
     }
+  } else if (userAppGps) {
+    // Photo metadata didn't unlock the math, but GPS still does — emit
+    // a GPS-only paragraph so app users still get their evidence cited.
+    lines.push(renderGpsOnlyParagraph(userAppGps));
   } else {
     // Fall back to AI's free-text signal observations when we can't run the math
     const signalContestable = f.contestable.filter((c) => c.supports === 'signal_state' && c.confidence >= 0.6);
@@ -318,4 +332,47 @@ export function renderFindingsParagraph(findings: CameraEvidenceFindings | null,
 
   if (lines.length === 0) return null;
   return lines.join('\n\n');
+}
+
+/**
+ * When we have GPS data from the user's app but no vendor photo findings,
+ * still produce a stand-alone paragraph that gets the GPS evidence into
+ * the letter. Mirrors the wording of the kinematic helpers so it reads
+ * the same way to a hearing officer.
+ */
+function renderGpsOnlyParagraph(gps: UserAppGpsEvidence): string {
+  const lines: string[] = [
+    'INDEPENDENT GPS EVIDENCE — Autopilot America mobile app:',
+    '',
+    "The cited vehicle was concurrently equipped with the Autopilot America mobile application, which independently recorded the vehicle's GPS-derived motion as it approached and crossed the cited intersection. The following measurements are on-device sensor readings, timestamped contemporaneously, and stored in the vehicle owner's account record:",
+  ];
+  if (gps.approachSpeedMph !== null && Number.isFinite(gps.approachSpeedMph)) {
+    lines.push(`  • Peak approach speed: ${gps.approachSpeedMph.toFixed(1)} mph`);
+  }
+  if (gps.minSpeedMph !== null && Number.isFinite(gps.minSpeedMph)) {
+    lines.push(`  • Minimum speed at/near intersection: ${gps.minSpeedMph.toFixed(1)} mph`);
+  }
+  if (gps.speedDeltaMph !== null && Number.isFinite(gps.speedDeltaMph)) {
+    lines.push(`  • Speed delta across the approach window: ${gps.speedDeltaMph.toFixed(1)} mph (deceleration evidence)`);
+  }
+  if (gps.deviceTimestamp) {
+    lines.push(`  • Device timestamp at crossing: ${gps.deviceTimestamp}`);
+  }
+  lines.push(
+    '',
+    "This evidence is independent of the City's evidence package and was not generated for the purpose of this contest. It is a contemporaneous, second-source recording — the City has no comparable second-source data."
+  );
+  if (gps.fullStopDetected) {
+    const dur = gps.fullStopDurationSec ?? null;
+    const durPhrase = dur !== null && Number.isFinite(dur)
+      ? `a complete stop lasting approximately ${dur.toFixed(1)} second${dur === 1 ? '' : 's'}`
+      : 'a complete stop';
+    lines.push(
+      '',
+      `FULL-STOP CONFIRMED BY GPS — RIGHT-TURN-ON-RED DEFENSE:`,
+      '',
+      `The GPS trace records ${durPhrase} prior to the vehicle clearing the cited intersection. Under 625 ILCS 5/11-306(c)(1), a right turn on red is lawful after the driver has come to a complete stop. The City's evidence does not address the question of whether a stop occurred; the GPS record affirmatively does, and it does so in the driver's favor.`,
+    );
+  }
+  return lines.join('\n');
 }
