@@ -219,6 +219,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       'appreview@autopilotamerica.com',
       'playreview@autopilotamerica.com',
       'documents@autopilotamerica.com',
+      // FOIA response inbox. The `looksLikeFoia` bypass below also catches
+      // @cityofchicago.org senders, but adding the explicit address here
+      // ensures we still process FOIA replies if the city forwards through
+      // a contractor or attorney inbox (non-cityofchicago.org sender).
+      'foia@autopilotamerica.com',
     ];
     const targetedAtUs = HANDLED_INBOXES.some(box => toEmail.includes(box));
     // Also handle FOIA responses from the city regardless of address.
