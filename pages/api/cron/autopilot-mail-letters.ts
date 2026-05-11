@@ -1678,7 +1678,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const now = new Date().toISOString();
 
     // Get letters that are ready to mail:
-    // 1. status='approved' — user clicked approval link OR day-19 safety net triggered
+    // 1. status='approved' — user clicked approval link OR day-17 safety net triggered
     // 2. For auto_mail_enabled users: evidence_deadline has passed
     const { data: letters } = await supabaseAdmin
       .from('contest_letters')

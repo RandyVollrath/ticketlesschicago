@@ -3,12 +3,14 @@
  *
  * Sends follow-up reminder emails and SMS texts to users with pending tickets:
  *   - Day 5 reminder: "You have X days left — submit evidence to strengthen your letter"
- *   - Days 10, 12, 14, 16: Every-other-day email evidence reminders
+ *   - Days 10, 12: Every-other-day email evidence reminders
  *   - Day 10: SMS text reminder (first SMS)
- *   - Day 17 LAST CHANCE email: "Your letter will auto-send in 48 hours if not approved"
- *   - Day 17: SMS text last-chance reminder
+ *   - Day 14 LAST CHANCE email: "Your letter will auto-send in 3 days if not approved"
+ *   - Day 14: SMS text last-chance reminder
  *
- * Also handles the day 19 safety-net auto-send (triggers letter generation + approval bypass)
+ * Also handles the day 17 safety-net auto-send (triggers letter generation + approval bypass).
+ * Day 17 is the marketed auto-send date — 4 days before Chicago's 21-day deadline — giving
+ * Lob + USPS time to postmark and deliver before the city closes the mail-contest window.
  *
  * Additionally sends consent reminder emails to users who have contest letters in
  * 'awaiting_consent' status — prompting them to reply "I AUTHORIZE" or visit settings
@@ -47,7 +49,7 @@ interface PendingTicket {
 
 function daysSinceTicket(violationDate: string): number {
   // Use Chicago timezone for calendar-day math so reminder thresholds
-  // (Day 5, Day 10, Day 17, Day 19) align with Chicago calendar dates.
+  // (Day 5, Day 10, Day 14, Day 17) align with Chicago calendar dates.
   const chicagoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
   const chicagoTicket = new Date(new Date(violationDate).toLocaleString('en-US', { timeZone: 'America/Chicago' }));
   const nowDateOnly = new Date(chicagoNow.getFullYear(), chicagoNow.getMonth(), chicagoNow.getDate());
@@ -111,7 +113,7 @@ function hasUserEvidence(ticket: PendingTicket): boolean {
 async function sendSmsReminder(
   userId: string,
   ticket: PendingTicket,
-  type: 'day10' | 'day17',
+  type: 'day10' | 'day14',
 ): Promise<boolean> {
   const phone = await getUserPhone(userId);
   if (!phone) {
@@ -462,9 +464,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const name = firstName || 'there';
 
-      // ── Day 19+ AUTO-SEND SAFETY NET ──
-      // Force the letter through regardless of approval status
-      if (daysElapsed >= 19 && !ticket.last_chance_sent_at) {
+      // ── Day 17+ AUTO-SEND SAFETY NET ──
+      // Force the letter through regardless of approval status. Day 17 leaves
+      // a 4-day buffer before Chicago's 21-day mail-contest deadline so Lob +
+      // USPS have time to postmark and deliver. Also covers tickets we
+      // detected late (the Mon/Thu portal scraper can lag the city's
+      // issuance date by up to ~3.5 days).
+      if (daysElapsed >= 17 && !ticket.last_chance_sent_at) {
         // If we haven't even sent a last-chance email, send it now and
         // let the mail cron handle auto-sending on its next run
         const sent = await sendLastChanceEmail(email, name, ticket);
@@ -479,7 +485,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      if (daysElapsed >= 19) {
+      if (daysElapsed >= 17) {
         // Trigger auto-send: update ticket status so mail-letters cron picks it up
         // This bypasses the approval requirement
         if (ticket.status === 'pending_evidence' || ticket.status === 'needs_approval' || ticket.status === 'found' || ticket.status === 'letter_generated') {
@@ -525,7 +531,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               details: {
                 days_elapsed: daysElapsed,
                 days_remaining: daysRemaining,
-                reason: 'Day 19 safety net - auto-sending before 21-day deadline',
+                reason: 'Day 17 safety net - auto-sending 4 days before 21-day deadline',
                 ticket_status: ticket.status,
                 letters_promoted: letterUpdate.length,
               },
@@ -539,9 +545,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         continue;
       }
 
-      // ── Day 17 LAST CHANCE EMAIL + SMS ──
-      // Skip if letter already approved/mailed — no need for last-chance nudge
-      if (daysElapsed >= 17 && !ticket.last_chance_sent_at && ticket.status !== 'approved' && ticket.status !== 'mailed') {
+      // ── Day 14 LAST CHANCE EMAIL + SMS ──
+      // Fires 3 days before the day-17 safety net so users get real lead time
+      // to upload evidence or approve their letter before we auto-send.
+      // Skip if letter already approved/mailed — no need for last-chance nudge.
+      if (daysElapsed >= 14 && !ticket.last_chance_sent_at && ticket.status !== 'approved' && ticket.status !== 'mailed') {
         console.log(`  Day ${daysElapsed}: Sending last-chance email for ticket ${ticket.ticket_number}`);
         const sent = await sendLastChanceEmail(email, name, ticket);
         if (sent) {
@@ -567,11 +575,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         }
 
-        // Day 17 push notification — evidence deadline
+        // Day 14 push notification — evidence deadline (3 days before safety-net auto-send)
         try {
           const pushResult = await pushService.sendToUser(ticket.user_id, {
-            title: 'Evidence Deadline Tomorrow',
-            body: `Last chance to submit evidence for ticket #${ticket.ticket_number}${ticket.amount ? ` ($${ticket.amount.toFixed(2)})` : ''}. Reply to your email with photos or we'll send with automated evidence.`,
+            title: 'Evidence Deadline in 3 Days',
+            body: `Last chance to submit evidence for ticket #${ticket.ticket_number}${ticket.amount ? ` ($${ticket.amount.toFixed(2)})` : ''}. Reply to your email with photos within 3 days or we'll send with automated evidence.`,
             data: {
               type: 'evidence_deadline',
               ticketId: ticket.id,
@@ -587,9 +595,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.error(`  Push notification error for ${ticket.ticket_number}:`, pushErr);
         }
 
-        // Day 17 SMS — only if user hasn't submitted evidence
+        // Day 14 SMS — only if user hasn't submitted evidence
         if (!hasUserEvidence(ticket)) {
-          const smsOk = await sendSmsReminder(ticket.user_id, ticket, 'day17');
+          const smsOk = await sendSmsReminder(ticket.user_id, ticket, 'day14');
           if (smsOk) {
             smsSent++;
             await supabaseAdmin
@@ -603,13 +611,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               });
           } else {
             // SMS failed — fall back to an extra email nudge (last-chance was already sent above)
-            console.log(`  Day-17 SMS failed for ticket ${ticket.ticket_number}, sending extra email nudge`);
+            console.log(`  Day-14 SMS failed for ticket ${ticket.ticket_number}, sending extra email nudge`);
             const emailFallback = await sendReminderEmail(email, name, ticket, daysElapsed);
             if (emailFallback) {
               remindersSent++;
-              console.log(`  Day-17 email fallback sent for ticket ${ticket.ticket_number}`);
+              console.log(`  Day-14 email fallback sent for ticket ${ticket.ticket_number}`);
             } else {
-              console.error(`  ❌ Day-17 SMS and email fallback both failed for ticket ${ticket.ticket_number} (user ${ticket.user_id})`);
+              console.error(`  ❌ Day-14 SMS and email fallback both failed for ticket ${ticket.ticket_number} (user ${ticket.user_id})`);
             }
           }
         }
@@ -633,8 +641,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         continue;
       }
 
-      // ── Days 10, 12, 14, 16: EVERY-OTHER-DAY EVIDENCE REMINDER ──
-      const everyOtherDaySchedule = [10, 12, 14, 16];
+      // ── Days 10, 12: EVERY-OTHER-DAY EVIDENCE REMINDER ──
+      // Stops at day 12 so the day-14 last-chance email is the final, urgent
+      // message before the day-17 auto-send. Adding nudges at day 14/16 after
+      // the "last chance" message would undermine its urgency.
+      const everyOtherDaySchedule = [10, 12];
       if (everyOtherDaySchedule.includes(daysElapsed) && (ticket.reminder_count || 0) >= 1) {
         // Only send one reminder per calendar day (Chicago time)
         const chicagoToday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
