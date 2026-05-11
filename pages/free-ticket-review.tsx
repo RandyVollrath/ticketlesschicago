@@ -414,7 +414,7 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
               Let Autopilot file {worthIt.length + maybe.length === 1 ? 'this contest' : `all ${worthIt.length + maybe.length} contests`} for you.
             </div>
             <div style={{ marginTop: 10, fontSize: 14, color: '#CBD5E1', lineHeight: 1.6 }}>
-              For $99/year Autopilot writes and mails the formal contest letter for every ticket on your plate, files
+              For $79/year Autopilot writes and mails the formal contest letter for every ticket on your plate, files
               the FOIA requests with the City for the cited address and officer notes, attaches the evidence you provide,
               and tracks the city's response through final determination. Our 2023–2025 mail-in win rate is 57%.
             </div>
@@ -423,7 +423,7 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
               background: COLORS.signal, color: '#04221A', fontWeight: 800, fontSize: 15,
               textDecoration: 'none',
             }}>
-              Start Autopilot — $99/year →
+              Start Autopilot — $79/year →
             </a>
           </div>
         )}
