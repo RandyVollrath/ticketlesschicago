@@ -557,6 +557,8 @@ Note: Weather conditions were present but not severe. Only mention if it genuine
     let registrationReceipt: any = null;
     let redLightReceipt: any = null;
     let cameraPassHistory: any[] | null = null;
+    let cameraEvidenceFindings: import('../../../lib/camera-evidence-analysis').CameraEvidenceFindings | null = null;
+    let cameraEvidenceParagraph: string | null = null;
     let streetViewEvidence: StreetViewResult | null = null;
     let streetViewPackage: StreetViewEvidencePackage | null = null;
     let streetCleaningSchedule: any[] | null = null;
@@ -764,6 +766,42 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
             redLightReceipt = matching;
           }
         } catch (e) { console.error('Red light receipt lookup failed:', e); }
+      })());
+    }
+
+    // 4b. Camera-ticket evidence: scrape the City's vendor-run violation
+    // portal for photos + video, run Claude Vision to extract factual
+    // observations (plate legibility, signal state, sign visibility, etc.),
+    // then surface as a paragraph the letter generator can cite affirmatively.
+    // Replaces the old "we'll review the footage" boilerplate with actual
+    // findings from actual footage.
+    if (violationType === 'red_light' || violationType === 'speed_camera') {
+      evidencePromises.push((async () => {
+        try {
+          const { runCameraEvidencePipeline, renderFindingsParagraph } = await import('../../../lib/camera-evidence-pipeline');
+          const result = await runCameraEvidencePipeline(supabase, {
+            id: contest.id,
+            user_id: user.id,
+            plate: (contest.license_plate || '').toUpperCase(),
+            ticket_number: contest.ticket_number,
+            violation_type: violationType,
+            violation_code: contest.violation_code,
+            violation_date: contest.ticket_date,
+            location: contest.ticket_location,
+          });
+          if (result.evidence?.findings) {
+            cameraEvidenceFindings = result.evidence.findings;
+            cameraEvidenceParagraph = renderFindingsParagraph(result.evidence.findings, (contest.license_plate || '').toUpperCase());
+          }
+          if (result.noEvidenceAvailable) {
+            console.log(`  Camera evidence: vendor portal returned no media for ticket ${contest.ticket_number}`);
+          }
+          if (result.persistenceUnavailable) {
+            console.warn(`  Camera evidence: scrape+analyze succeeded but camera_evidence table is missing — apply migrations/20260510_create_camera_evidence.sql`);
+          }
+        } catch (e: any) {
+          console.error('Camera evidence pipeline failed:', e.message);
+        }
       })());
     }
 
@@ -1709,6 +1747,19 @@ Imagery Date: ${streetViewEvidence.imageDate || 'Unknown'}
 ${streetViewEvidence.signageObservation || ''}
 
 INSTRUCTIONS: Suggest the hearing officer verify signage presence/visibility using Google Street View for this location. Present as publicly available evidence that can be independently verified.` : ''}
+${cameraEvidenceParagraph ? `
+=== CAMERA VIOLATION FOOTAGE — DIRECT REVIEW OF CITY'S OWN EVIDENCE ===
+We pulled the actual violation photos and video the City uses from the public vendor portal (chicagophotociteweb.com / violationinfo.com). Claude Vision reviewed the imagery and produced the factual observations below. Treat these as load-bearing — the letter should incorporate them verbatim or paraphrased, NOT request the footage (we already have it).
+
+${cameraEvidenceParagraph}
+
+${cameraEvidenceFindings?.recommendDefense && cameraEvidenceFindings.recommendDefense !== 'none' ? `RECOMMENDED DEFENSE BASED ON FOOTAGE: ${cameraEvidenceFindings.recommendDefense}` : ''}
+
+INSTRUCTIONS:
+- The above is grounded in the actual photos/video — assert it affirmatively, e.g., "Review of the violation photos shows..." not "the City should produce the photos."
+- The video is being attached as a physical exhibit. The letter may reference "the attached violation video" or "the City's own photo evidence."
+- Do NOT add details not present in the findings above — the analyzer is the source of truth.
+` : ''}
 ${foiaData.hasData ? `
 === CITY OF CHICAGO FOIA DATA — REAL HEARING OUTCOMES ===
 (from ${foiaData.totalContested.toLocaleString()} actual contested tickets for this violation code)

@@ -141,15 +141,11 @@ export const redLightKit: ContestKit = {
     primary: {
       id: 'factually_inconsistent',
       name: 'Violation is Factually Inconsistent',
-      template: `I respectfully contest this red light camera citation on the grounds that the violation evidence is factually inconsistent with a red light violation occurring.
+      template: `I respectfully contest this red light camera citation on the grounds that the violation evidence does not establish a red light violation occurred.
 
-After carefully reviewing the violation photos and video at chicago.gov/finance for citation #[TICKET_NUMBER] issued on [DATE] at [INTERSECTION]:
+Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION] under Chicago Municipal Code Section 9-102-010 and Illinois Vehicle Code 625 ILCS 5/11-306.
 
-[FOOTAGE_FINDINGS]
-
-[EVIDENCE_REFERENCE]
-
-Based on the camera evidence itself, the city has not established that a red light violation occurred as defined under Chicago Municipal Code Section 9-102-010 and Illinois Vehicle Code 625 ILCS 5/11-306.
+For the City to sustain this citation, it must establish from the camera evidence that the cited vehicle entered the intersection after the signal turned red. Where the camera evidence itself does not unambiguously establish that, dismissal is the appropriate remedy.
 
 I respectfully request that this citation be dismissed.`,
       requiredFacts: ['ticketNumber', 'date', 'intersection'],
@@ -217,11 +213,9 @@ If the City cannot produce calibrated camera evidence and signal-timing records 
         name: 'Vehicle Identification Error',
         template: `I respectfully contest this red light camera citation on the grounds that the violation photos do not conclusively identify my vehicle as the one that committed the alleged violation.
 
-Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION]. After reviewing the violation photos and video at chicago.gov/finance:
+Citation #[TICKET_NUMBER] was issued on [DATE] at [INTERSECTION].
 
-[IDENTIFICATION_ISSUES]
-
-Under Chicago Municipal Code Section 9-102-010, liability attaches to the registered owner only when the city establishes that the vehicle in the photos is the registered owner's vehicle. The city bears the burden of proving that the vehicle captured by the camera is mine. If the make, model, color, or plate shown in the violation photos do not match my registered vehicle, this citation was issued in error.
+Under Chicago Municipal Code Section 9-102-010, liability attaches to the registered owner only when the City establishes that the vehicle in the photos is the registered owner's vehicle. Where the make, model, color, or plate shown in the City's violation photos do not match the registered vehicle, that burden is not met.
 
 I respectfully request that this citation be dismissed.`,
         requiredFacts: ['ticketNumber', 'date', 'intersection'],
