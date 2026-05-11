@@ -19,6 +19,16 @@ import type { ClassifiedViolation } from './violation-classifier';
 
 export type ArgumentStrength = 'strong' | 'moderate' | 'weak';
 
+/**
+ * Whether the finding is something we already know is true (portal-data
+ * driven) or something the user can do/produce after the fact to strengthen
+ * the contest. Both feed the same UI, but the recommender treats them
+ * differently — a "cure" path is never a reason to mark a ticket "contest"
+ * by itself (the user still has to do the work), but it always lifts a
+ * "skip" up to at least "maybe".
+ */
+export type ArgumentKind = 'fact' | 'cure' | 'evidence';
+
 export interface BeyondTemplateArgument {
   id: string;
   /** Headline shown to the user */
@@ -30,6 +40,16 @@ export interface BeyondTemplateArgument {
   /** Rough estimated uplift in win probability vs template-only (0–1) */
   estimatedUpliftPct: number;
   strength: ArgumentStrength;
+  /**
+   * What kind of finding:
+   * - 'fact'     : portal-data anomaly we already know is true
+   * - 'cure'     : something you can DO now to fix the underlying issue (buy sticker, renew plates)
+   * - 'evidence' : something you can GATHER (signage photos, receipts, witness)
+   * Defaults to 'fact' for back-compat with the original findings.
+   */
+  kind?: ArgumentKind;
+  /** Concrete next step for the user (e.g. "buy the sticker at chicityclerk.com…") */
+  actionForUser?: string;
 }
 
 export interface ReviewContext {
@@ -241,6 +261,225 @@ export function detectBeyondTemplateArguments(
   }
 
   return findings;
+}
+
+/**
+ * Cure and evidence paths the user can pursue regardless of what the portal
+ * data shows. These are the "you don't need any extra facts — just go do
+ * this" arguments. They always fire for the relevant violation type.
+ *
+ * Two categories:
+ * - 'cure'     — fix the underlying problem now (buy sticker, renew plates).
+ *                Hearing officers regularly reduce or dismiss when the issue
+ *                has been cured by the time of contest.
+ * - 'evidence' — gather proof at the location/time (signage photos, receipts).
+ *                The contest letter is much stronger with one attached
+ *                photo than with the template alone.
+ */
+export function detectCureAndEvidencePaths(
+  ticket: PortalTicket,
+  classified: ClassifiedViolation,
+): BeyondTemplateArgument[] {
+  const out: BeyondTemplateArgument[] = [];
+  const code = classified.violationCode;
+  if (!code) return out;
+
+  // ── No City Sticker (9-64-125 / 9-100-010) ─────────────────────────
+  // The single most reliable cure in Chicago parking enforcement: buy
+  // the sticker. The city clerk lets you backdate / pay for the period
+  // that lapsed. Submit the receipt with the contest. Even when the
+  // ticket was technically valid at the moment of issuance, the cure
+  // routinely results in dismissal or sharp reduction.
+  if (code === '9-64-125' || code === '9-100-010') {
+    out.push({
+      id: 'cure_buy_city_sticker',
+      title: 'Buy the sticker now and attach the receipt',
+      explanation:
+        'The Chicago City Clerk sells the wheel-tax sticker online at chicityclerk.com (about $94 for a passenger vehicle). Once you buy it, the city has the wheel-tax revenue it was actually trying to collect — hearing officers regularly dismiss or reduce the ticket on this basis alone.',
+      uplift:
+        'Cure-after-the-fact is not part of the standard template, but it is one of the most consistently effective paths for sticker tickets. Combined with our 86% baseline, attaching the receipt is close to a guaranteed dismissal.',
+      estimatedUpliftPct: 0.15,
+      strength: 'strong',
+      kind: 'cure',
+      actionForUser: 'Buy the current sticker at chicityclerk.com and download the PDF receipt before filing the contest.',
+    });
+  }
+
+  // ── Expired Plates / Registration (9-76-160 / 9-80-190) ────────────
+  // Renew at ilsos.gov. Confirmation email + new registration card are
+  // strong cure evidence. Baseline is already 89% — this lifts it closer
+  // to automatic.
+  if (code === '9-76-160' || code === '9-80-190') {
+    out.push({
+      id: 'cure_renew_registration',
+      title: 'Renew your Illinois registration and attach the confirmation',
+      explanation:
+        'Renew at ilsos.gov (Illinois Secretary of State). The renewal confirmation email + the new registration card prove the underlying issue is fixed. Expired-plates contests already win 89% on mail — adding the cure makes it near-automatic.',
+      uplift:
+        'Cure evidence on expired-plates tickets pushes the dismissal rate well above the 89% template baseline because hearing officers see no remaining public interest in enforcement.',
+      estimatedUpliftPct: 0.10,
+      strength: 'strong',
+      kind: 'cure',
+      actionForUser: 'Renew at ilsos.gov, save the confirmation email + new registration card PDF.',
+    });
+  }
+
+  // ── Disabled / Handicapped Zone (9-64-180) ─────────────────────────
+  // If the user actually has a placard, photographing it is decisive.
+  if (code === '9-64-180') {
+    out.push({
+      id: 'evidence_disabled_placard',
+      title: 'Photograph your disability placard (front and back)',
+      explanation:
+        'If you have a valid Illinois disability placard or plate, a clear photo of both sides plus the registration card defeats this ticket directly under Illinois Vehicle Code 11-1303.3. The standard template asks for this but does not require it — attaching it converts the contest from an argument to a proof.',
+      uplift:
+        'A documented valid placard is dispositive evidence — the violation cannot stand against it.',
+      estimatedUpliftPct: 0.30,
+      strength: 'strong',
+      kind: 'evidence',
+      actionForUser: 'Photograph both sides of the placard + the wallet card the state issued with it.',
+    });
+  }
+
+  // ── Residential Permit (9-64-070) ──────────────────────────────────
+  if (code === '9-64-070') {
+    out.push({
+      id: 'evidence_permit_record',
+      title: 'Pull your residential-permit purchase record',
+      explanation:
+        'If you have a residential parking permit for the cited zone, the city clerk\'s online portal shows the purchase date, expiration, and the zone. Print or screenshot the record showing the permit was valid on the date of the ticket. If the permit was simply not displayed at the time, the record still proves you held it — that frequently wins.',
+      uplift:
+        'The standard template argues "I had a permit" — actual proof from the city clerk\'s record converts that argument into a fact the hearing officer can verify directly.',
+      estimatedUpliftPct: 0.20,
+      strength: 'strong',
+      kind: 'evidence',
+      actionForUser: 'Look up your permit at chicityclerk.com and screenshot the active record for the cited zone.',
+    });
+  }
+
+  // ── Fire Hydrant (9-64-130) ────────────────────────────────────────
+  // 15-foot rule. User can measure now.
+  if (code === '9-64-130') {
+    out.push({
+      id: 'evidence_hydrant_distance',
+      title: 'Measure the actual distance from where you parked to the hydrant',
+      explanation:
+        'Chicago Municipal Code § 9-64-130 prohibits parking within 15 feet of a fire hydrant. Go back to the spot with a tape measure or measuring app, photograph the distance from the curb position where you parked to the hydrant itself, with the hydrant and your parking position both visible.',
+      uplift:
+        'A measurement photo showing 15+ feet defeats the ticket outright. The standard template asks the city to prove the distance — having your own measurement reverses the burden.',
+      estimatedUpliftPct: 0.25,
+      strength: 'strong',
+      kind: 'evidence',
+      actionForUser: 'Return to the location with a tape measure (or a measuring app). Take a photo showing the hydrant, the spot you parked, and the measured distance.',
+    });
+  }
+
+  // ── Sign-based parking tickets — go take photos NOW ────────────────
+  // For these violations the dispositive question is "what did the signs
+  // say at the moment of the ticket?" The standard template asks the
+  // city for sign maintenance records; a present-day photo of the sign
+  // (or absence of it) is often more persuasive.
+  const SIGN_PHOTO_CODES: Record<string, string> = {
+    '9-64-010': 'street-cleaning',
+    '9-64-040': 'no-parking / tow-zone',
+    '9-64-050': 'bus stop / stand',
+    '9-64-090': 'bike lane marking',
+    '9-64-100': 'snow-route',
+    '9-64-140': 'no-standing / time-restriction',
+    '9-64-160': 'commercial-loading',
+    '9-64-190': 'rush-hour',
+    '9-64-081': 'winter overnight parking ban',
+  };
+  if (SIGN_PHOTO_CODES[code]) {
+    const subject = SIGN_PHOTO_CODES[code];
+    out.push({
+      id: 'evidence_signage_photos',
+      title: `Photograph the ${subject} signs at the cited block face`,
+      explanation:
+        `Go to the exact block where the ticket was issued and photograph every parking sign on both sides of the street. The standard template argues the signs must be "visible and legible" under § 9-64 — a photo showing missing, faded, defaced, or obscured signs (or none at all) is the most consistent winning evidence for this violation type. Take wide shots showing the whole block face and close-ups of any sign in poor condition.`,
+      uplift:
+        'Documented sign-condition photos shift the burden to the city to produce maintenance and replacement records — which it often cannot.',
+      estimatedUpliftPct: 0.20,
+      strength: 'strong',
+      kind: 'evidence',
+      actionForUser:
+        'Walk the cited block face. Photograph every sign on both sides of the street. Get wide shots and close-ups. If a sign is missing, photograph the empty post or wall.',
+    });
+  }
+
+  // ── Expired Meter (9-64-170) ───────────────────────────────────────
+  if (code === '9-64-170') {
+    out.push({
+      id: 'evidence_meter_receipt',
+      title: 'Pull your ParkChicago app history for the time of the ticket',
+      explanation:
+        'Open the ParkChicago app (or your bank/credit card statement) and find any parking payment within 30 minutes before or after the ticket time. Sometimes payments are made for the wrong space number — but the timestamp alone, combined with proof you were paying nearby, shifts the analysis. If the meter itself was malfunctioning, a "report a problem" entry in the app is also strong.',
+      uplift:
+        'A timestamped payment receipt is direct evidence that you were attempting to comply. The template makes a malfunction argument; a payment record makes it concrete.',
+      estimatedUpliftPct: 0.15,
+      strength: 'moderate',
+      kind: 'evidence',
+      actionForUser:
+        'Open ParkChicago → Payment History. Screenshot any payments from the day of the ticket. Also check your bank statement.',
+    });
+  }
+
+  // ── Double Parking / Parking in Alley — geometry photos ────────────
+  if (code === '9-64-110' || code === '9-64-020') {
+    out.push({
+      id: 'evidence_geometry_photo',
+      title: 'Return to the location and photograph the parking geometry',
+      explanation:
+        code === '9-64-110'
+          ? 'Double parking requires you to have been "alongside another vehicle" away from the curb. A photo of the cited block face — especially showing curb space available or your vehicle\'s position relative to the curb at the time — can defeat the violation.'
+          : 'A "public alley" has a specific legal definition. Photograph the location to verify it is in fact a public alley (signed, paved, with public-way markings) versus a private easement or a loading bay where § 9-64-020 does not apply.',
+      uplift:
+        'Visual proof of the actual geometry beats the template "I was not double-parked / not in a public alley" argument.',
+      estimatedUpliftPct: 0.15,
+      strength: 'moderate',
+      kind: 'evidence',
+      actionForUser: 'Photograph the location showing curb position, lane markings, and the broader street context.',
+    });
+  }
+
+  // ── Missing / Non-Compliant Plate (9-80-040) ───────────────────────
+  if (code === '9-80-040') {
+    out.push({
+      id: 'cure_replace_plates',
+      title: 'Replace any missing/damaged plates and attach proof',
+      explanation:
+        'If a plate was missing or damaged at the time, replace it through ilsos.gov and attach the replacement receipt + a current photo showing properly displayed plates. If the plate had fallen off recently, a police-report number for the loss/theft also helps.',
+      uplift:
+        'Cure evidence converts a substantive contest into a "the issue is resolved" filing, which hearing officers favor.',
+      estimatedUpliftPct: 0.15,
+      strength: 'moderate',
+      kind: 'cure',
+      actionForUser:
+        'Order replacement plates at ilsos.gov. If the plate fell off, file a Chicago police report (online) and keep the report number.',
+    });
+  }
+
+  // ── Universal evidence prompt: witness / passenger statement ──────
+  // Light up for any classified violation — many users had a passenger
+  // who can attest to time, location, conduct. This is a fallback
+  // "evidence" path the template does not surface.
+  if (code) {
+    out.push({
+      id: 'evidence_witness_statement',
+      title: 'Get a signed statement from anyone who was with you',
+      explanation:
+        'If you had a passenger, spouse, coworker, or anyone with you when the ticket was issued — or who can speak to the timing, the location, the signage condition, or any relevant circumstance — a short signed and dated statement carries real weight with hearing officers. It does not need to be notarized.',
+      uplift:
+        'Witness statements add corroboration to whatever defense you are running. The template never asks for one; attaching one is a discrete uplift over template-only filings.',
+      estimatedUpliftPct: 0.05,
+      strength: 'weak',
+      kind: 'evidence',
+      actionForUser:
+        'Ask anyone who was with you for a one-paragraph signed and dated statement. Plain text email is fine; attach a PDF or screenshot.',
+    });
+  }
+
+  return out;
 }
 
 /**

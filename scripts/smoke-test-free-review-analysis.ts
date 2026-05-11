@@ -47,6 +47,7 @@ const today = new Date();
 const isoDaysAgo = (n: number) =>
   new Date(today.getTime() - n * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
+// Add a 6th ticket to exercise the cure-path for expired plates.
 const fakeLookup: LookupResult = {
   plate: 'ABC1234',
   state: 'IL',
@@ -61,6 +62,15 @@ const fakeLookup: LookupResult = {
       ticket_plate: 'ABC1234',
       ticket_state: 'IL',
       registered_owner_address: '123 N MAIN, CHICAGO, IL 60601',
+    }),
+    ticket({
+      ticket_number: '900000006',
+      issue_date: isoDaysAgo(7),
+      violation_description: 'EXPIRED PLATES OR TEMP REGISTRATION',
+      current_amount_due: 60,
+      original_amount: 60,
+      ticket_plate: 'ABC1234',
+      ticket_state: 'IL',
     }),
     ticket({
       ticket_number: '900000002',
@@ -125,18 +135,31 @@ function expect(cond: boolean, msg: string) {
 // Per-ticket lookups
 const byNum = new Map(analysis.perTicket.map(t => [t.ticketNumber, t]));
 
-// 1. Street cleaning, fresh, no extras → maybe (32% template) or contest
+// 1. Street cleaning, fresh, no extras → MAYBE plus a signage-photo evidence path
 const sc = byNum.get('900000001')!;
 expect(sc.violationCode === '9-64-010', 'street cleaning violation code');
 expect(sc.recommendation !== 'skip', 'street cleaning fresh ticket should not be "skip"');
+expect(
+  sc.beyondTemplate.some(b => b.id === 'evidence_signage_photos'),
+  'street cleaning should surface the signage-photo evidence path',
+);
+expect(
+  sc.beyondTemplate.some(b => b.id === 'evidence_witness_statement'),
+  'every classified violation should surface the witness-statement path',
+);
 
 // 2. City sticker with out-of-Chicago registered address → contest, non-resident
+//    AND should always surface the "buy sticker now" cure
 const cs = byNum.get('900000002')!;
 expect(cs.violationCode === '9-64-125', 'city sticker violation code');
 expect(cs.recommendation === 'contest', 'city sticker with out-of-Chicago address should be CONTEST');
 expect(
   cs.beyondTemplate.some(b => b.id === 'non_resident_city_sticker'),
   'should detect non-resident defense for city sticker',
+);
+expect(
+  cs.beyondTemplate.some(b => b.id === 'cure_buy_city_sticker' && b.kind === 'cure'),
+  'should ALWAYS surface buy-sticker cure path for sticker tickets',
 );
 
 // 3. Expired meter with plate mismatch → contest (clerical error)
@@ -160,6 +183,18 @@ expect(sp.violationCode === '9-102-020', 'speed camera violation code');
 expect(sp.beyondTemplate.some(b => b.id === 'speed_camera_zone_hours'), 'should detect speed zone hours');
 // Footage review is "strong" so the recommendation should be contest even at 80 days.
 expect(sp.recommendation === 'contest', 'speed camera with strong defense should still be CONTEST');
+
+// 6. Expired plates — always surface the renew-now cure path → contest
+const ep = byNum.get('900000006')!;
+expect(ep.violationCode === '9-76-160', 'expired plates violation code');
+expect(
+  ep.beyondTemplate.some(b => b.id === 'cure_renew_registration' && b.kind === 'cure'),
+  'should ALWAYS surface renew-registration cure for expired plates',
+);
+expect(
+  ep.recommendation === 'contest',
+  'expired plates (89% baseline) + cure path → CONTEST',
+);
 
 // Cross-ticket: 2 camera tickets → calibration request pattern
 expect(
