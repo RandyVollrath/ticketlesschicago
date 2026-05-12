@@ -761,8 +761,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         user_evidence_uploaded_at: evidenceReceivedAt,
         evidence_received_at: evidenceReceivedAt,
         evidence_on_time: evidenceOnTime,
-        // Preserve original evidence_deadline (day 17 from ticket issue) — don't overwrite
-        // The auto-send logic in autopilot-mail-letters checks evidence_deadline + 1h buffer
+        // Preserve original evidence_deadline (set per-user by lib/contest-deadlines.ts
+        // at detection time) — don't overwrite. The auto-send logic in autopilot-reminders
+        // and autopilot-mail-letters checks evidence_deadline + 1h buffer.
         status: newStatus,
       })
       .eq('id', ticket.id);

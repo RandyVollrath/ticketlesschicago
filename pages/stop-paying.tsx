@@ -11,7 +11,7 @@ export default function StopPayingFlyer() {
       bullets={[
         'We detect every ticket within 3 days via twice-weekly plate monitoring on the City payment portal.',
         'Claude AI drafts your contest letter with real evidence — no form letters, no boilerplate.',
-        'We print and USPS-mail your letter on Day 17 — four days before the deadline. Zero effort from you.',
+        'We print and USPS-mail your letter within 3 days by default. Want longer to gather evidence? One toggle in your settings extends the window. Zero effort from you either way.',
         'Unlimited tickets covered. The average Chicago driver has 2.2 per year; Autopilot would cost $150+ per ticket from a lawyer.',
       ]}
     />

@@ -6,10 +6,11 @@
  * for each ticket.
  *
  * FOIA requests are queued at ticket DETECTION time (by autopilot-check-plates.ts),
- * NOT at mailing time. This ensures the city's 5-business-day response deadline
- * expires well before the contest letter is generated (~day 17), giving us a
- * due process / transparency argument (city failed to produce records the
- * respondent requested to prepare their defense).
+ * NOT at mailing time. The city's 5-business-day response deadline usually
+ * expires before our auto-mail date (3 days from detection for default users,
+ * up to 17 days from issue for opt-out users), giving us a due process /
+ * transparency argument (city failed to produce records the respondent
+ * requested to prepare their defense).
  *
  * The FOIA request asks for:
  * - Officer's field notes and observations

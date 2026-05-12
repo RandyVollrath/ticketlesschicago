@@ -3468,7 +3468,7 @@ function SettingsPageInner() {
               </h4>
               <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
                 {fastContestSubmission
-                  ? 'On: we mail your contest letter 3 days after we detect the ticket. Most mail-in wins come from being on file early — you can still reply with evidence in those 3 days.'
+                  ? 'On: we mail your contest letter 3 days after we detect the ticket so it lands at City Hall early. You can still reply with evidence in those 3 days.'
                   : 'Off: we wait as long as possible so you can keep adding evidence. We still auto-mail by Day 17 from the ticket date so you don’t miss the 21-day deadline.'}
               </p>
             </div>

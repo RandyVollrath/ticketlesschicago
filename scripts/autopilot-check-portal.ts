@@ -72,9 +72,9 @@ const supabaseAdmin = createClient(
 
 // Configuration
 const SCREENSHOT_DIR = process.env.PORTAL_CHECK_SCREENSHOT_DIR || path.resolve(__dirname, '../debug-screenshots');
-// Evidence deadline is calculated per-ticket based on issue date (day 17 from ticket date)
-// Unified across all code paths — auto-send on day 17, hard legal deadline is day 21
-// Evidence/auto-send deadline math lives in lib/contest-deadlines.ts now.
+// Evidence/auto-send deadline math lives in lib/contest-deadlines.ts — defaults
+// to detection + 3 days (fast_contest_submission=true), opt-out to issue + 17 days.
+// Chicago's hard mail-contest deadline is 21 days from issue (MCC 9-100-050).
 
 // Chicago municipal contest window for parking / automated camera tickets is
 // 21 calendar days from the violation date (MCC 9-100-050). After that the

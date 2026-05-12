@@ -279,15 +279,26 @@ async function sendEvidenceRequestEmail(
     ? new Date(violationDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : 'Unknown date';
 
-  // Calculate days remaining from ticket date (21-day contest window)
-  // Use Chicago timezone for calendar-day math
+  // Two dates the user needs to know:
+  //   1. evidenceDeadline — when WE will mail the letter (3d from detection by default,
+  //      or 17d from ticket date for opt-out users). The actionable cutoff.
+  //   2. contestDeadlineDate — Chicago's 21-day legal deadline. Background context only.
   const ticketDate = violationDate ? new Date(violationDate) : new Date();
   const chicagoNowCP = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-  const chicagoTicketCP = new Date(ticketDate.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const chicagoEvidenceCP = new Date(evidenceDeadline.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
   const nowDateOnlyCP = new Date(chicagoNowCP.getFullYear(), chicagoNowCP.getMonth(), chicagoNowCP.getDate());
-  const ticketDateOnlyCP = new Date(chicagoTicketCP.getFullYear(), chicagoTicketCP.getMonth(), chicagoTicketCP.getDate());
-  const daysSinceTicket = Math.round((nowDateOnlyCP.getTime() - ticketDateOnlyCP.getTime()) / (1000 * 60 * 60 * 24));
-  const daysRemaining = Math.max(0, 21 - daysSinceTicket);
+  const evidenceDateOnlyCP = new Date(chicagoEvidenceCP.getFullYear(), chicagoEvidenceCP.getMonth(), chicagoEvidenceCP.getDate());
+  const daysUntilEvidenceDeadline = Math.max(
+    0,
+    Math.round((evidenceDateOnlyCP.getTime() - nowDateOnlyCP.getTime()) / (1000 * 60 * 60 * 24)),
+  );
+  const formattedEvidenceDeadline = evidenceDeadline.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'America/Chicago',
+  });
   const contestDeadlineDate = new Date(ticketDate.getTime() + 21 * 24 * 60 * 60 * 1000);
   const formattedContestDeadline = contestDeadlineDate.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -317,10 +328,10 @@ async function sendEvidenceRequestEmail(
         <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
           <div style="display: flex; align-items: center; margin-bottom: 8px;">
             <span style="font-size: 20px; margin-right: 8px;">&#9200;</span>
-            <strong style="font-size: 15px; color: #92400E;">Contest Deadline: ${formattedContestDeadline} (${daysRemaining} days remaining)</strong>
+            <strong style="font-size: 15px; color: #92400E;">We mail this letter on ${formattedEvidenceDeadline}${daysUntilEvidenceDeadline > 0 ? ` (${daysUntilEvidenceDeadline} day${daysUntilEvidenceDeadline === 1 ? '' : 's'} from today)` : ' (today)'}</strong>
           </div>
           <p style="margin: 0; font-size: 13px; color: #92400E;">
-            Chicago allows 21 days from the ticket date to file a contest. Tickets contested earlier tend to have higher success rates, so the sooner you provide your evidence, the better.
+            Reply with any evidence before then and we'll include it. Tickets that are filed early tend to win at higher rates, so we file fast by default. Chicago's legal contest deadline is ${formattedContestDeadline}. To get more time to gather evidence, turn off "Fast-file contest letter" in <a href="https://autopilotamerica.com/settings" style="color: #92400E;">your settings</a>.
           </p>
         </div>
 
@@ -330,7 +341,7 @@ async function sendEvidenceRequestEmail(
             <li>We've already gathered automated evidence (weather, GPS, FOIA data, Street View)</li>
             <li><strong>Reply to this email</strong> with any additional evidence you have (photos, receipts, etc.)</li>
             <li>We'll generate an AI-powered contest letter using all available evidence</li>
-            <li>You'll receive the letter for review and approval before we mail it</li>
+            <li>We mail the letter to the City of Chicago on ${formattedEvidenceDeadline}</li>
           </ol>
         </div>
 
@@ -379,7 +390,7 @@ async function sendEvidenceRequestEmail(
     const emailResult = await resend.emails.send({
       from: 'Autopilot America <alerts@autopilotamerica.com>',
       to: [userEmail],
-      subject: `${guidance.emailSubject} (${daysRemaining} days to contest)`,
+      subject: `${guidance.emailSubject} (we mail ${daysUntilEvidenceDeadline > 0 ? `in ${daysUntilEvidenceDeadline} day${daysUntilEvidenceDeadline === 1 ? '' : 's'}` : 'today'})`,
       html,
       replyTo: `evidence+${ticketId}@autopilotamerica.com`,
     });
@@ -389,7 +400,7 @@ async function sendEvidenceRequestEmail(
       messageKey: 'autopilot_evidence_request',
       messageChannel: 'email',
       contextData: { ticket_number: ticketNumber, plate, ticket_id: ticketId },
-      messagePreview: `Evidence request for ticket ${ticketNumber} (${daysRemaining} days remaining)`,
+      messagePreview: `Evidence request for ticket ${ticketNumber} (we mail ${daysUntilEvidenceDeadline > 0 ? `in ${daysUntilEvidenceDeadline}d` : 'today'})`,
       externalMessageId: emailResult?.data?.id,
     });
     return true;
@@ -834,16 +845,20 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
       // Uses the evidence guidance to create a short, actionable notification
       try {
         const guidance = getEvidenceGuidance(violationType);
-        const daysRemaining = Math.max(0, 21 - Math.round(
-          (Date.now() - new Date(ticket.issue_date).getTime()) / (1000 * 60 * 60 * 24)
-        ));
+        // Days until WE mail (the actionable cutoff), not Chicago's 21-day legal deadline.
+        const daysUntilWeMail = Math.max(
+          0,
+          Math.round((evidenceDeadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+        );
+        const mailWindow =
+          daysUntilWeMail === 0 ? 'today' : daysUntilWeMail === 1 ? 'tomorrow' : `in ${daysUntilWeMail} days`;
         // EvidenceQuestion's field is .text, not .question. The push
         // body was emitting "undefined Reply to the email…" for every
         // detected ticket because of the wrong property name.
         const topQuestion = guidance.questions?.[0];
         const pushBody = topQuestion
-          ? `${daysRemaining} days to contest. ${topQuestion.text} Reply to the email we sent with any evidence.`
-          : `${daysRemaining} days to contest. Check your email for evidence we need to build your case.`;
+          ? `We mail your contest letter ${mailWindow}. ${topQuestion.text} Reply to the email we sent with any evidence.`
+          : `We mail your contest letter ${mailWindow}. Check your email for evidence we need to build your case.`;
 
         await pushService.sendToUser(plate.user_id, {
           title: `New Ticket Detected: $${amount.toFixed(0)} ${ticket.violation_description || violationType.replace(/_/g, ' ')}`,
@@ -853,7 +868,7 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
             ticketId: newTicket.id,
             ticketNumber: ticket.ticket_number,
             violationType,
-            daysRemaining: String(daysRemaining),
+            daysUntilWeMail: String(daysUntilWeMail),
           },
           category: 'evidence_request',
           userId: plate.user_id,

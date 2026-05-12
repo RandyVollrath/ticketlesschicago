@@ -1207,7 +1207,7 @@ export default function AutopilotAdmin() {
                 Awaiting Evidence ({pendingEvidenceTickets.length})
               </h2>
               <p style={{ fontSize: 14, color: COLORS.slate, margin: '0 0 24px 0' }}>
-                Letters auto-send on Day 17 from the ticket issue date (4-day buffer before Day 21 legal deadline).
+                Letters auto-send when the user's evidence_deadline passes (3 days from detection by default, or 17 days from issue if the user opted out of fast-file).
               </p>
 
               {pendingEvidenceTickets.length === 0 ? (

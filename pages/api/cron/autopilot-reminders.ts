@@ -1,16 +1,21 @@
 /**
  * Autopilot Reminder Cron — Runs daily at 16:00 UTC
  *
- * Sends follow-up reminder emails and SMS texts to users with pending tickets:
- *   - Day 5 reminder: "You have X days left — submit evidence to strengthen your letter"
- *   - Days 10, 12: Every-other-day email evidence reminders
- *   - Day 10: SMS text reminder (first SMS)
- *   - Day 14 LAST CHANCE email: "Your letter will auto-send in 3 days if not approved"
- *   - Day 14: SMS text last-chance reminder
+ * Two responsibilities:
  *
- * Also handles the day 17 safety-net auto-send (triggers letter generation + approval bypass).
- * Day 17 is the marketed auto-send date — 4 days before Chicago's 21-day deadline — giving
- * Lob + USPS time to postmark and deliver before the city closes the mail-contest window.
+ * 1. AUTO-SEND TRIGGER (the load-bearing one). When a ticket's evidence_deadline
+ *    (+1h buffer) has passed, promote the contest letter from 'pending_evidence'
+ *    to 'approved' and call triggerAutopilotMailRun so mail-letters ships it the
+ *    same day. evidence_deadline comes from lib/contest-deadlines.ts and depends
+ *    on user_profiles.fast_contest_submission:
+ *      - TRUE (default): detection + 3 days
+ *      - FALSE: issue + 17 days
+ *
+ * 2. REMINDER EMAILS / SMS / PUSH at Day 5 / 10 / 12 / 14 from violation date.
+ *    These exist for slow-mode users (Day 17 evidence window). Fast-mode users
+ *    typically reach the auto-send trigger before Day 5, in which case the
+ *    ticket flips to status='mailed' and is excluded from this loop on
+ *    subsequent runs — so most reminders never fire for them.
  *
  * Additionally sends consent reminder emails to users who have contest letters in
  * 'awaiting_consent' status — prompting them to reply "I AUTHORIZE" or visit settings
@@ -50,7 +55,7 @@ interface PendingTicket {
 
 function daysSinceTicket(violationDate: string): number {
   // Use Chicago timezone for calendar-day math so reminder thresholds
-  // (Day 5, Day 10, Day 14, Day 17) align with Chicago calendar dates.
+  // (Day 5, Day 10, Day 12, Day 14) align with Chicago calendar dates.
   const chicagoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
   const chicagoTicket = new Date(new Date(violationDate).toLocaleString('en-US', { timeZone: 'America/Chicago' }));
   const nowDateOnly = new Date(chicagoNow.getFullYear(), chicagoNow.getMonth(), chicagoNow.getDate());
@@ -345,8 +350,8 @@ async function sendLastChanceEmail(
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: #DC2626; color: white; padding: 24px; border-radius: 12px 12px 0 0;">
-        <h1 style="margin: 0; font-size: 22px;">LAST CHANCE: Ticket #${ticket.ticket_number}</h1>
-        <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">Your contest letter will auto-send in ~48 hours to meet the deadline</p>
+        <h1 style="margin: 0; font-size: 22px;">Mailing your contest letter — Ticket #${ticket.ticket_number}</h1>
+        <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">Your evidence deadline just passed. We're mailing the letter today.</p>
       </div>
 
       <div style="background: white; border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
@@ -355,12 +360,13 @@ async function sendLastChanceEmail(
         <p style="margin: 0 0 20px; font-size: 15px; color: #4b5563;">
           Your ${ticket.violation_description || ticket.violation_type?.replace(/_/g, ' ')} ticket
           ${ticket.amount ? `($${ticket.amount.toFixed(2)})` : ''} from ${violationDateFormatted}
-          has a contest deadline in approximately <strong>${daysRemaining} days</strong>.
+          is being filed with the City of Chicago today.
+          Chicago's legal contest deadline is in <strong>${daysRemaining} days</strong>.
         </p>
 
         <div style="background: #FEF2F2; border: 2px solid #DC2626; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
           <p style="margin: 0; font-size: 15px; color: #991B1B; font-weight: 600;">
-            To ensure your ticket is contested before the deadline, we will automatically mail your contest letter in approximately 48 hours with whatever evidence we have.
+            We're mailing your contest letter today with whatever evidence we have. After it's sent we can't add anything to this filing.
           </p>
           <p style="margin: 12px 0 0; font-size: 13px; color: #991B1B;">
             A contested ticket &mdash; even without personal evidence &mdash; is better than an uncontested fine. Our automated evidence (weather, FOIA records, GPS data) may still support a strong case.
@@ -374,11 +380,10 @@ async function sendLastChanceEmail(
         </div>
         ` : ''}
 
-        <h3 style="margin: 0 0 12px; font-size: 15px; color: #374151;">Your options:</h3>
+        <h3 style="margin: 0 0 12px; font-size: 15px; color: #374151;">What you can still do:</h3>
         <ul style="margin: 0 0 20px; padding-left: 20px; font-size: 14px; color: #4B5563; line-height: 1.8;">
-          <li><strong>Reply now</strong> with any evidence and we'll regenerate a stronger letter</li>
-          <li><strong>Do nothing</strong> and we'll auto-mail the current letter before the deadline</li>
-          <li><strong>Visit <a href="${BASE_URL}/settings" style="color: #2563eb;">your settings</a></strong> to cancel auto-mailing for this ticket</li>
+          <li><strong>Reply with evidence</strong> — if it arrives before the letter goes out, we'll regenerate a stronger version</li>
+          <li><strong>Want more time next time?</strong> Turn off "Fast-file contest letter" in <a href="${BASE_URL}/settings" style="color: #2563eb;">your settings</a> to extend the evidence window for future tickets</li>
         </ul>
 
         <p style="margin: 0; font-size: 13px; color: #6B7280;">
@@ -403,7 +408,7 @@ async function sendLastChanceEmail(
       body: JSON.stringify({
         from: 'Autopilot America <alerts@autopilotamerica.com>',
         to: [email],
-        subject: `LAST CHANCE: Contest letter for ticket #${ticket.ticket_number} auto-sends in 48 hours`,
+        subject: `Mailing today: contest letter for ticket #${ticket.ticket_number}`,
         html,
         replyTo: `evidence+${ticket.id}@autopilotamerica.com`,
       }),
@@ -553,8 +558,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // ── Day 14 LAST CHANCE EMAIL + SMS ──
-      // Fires 3 days before the day-17 safety net so users get real lead time
-      // to upload evidence or approve their letter before we auto-send.
+      // Pre-deadline warning aimed at slow-mode users (evidence_deadline=Day 17).
+      // Fast-mode users have evidence_deadline=detection+3d; their letter is
+      // typically already mailed by Day 14 (status='mailed' is excluded by the
+      // status filter above), so this path only fires for slow-mode tickets
+      // and for late detections that pushed the deadline closer to Day 17+.
       // Skip if letter already approved/mailed — no need for last-chance nudge.
       if (daysElapsed >= 14 && !ticket.last_chance_sent_at && ticket.status !== 'approved' && ticket.status !== 'mailed') {
         console.log(`  Day ${daysElapsed}: Sending last-chance email for ticket ${ticket.ticket_number}`);
@@ -649,9 +657,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // ── Days 10, 12: EVERY-OTHER-DAY EVIDENCE REMINDER ──
+      // Slow-mode schedule (fast_contest_submission=false → evidence_deadline=Day 17).
       // Stops at day 12 so the day-14 last-chance email is the final, urgent
-      // message before the day-17 auto-send. Adding nudges at day 14/16 after
-      // the "last chance" message would undermine its urgency.
+      // message before auto-send fires. For fast-mode users these don't fire
+      // because the letter is already mailed before reminder_count reaches 1.
       const everyOtherDaySchedule = [10, 12];
       if (everyOtherDaySchedule.includes(daysElapsed) && (ticket.reminder_count || 0) >= 1) {
         // Only send one reminder per calendar day (Chicago time)

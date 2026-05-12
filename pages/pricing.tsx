@@ -61,7 +61,7 @@ export default function PricingPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0' }}>
               <div>
                 <div style={{ fontWeight: 700, color: '#166534', fontSize: 15 }}>Automatic ticket contesting (59% mail-in win rate)</div>
-                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Claude AI drafts, we print, we USPS-mail on Day 17 — four days before the deadline. 59% of mail-in contested Chicago parking tickets get dismissed (FOIA).</div>
+                <div style={{ fontSize: 13, color: '#15803D', marginTop: 2 }}>Claude AI drafts, we print, we USPS-mail within 3 days of detection by default. Want more time to add evidence? One toggle in your settings extends the window. 59% of mail-in contested Chicago parking tickets get dismissed (FOIA).</div>
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, color: '#166534', whiteSpace: 'nowrap' }}>~$125</div>
             </div>
