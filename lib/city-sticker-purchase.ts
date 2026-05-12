@@ -195,6 +195,27 @@ export async function purchaseCitySticker(input: CitySticerPurchaseInput): Promi
     const totalDollars = totalMatch ? parseFloat(totalMatch[1]) : 0;
     const totalChargedCents = Math.round(totalDollars * 100);
 
+    // Amount guard: if the EzBuy cart fee diverges from what the user
+    // authorized by more than 10% (and at least $5), bail out so we never
+    // charge them more than they consented to.
+    const consentCents = consent.gov_amount_cents;
+    if (totalChargedCents > 0 && consentCents > 0) {
+      const diff = Math.abs(totalChargedCents - consentCents);
+      const pct = diff / consentCents;
+      if (diff > 500 && pct > 0.10) {
+        const shot = `/tmp/city-purchase-amount-mismatch-${consent.id}.png`;
+        await page.screenshot({ path: shot, fullPage: true });
+        screenshots.push(shot);
+        return {
+          success: false,
+          totalChargedCents,
+          screenshotPaths: screenshots,
+          error: `Cart total $${(totalChargedCents / 100).toFixed(2)} exceeds authorized $${(consentCents / 100).toFixed(2)} by >10%; aborting to require fresh consent`,
+          stoppedAt: 'price',
+        };
+      }
+    }
+
     if (dryRun) {
       const shot = `/tmp/city-purchase-dryrun-cart-${consent.id}.png`;
       await page.screenshot({ path: shot, fullPage: true });
