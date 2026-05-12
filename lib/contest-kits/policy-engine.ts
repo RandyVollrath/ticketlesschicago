@@ -586,13 +586,11 @@ function createBasicEvaluation(
   const fallbackArgument: ArgumentTemplate = {
     id: 'generic_contest',
     name: 'General Contest',
-    template: `I respectfully contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION].
-
-I believe this citation was issued in error and request the opportunity to present my case at a hearing.
+    template: `I contest citation #[TICKET_NUMBER] issued on [DATE] at [LOCATION] by written mail-in submission.
 
 [USER_GROUNDS]
 
-Thank you for your consideration.`,
+Under Chicago Municipal Code § 9-100-060, I assert all applicable codified defenses, including § 9-100-060(a)(7) (the violation did not in fact occur as charged). The City bears the burden of producing the issuing officer's contemporaneous field notes, the handheld device data with GPS coordinates and timestamp, and any photographs taken at the time of citation. If the City cannot establish the violation occurred as charged, dismissal is the appropriate remedy.`,
     requiredFacts: ['ticketNumber', 'date', 'location'],
     winRate: 0.15,
     supportingEvidence: [],

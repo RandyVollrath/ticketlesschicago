@@ -64,20 +64,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Strong contest grounds boost
-    const strongGrounds = [
-      'No visible or legible signage posted',
-      'Signs were obscured by trees, snow, or other objects',
-      'Meter was malfunctioning/broken',
-      'Valid permit was displayed but not visible to officer',
-      'Ticket issued outside posted restriction times'
-    ];
-
-    const hasStrongGround = contestGrounds?.some((g: string) =>
-      strongGrounds.some(sg => g.includes(sg))
+    // Stolen-plate on a camera/missing-plate ticket is the single strongest
+    // defense — § 9-102-050(c) dismisses the overwhelming majority. Worth far
+    // more than the +12 a generic strong ground gets.
+    const stolenPlateGround = contestGrounds?.some((g: string) =>
+      /plate.*stolen|stolen.*plate|lost.*or used without/i.test(g)
     );
+    const isCameraOrPlateCode =
+      violationCode === '9-102-010' ||
+      violationCode === '9-102-020' ||
+      violationCode === '9-101-020' ||
+      violationCode === '9-80-040';
+    if (stolenPlateGround && isCameraOrPlateCode) {
+      probability += 40; // case-dispositive defense
+    }
 
-    if (hasStrongGround) {
+    // Other strong codified-defense grounds (matches the new UI labels).
+    // Substring matches keep this resilient to small wording tweaks.
+    const strongGroundPatterns = [
+      /signs?\s+(were|are)\s+missing|missing\s+or\s+obscured|obscured\s+(by\s+|or\s+missing)/i,
+      /facts\s+alleged.*inconsistent|factual(ly)?\s+inconsistent/i,
+      /affirmative\s+compliance/i,
+      /not\s+the\s+owner\s+or\s+lessee/i,
+      /sold\s+or\s+transferred\s+before/i,
+      /valid\s+permit\s+was\s+displayed/i,
+      /vehicle\s+was\s+moved\s+before/i,
+      /meter\s+was\s+malfunction/i,
+      /issued\s+in\s+error/i,
+      /street\s+cleaning\s+did\s+not\s+actually\s+occur/i,
+    ];
+    const hasStrongGround = contestGrounds?.some((g: string) =>
+      strongGroundPatterns.some(re => re.test(g))
+    );
+    if (hasStrongGround && !stolenPlateGround) {
       probability += 12; // Strong legal grounds
     }
 

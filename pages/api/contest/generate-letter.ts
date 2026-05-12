@@ -314,16 +314,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Rate limit: max 5 letter generations per user per hour
-    // Prevents abuse of the Anthropic API (each call costs ~$0.02-0.05)
+    // Prevents abuse of the Anthropic API (each call costs ~$0.02-0.05).
+    // Column is `contest_letter` on ticket_contests (not `letter_content`,
+    // which lives on the separate `contest_letters` autopilot table); the
+    // old name silently failed the count query and the rate limit was a
+    // no-op until now.
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { count: recentGenerations } = await supabase
+    const { count: recentGenerations, error: rateLimitErr } = await supabase
       .from('ticket_contests')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .gte('updated_at', oneHourAgo)
-      .not('letter_content', 'is', null);
+      .not('contest_letter', 'is', null);
 
-    if (recentGenerations !== null && recentGenerations >= 5) {
+    if (rateLimitErr) {
+      console.error('Rate limit check error (allowing request):', rateLimitErr.message);
+    } else if (recentGenerations !== null && recentGenerations >= 5) {
       return res.status(429).json({
         error: 'Rate limit exceeded. You can generate up to 5 letters per hour. Please try again later.',
       });
@@ -408,6 +414,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ),
         hasEmergency: contestGrounds?.some(g =>
           g.toLowerCase().includes('emergency')
+        ),
+        // Derive structured facts from the codified-defense ground labels so
+        // the kit policy engine picks the right situational argument
+        // (vehicle_stolen, vehicle_sold, factually_inconsistent, etc.)
+        // instead of falling back to a weaker primary.
+        vehicleWasStolen:
+          plateStolenInput === true ||
+          contestGrounds?.some(g => /plate.*stolen|stolen.*plate|lost.*or used without/i.test(g)),
+        vehicleWasSold: contestGrounds?.some(g =>
+          /sold or transferred before the violation date/i.test(g)
+        ),
+        hasFootageIssue: contestGrounds?.some(g =>
+          /facts\s+alleged.*inconsistent|factual(ly)?\s+inconsistent/i.test(g)
+        ),
+        hasIdentificationIssue: contestGrounds?.some(g =>
+          /facts\s+alleged.*inconsistent|wrong (plate|state|vehicle)/i.test(g)
         ),
         // Non-resident detection for city sticker violations so the policy engine
         // can correctly score the non_resident argument in the initial evaluation
@@ -1469,6 +1491,22 @@ INSTRUCTIONS:
         ),
         hasEmergency: contestGrounds?.some(g =>
           g.toLowerCase().includes('emergency')
+        ),
+        // Derive structured facts from the codified-defense ground labels so
+        // the kit policy engine picks the right situational argument
+        // (vehicle_stolen, vehicle_sold, factually_inconsistent, etc.)
+        // instead of falling back to a weaker primary.
+        vehicleWasStolen:
+          plateStolenInput === true ||
+          contestGrounds?.some(g => /plate.*stolen|stolen.*plate|lost.*or used without/i.test(g)),
+        vehicleWasSold: contestGrounds?.some(g =>
+          /sold or transferred before the violation date/i.test(g)
+        ),
+        hasFootageIssue: contestGrounds?.some(g =>
+          /facts\s+alleged.*inconsistent|factual(ly)?\s+inconsistent/i.test(g)
+        ),
+        hasIdentificationIssue: contestGrounds?.some(g =>
+          /facts\s+alleged.*inconsistent|wrong (plate|state|vehicle)/i.test(g)
         ),
         cleaningDidNotOccur: true,
       };
