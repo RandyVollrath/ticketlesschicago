@@ -639,17 +639,13 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
           background: '#FEF3C7', border: '1px solid #FDE68A',
           fontSize: 13, color: '#78350F', lineHeight: 1.5,
         }}>
-          <strong>🕒 This ticket happened {t.daysSinceIssue} days ago — before you found us.</strong>{' '}
-          The 21-day mail-contest deadline already passed, so this one is much harder to undo. If you'd
-          been on Autopilot when it was issued, we would have caught it within days of the city posting it,
-          filed the FOIA request for the cited address and officer notes inside the deadline, drafted a
-          contest letter using the appropriate template for this violation type, and prompted you to add
-          any supporting evidence (photos, receipts, records) before we mailed it.{' '}
-          <strong>Any new ticket on your plate going forward gets that treatment.</strong>
+          <strong>🕒 Issued {t.daysSinceIssue} days ago — before you found us.</strong>{' '}
+          On Autopilot, we would have caught this in time and filed the contest before the deadline.{' '}
+          <strong>Any new ticket on your plate from today on gets that treatment.</strong>
         </div>
       )}
 
-      {t.baseWinRate != null && (
+      {t.baseWinRate != null && t.recommendation !== 'skip' && (
         <div style={{ marginTop: 10, fontSize: 13, color: COLORS.slate }}>
           Historical dismissal rate for this violation type: <strong style={{ color: COLORS.deepHarbor }}>{Math.round(t.baseWinRate * 100)}%</strong>{' '}
           <span style={{ color: COLORS.slate }}>(Chicago FOIA dataset)</span>
