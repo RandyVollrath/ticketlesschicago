@@ -134,6 +134,9 @@
     },
     "pages/api/cron/renewal-sentinel.ts": {
       "maxDuration": 120
+    },
+    "pages/api/cron/process-granted-renewals.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [
@@ -312,6 +315,10 @@
     {
       "path": "/api/cron/renewal-sentinel",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/process-granted-renewals",
+      "schedule": "30 * * * *"
     }
   ],
   "headers": [
