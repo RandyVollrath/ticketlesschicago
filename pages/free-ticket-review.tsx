@@ -640,10 +640,12 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
           fontSize: 13, color: '#78350F', lineHeight: 1.5,
         }}>
           <strong>🕒 This ticket happened {t.daysSinceIssue} days ago — before you found us.</strong>{' '}
-          The 21-day mail-contest deadline already passed, so this one is much harder to undo. But if you'd
-          been on Autopilot when it was issued, we'd have caught it within days of the city posting it,
-          filed the FOIA + contest letter inside the deadline, and run the {t.templateArgumentName ? `"${t.templateArgumentName}" ` : ''}
-          defense for you automatically. <strong>Any new ticket on your plate going forward gets that treatment.</strong>
+          The 21-day mail-contest deadline already passed, so this one is much harder to undo. If you'd
+          been on Autopilot when it was issued, we would have caught it within days of the city posting it,
+          filed the FOIA request for the cited address and officer notes inside the deadline, drafted a
+          contest letter using the appropriate template for this violation type, and prompted you to add
+          any supporting evidence (photos, receipts, records) before we mailed it.{' '}
+          <strong>Any new ticket on your plate going forward gets that treatment.</strong>
         </div>
       )}
 
