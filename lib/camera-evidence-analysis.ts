@@ -36,6 +36,11 @@ export interface SignalObservation {
   amberDurationSec: number | null;
   /** Seconds elapsed in the red phase when this photo was captured */
   timeIntoRedPhaseSec: number | null;
+  /** Required: one-sentence description of where the analyzer thinks the painted
+   *  stop bar is in Photo 1, with a landmark reference (or admission that it
+   *  isn't clearly visible). Lets a human auditor verify the reasoning before
+   *  any "past stop bar" claim drives a contest letter. */
+  stopBarLocationDescription: string | null;
   /** Estimated feet the vehicle is past the stop bar in Photo 1. null when AI is unsure. */
   estimatedFeetPastStopBar: number | null;
   /** Posted speed limit (mph) visible on a posted sign in the photo, or known by intersection */
@@ -119,16 +124,25 @@ CRITICAL RULES:
 3. The signal state must be what the photo actually shows facing the cited approach.
 4. "No Turn on Red" signage detection: only mark true if the SIGN IS CLEARLY VISIBLE in the photo. Mark "unknown" otherwise — never assume.
 5. Confidence 1.0 means "I can read this clearly." Confidence 0.5 means "I think so but the image is blurry." Anything below 0.3 should be null.
-6. PHOTO 1 SPEC COMPLIANCE CHECK — IMPORTANT NEW REQUIREMENT.
-   The City of Chicago's own published "Automated Red-Light Camera Enforcement Violation Processing Methods & Criteria" (CDOT/DOF, eff. 03/15/2018) specifies:
-     "Photo 1 — shows the front tires of the vehicle BEFORE the stop bar with the red signal indication visible in the photo"
-     "Photo 2 — shows the rear tires of the vehicle PAST the stop bar with a red signal indication visible in the photo"
-   Photos labeled "Photo 1 of 2" or "1 of 2" in the City's evidence package are supposed to show the vehicle's front tires NOT YET past the stop bar.
-   - If you see "Photo 1 of 2" / "1 of 2" AND the front tires are clearly already past the stop bar / well inside the intersection, set photo1FrontTiresPosition = "past_stop_bar". This is a SIGNIFICANT defense finding because it means the City's own processing criteria were not followed.
-   - If "Photo 1 of 2" shows the front tires before / at the stop bar (spec-compliant), set "before_stop_bar".
-   - If you cannot tell from the photo which is Photo 1, or the stop bar location isn't clearly visible, set "unclear".
-   - Be conservative: only mark "past_stop_bar" if you are clearly looking at Photo 1 (look for "Photo 1 of 2" or "1 of 2" labels on the image) AND the entire front tire is past the painted stop bar. When in doubt, mark "unclear".
-   When photo1FrontTiresPosition = "past_stop_bar" with confidence ≥ 0.6, ALSO add a contestable entry with supports="photo1_spec_mismatch".
+
+6. STOP-BAR LOCATION — READ THIS CAREFULLY. This is the most error-prone field in this whole analysis and prior versions of the analyzer have been wrong on it.
+
+   A "stop bar" is a SOLID white line painted on the road, typically 12–24 inches thick, running PERPENDICULAR to the direction of travel, located just before the crosswalk on the approach side. It is NOT the crosswalk striping (the parallel paired lines crossing the road). It is NOT the lane-divider dashes.
+
+   Before judging the cited vehicle's position, you must FIRST locate the stop bar in the photo and describe what you see:
+   - Is a solid thick white line clearly visible perpendicular to the cited vehicle's direction of travel?
+   - If yes, describe its location relative to a fixed landmark in the photo (a building corner, a parked car, a signal pole, the crosswalk striping). Example: "the stop bar is visible as a solid white line approximately 6 feet in front of the parked gray sedan on the right side of the frame."
+   - If no — if you cannot see a clear, solid, perpendicular painted line that is distinguishable from the crosswalk or other markings — say so honestly. Snow, slush, lane-line repaint, and oblique camera angles often hide the stop bar. The honest answer in that case is "unclear" with confidence 0.
+
+   PRIOR PROBABILITY: Chicago's published criteria (CDOT/DOF, eff. 03/15/2018) require Photo 1 of 2 to show the vehicle BEFORE the stop bar. The City overwhelmingly follows this protocol. Therefore "past_stop_bar in Photo 1" is a LOW-PRIOR claim. Only assert it when you can identify the stop bar as a specific painted feature AND show the vehicle's front tires are clearly past that specific feature. "The car is mid-intersection so it must be past the stop bar" is NOT sufficient — the car could be on the cross-street approach lane with the stop bar still ahead of it.
+
+   When in any doubt, return:
+     photo1FrontTiresPosition: "unclear"
+     photo1FrontTiresConfidence: 0
+     estimatedFeetPastStopBar: null
+   This is the SAFE default and will NOT produce a wrong contest defense. Asserting "past_stop_bar" with high confidence based on a guess WILL produce a wrong contest defense.
+
+   Only when you can both (a) point to the stop bar as a specific painted line by reference to landmarks AND (b) clearly see the front tires PAST that specific line, set photo1FrontTiresPosition = "past_stop_bar". In that case ALSO add a contestable entry with supports="photo1_spec_mismatch", and quote the landmark reference in the observation text so a human reviewer can verify.
 
 Return ONLY a JSON object with this exact shape (no markdown, no commentary):
 {
@@ -144,7 +158,8 @@ Return ONLY a JSON object with this exact shape (no markdown, no commentary):
     "signalStateConfidence": 0.0 to 1.0,
     "amberDurationSec": <number from on-photo metadata "Amber time: X.X S", or null>,
     "timeIntoRedPhaseSec": <number from on-photo metadata "Time into phase: X.X S", or null>,
-    "estimatedFeetPastStopBar": <integer estimate of how many feet past the painted stop bar / crosswalk the cited vehicle appears to be in Photo 1, or null. Use intersection-width landmarks: a single travel lane is ~12 ft, a four-lane road is ~48 ft curb-to-curb. Be conservative — if the car is just past the stop bar say 10-15, mid-intersection say 25-35, far side say 40-50.>,
+    "stopBarLocationDescription": "<one sentence describing where you see the painted stop bar in Photo 1 by reference to a fixed landmark, OR 'stop bar not clearly visible' if it isn't. This field is REQUIRED for a human auditor to verify your reasoning.>",
+    "estimatedFeetPastStopBar": <integer estimate ONLY when stopBarLocationDescription points to a specific visible stop bar AND the front tires are clearly past it. Otherwise null. Use intersection-width landmarks: a single travel lane is ~12 ft. Never invent a number.>,
     "postedSpeedLimitMph": <integer from posted-speed sign visible in the photo, or null>,
     "photo1FrontTiresPosition": "before_stop_bar" | "past_stop_bar" | "unclear",
     "photo1FrontTiresConfidence": 0.0 to 1.0
@@ -280,21 +295,7 @@ function parseFindings(raw: string): Omit<CameraEvidenceFindings, 'rawResponse' 
       vehicleBodyStyle: typeof obj.vehicle?.vehicleBodyStyle === 'string' ? obj.vehicle.vehicleBodyStyle : null,
       vehicleMakeModel: typeof obj.vehicle?.vehicleMakeModel === 'string' ? obj.vehicle.vehicleMakeModel : null,
     },
-    signal:
-      obj.signal && typeof obj.signal === 'object'
-        ? {
-            signalState: ['red', 'yellow', 'green', 'unknown'].includes(obj.signal.signalState) ? obj.signal.signalState : 'unknown',
-            signalStateConfidence: clamp01(obj.signal.signalStateConfidence),
-            amberDurationSec: typeof obj.signal.amberDurationSec === 'number' && obj.signal.amberDurationSec > 0 ? obj.signal.amberDurationSec : null,
-            timeIntoRedPhaseSec: typeof obj.signal.timeIntoRedPhaseSec === 'number' && obj.signal.timeIntoRedPhaseSec >= 0 ? obj.signal.timeIntoRedPhaseSec : null,
-            estimatedFeetPastStopBar: typeof obj.signal.estimatedFeetPastStopBar === 'number' && obj.signal.estimatedFeetPastStopBar > 0 ? Math.round(obj.signal.estimatedFeetPastStopBar) : null,
-            postedSpeedLimitMph: typeof obj.signal.postedSpeedLimitMph === 'number' && obj.signal.postedSpeedLimitMph > 0 ? Math.round(obj.signal.postedSpeedLimitMph) : null,
-            photo1FrontTiresPosition: ['before_stop_bar', 'past_stop_bar', 'unclear'].includes(obj.signal.photo1FrontTiresPosition)
-              ? obj.signal.photo1FrontTiresPosition
-              : 'unclear',
-            photo1FrontTiresConfidence: clamp01(obj.signal.photo1FrontTiresConfidence),
-          }
-        : null,
+    signal: obj.signal && typeof obj.signal === 'object' ? buildSignalObservation(obj.signal) : null,
     scene: {
       visibleLocation: typeof obj.scene?.visibleLocation === 'string' ? obj.scene.visibleLocation : null,
       weatherConditions: typeof obj.scene?.weatherConditions === 'string' ? obj.scene.weatherConditions : null,
@@ -341,4 +342,61 @@ function clamp01(n: any): number {
   if (x < 0) return 0;
   if (x > 1) return 1;
   return x;
+}
+
+/**
+ * Build the signal observation, enforcing the "if you can't locate the stop bar,
+ * you don't get to claim a position relative to it" rule. The vision model is
+ * told this in the prompt, but a deterministic guard here means a mis-prompted
+ * future model can't silently produce a wrong contest defense.
+ */
+function buildSignalObservation(s: any): SignalObservation {
+  const stopBarLocationDescription =
+    typeof s.stopBarLocationDescription === 'string' && s.stopBarLocationDescription.trim().length > 0
+      ? s.stopBarLocationDescription.trim()
+      : null;
+
+  // Did the model actually find a stop bar? Conservative heuristic: if the
+  // description contains "not visible", "not clear", "cannot see", "unclear",
+  // "no stop bar", "obscured", or "off-frame", we treat it as not located.
+  const desc = (stopBarLocationDescription || '').toLowerCase();
+  const stopBarLocated =
+    stopBarLocationDescription !== null &&
+    !/(not (clearly )?visible|not clear|cannot see|cannot identify|unclear|no stop bar|obscured|off[- ]frame|don'?t see|do not see)/i.test(desc);
+
+  let photo1FrontTiresPosition: 'before_stop_bar' | 'past_stop_bar' | 'unclear' = ['before_stop_bar', 'past_stop_bar', 'unclear'].includes(
+    s.photo1FrontTiresPosition,
+  )
+    ? s.photo1FrontTiresPosition
+    : 'unclear';
+  let photo1FrontTiresConfidence = clamp01(s.photo1FrontTiresConfidence);
+  let estimatedFeetPastStopBar: number | null =
+    typeof s.estimatedFeetPastStopBar === 'number' && s.estimatedFeetPastStopBar > 0
+      ? Math.round(s.estimatedFeetPastStopBar)
+      : null;
+
+  // Hard guard: if the stop bar wasn't actually located, any "past_stop_bar"
+  // claim is a guess and we drop it. This is the fix for the silent-overclaim
+  // bug where the analyzer asserted "30 ft past stop bar" without ever
+  // pointing at the stop bar.
+  if (!stopBarLocated && photo1FrontTiresPosition === 'past_stop_bar') {
+    photo1FrontTiresPosition = 'unclear';
+    photo1FrontTiresConfidence = 0;
+    estimatedFeetPastStopBar = null;
+  }
+  if (!stopBarLocated) {
+    estimatedFeetPastStopBar = null;
+  }
+
+  return {
+    signalState: ['red', 'yellow', 'green', 'unknown'].includes(s.signalState) ? s.signalState : 'unknown',
+    signalStateConfidence: clamp01(s.signalStateConfidence),
+    amberDurationSec: typeof s.amberDurationSec === 'number' && s.amberDurationSec > 0 ? s.amberDurationSec : null,
+    timeIntoRedPhaseSec: typeof s.timeIntoRedPhaseSec === 'number' && s.timeIntoRedPhaseSec >= 0 ? s.timeIntoRedPhaseSec : null,
+    stopBarLocationDescription,
+    estimatedFeetPastStopBar,
+    postedSpeedLimitMph: typeof s.postedSpeedLimitMph === 'number' && s.postedSpeedLimitMph > 0 ? Math.round(s.postedSpeedLimitMph) : null,
+    photo1FrontTiresPosition,
+    photo1FrontTiresConfidence,
+  };
 }
