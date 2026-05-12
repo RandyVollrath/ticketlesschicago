@@ -96,7 +96,7 @@ const MPH_TO_FPS = 1.46667; // 1 mph = 1.46667 ft/s
 export function computeEnteredOnYellowArgument(input: KinematicInputs): KinematicResult {
   const { amberSec, timeIntoRedSec, postedSpeedMph, estimatedFeetPastStopBar, userAppGps } = input;
 
-  // Sanity check inputs. If anything is missing, bail with a qualitative-only paragraph.
+  // Sanity check inputs. If anything is missing, bail.
   if (
     !Number.isFinite(amberSec) ||
     !Number.isFinite(timeIntoRedSec) ||
@@ -104,6 +104,35 @@ export function computeEnteredOnYellowArgument(input: KinematicInputs): Kinemati
     amberSec <= 0 ||
     postedSpeedMph <= 0
   ) {
+    return {
+      computed: false,
+      requiredSpeedMphIfEnteredOnRed: NaN,
+      preRedEntryTimeAtPostedSpeedSec: NaN,
+      paragraph: '',
+      confidence: 0,
+      usedUserAppGps: false,
+    };
+  }
+
+  // HONESTY GUARD — added 2026-05-12 after a session in which the analyzer
+  // hallucinated "30 ft past stop bar / 0.88 confidence" on a Photo 1 that
+  // on visual review actually showed the vehicle BEHIND the stop bar.
+  //
+  // The entered-on-yellow kinematic argument requires knowing where the
+  // vehicle was relative to the stop bar. From a single oblique camera
+  // photo, AI vision cannot reliably measure this — it has a strong
+  // tendency to confuse crosswalk striping for the stop bar.
+  //
+  // The argument is only sound when we have a non-photographic source of
+  // truth. Today, that is the user's mobile-app GPS trace (real measurement
+  // of vehicle motion through the intersection). When CDOT FOIA produces
+  // stop-bar coordinates (see docs/FOIA_CDOT_STOP_BAR_GEOMETRY.md), we can
+  // re-enable the photo-only branch by joining estimatedFeetPastStopBar
+  // against the FOIA-derived ground truth.
+  //
+  // Until then: refuse to compute without GPS. The system would rather
+  // emit no defense than emit a defense built on a photo guess.
+  if (!userAppGps) {
     return {
       computed: false,
       requiredSpeedMphIfEnteredOnRed: NaN,

@@ -274,28 +274,42 @@ export function renderFindingsParagraph(
   const lines: string[] = [];
   const f = findings;
 
-  // ── STATUTORY + ADMINISTRATIVE FRAMEWORK ──
-  // Every red-light camera letter leads with the controlling legal premise:
-  // the violation is ENTRY on red, not failure to clear. Three independent
-  // sources — Illinois state statute, Illinois automated-enforcement statute,
-  // and Chicago's own published processing criteria + public FAQ — all use
-  // the same standard. Hearing officers see this enough to know it, but
-  // reciting it verbatim eliminates any ambiguity and prevents the City's
-  // representative from glossing past it.
+  // ── WHAT WE WILL AND WILL NOT CITE ──
   //
-  // We include this block whenever we have ANY signal-related observation
-  // (kinematic math, signal_state contestable, or Photo 1 spec issue) so
-  // the legal framework is anchored before the factual argument lands.
+  // Two defenses were previously emitted from this function and have been
+  // removed because they require knowing where the painted stop bar is and
+  // we have no honest source of truth for that:
+  //
+  //   • The entered-on-yellow kinematic argument from a photo alone.
+  //   • The Photo 1 spec-mismatch defense (City's criteria require Photo 1
+  //     to show front tires before the stop bar — but we can't verify the
+  //     City failed that criterion without knowing where the stop bar is).
+  //
+  // Both relied on AI vision to estimate stop-bar position from a single
+  // oblique camera photo, which is not a reliable measurement (it can
+  // confuse crosswalk striping for the stop bar, especially in snow/slush
+  // or at oblique angles). Until CDOT FOIA produces stop-bar coordinates
+  // (see docs/FOIA_CDOT_STOP_BAR_GEOMETRY.md) — OR until we have an
+  // independent measurement from the user's mobile-app GPS — these two
+  // defenses must remain dormant.
+  //
+  // What remains, all of which is verifiable without a stop-bar estimate:
+  //   • Plate mismatch (visible plate vs cited plate)
+  //   • Plate illegibility
+  //   • Short-amber observation (when amber ≤ 3.0s — Chicago/MUTCD policy
+  //     question, not a position claim)
+  //   • Right-turn-on-red exception (when the AI observed a stop+turn)
+  //   • GPS-based kinematic argument (when user app data is present —
+  //     this is real measurement, not photo estimation)
+
   const hasSignalArgument =
     (f.signal && f.signal.amberDurationSec !== null && f.signal.timeIntoRedPhaseSec !== null) ||
-    f.contestable.some((c) => c.supports === 'signal_state' && c.confidence >= 0.6) ||
-    (f.signal && f.signal.photo1FrontTiresPosition === 'past_stop_bar' && f.signal.photo1FrontTiresConfidence >= 0.6) ||
     !!userAppGps;
   if (hasSignalArgument) {
     lines.push(renderStatutoryFrameworkBlock());
   }
 
-  // Plate mismatch: only assert if confidence is high
+  // Plate mismatch / illegibility — these don't depend on stop bar location.
   if (f.vehicle.visiblePlateConfidence >= 0.6 && f.vehicle.visiblePlate) {
     const seen = f.vehicle.visiblePlate.replace(/\s/g, '').toUpperCase();
     const expected = expectedPlate.replace(/\s/g, '').toUpperCase();
@@ -310,58 +324,52 @@ export function renderFindingsParagraph(
     );
   }
 
-  // Kinematic (entered-on-yellow) argument. Only fires when we have the
-  // signal metadata extracted from the photo and a posted speed limit.
-  // The argument is the strongest contest in this kit — when we can run
-  // the math, we lead with it.
+  // GPS-based kinematic argument — only fires when the user's mobile app
+  // recorded the crossing. This is real second-source measurement, not a
+  // photo guess. computeEnteredOnYellowArgument now refuses to compute
+  // without userAppGps (see honesty guard at top of red-light-kinematics.ts).
   const sig = f.signal;
   if (
+    userAppGps &&
     sig &&
     sig.amberDurationSec !== null &&
-    sig.timeIntoRedPhaseSec !== null &&
-    sig.timeIntoRedPhaseSec < 1.5 // only meaningful when photo was taken in the first ~1.5s of red
+    sig.timeIntoRedPhaseSec !== null
   ) {
-    const postedSpeed = sig.postedSpeedLimitMph ?? 30; // 30 mph is Chicago's default urban posted speed
+    const postedSpeed = sig.postedSpeedLimitMph ?? 30;
     const kin = computeEnteredOnYellowArgument({
       amberSec: sig.amberDurationSec,
       timeIntoRedSec: sig.timeIntoRedPhaseSec,
       postedSpeedMph: postedSpeed,
-      estimatedFeetPastStopBar: sig.estimatedFeetPastStopBar,
-      userAppGps: userAppGps ?? null,
+      estimatedFeetPastStopBar: null, // do not pass photo estimate; GPS branch only
+      userAppGps,
     });
     if (kin.computed && kin.paragraph) {
       lines.push(kin.paragraph);
     }
   } else if (userAppGps) {
-    // Photo metadata didn't unlock the math, but GPS still does — emit
-    // a GPS-only paragraph so app users still get their evidence cited.
+    // No photo signal metadata but GPS still present — emit GPS-only paragraph.
     lines.push(renderGpsOnlyParagraph(userAppGps));
-  } else {
-    // Fall back to AI's free-text signal observations when we can't run the math
-    const signalContestable = f.contestable.filter((c) => c.supports === 'signal_state' && c.confidence >= 0.6);
-    if (signalContestable.length > 0) {
-      const top = signalContestable[0];
-      lines.push(`Based on review of the City's own violation imagery and metadata: ${top.observation}`);
-    }
   }
 
-  // Right-turn-on-red
+  // Short-amber observation — a factual reading of the metadata strip,
+  // not a position claim. Honest at any approach speed: 3.0s is the floor
+  // of MUTCD guidance for the slowest urban approaches and is below the
+  // ITE-recommended interval for any approach faster than ~30 mph.
+  if (
+    sig &&
+    sig.amberDurationSec !== null &&
+    sig.amberDurationSec <= 3.0
+  ) {
+    lines.push(
+      `The City's own evidence (Photo 1 metadata strip) records an amber phase duration of ${sig.amberDurationSec.toFixed(1)} seconds at this approach. Federal MUTCD guidance and Institute of Transportation Engineers (ITE) practice recommend longer amber intervals for any approach speed above the lowest urban range; a 3.0-second amber is at or below the floor of that range and provides minimal margin for a driver to perceive, decide, and stop safely. The brevity of the amber is itself a factor in whether a citation should issue against a particular driver, and I respectfully ask the hearing officer to weigh it.`,
+    );
+  }
+
+  // Right-turn-on-red — depends on the AI observing a stop+turn sequence,
+  // not on stop bar position. Honest to cite when present.
   const rtorContestable = f.contestable.filter((c) => c.supports === 'right_turn_on_red' && c.confidence >= 0.6);
   if (rtorContestable.length > 0) {
     lines.push(`Based on review of the City's own violation imagery: ${rtorContestable[0].observation}`);
-  }
-
-  // ── PHOTO 1 SPEC-MISMATCH DEFENSE ──
-  // The City's published processing criteria say Photo 1 must show the
-  // vehicle's front tires BEFORE the stop bar. When our analyzer reports
-  // Photo 1 actually shows the front tires past the stop bar, the issuance
-  // failed the City's own criteria — an independent ground for dismissal.
-  if (
-    f.signal &&
-    f.signal.photo1FrontTiresPosition === 'past_stop_bar' &&
-    f.signal.photo1FrontTiresConfidence >= 0.6
-  ) {
-    lines.push(renderPhoto1SpecMismatchParagraph());
   }
 
   if (lines.length === 0) return null;
@@ -401,27 +409,6 @@ The duty under Illinois law at a steady red signal is to STOP BEFORE ENTERING th
     "Red Light Cameras do not take pictures of vehicles legally turning right on red after a complete stop ... or caught in the intersection after the light turns red (for example, vehicles that entered the intersection on yellow, or were already in the intersection and waiting to make a left turn)."
 
 The legal standard is therefore unambiguous and consistent across the Illinois Vehicle Code, the Chicago administrative criteria, and the City's own public explanation: the violation is ENTRY into the intersection on red. A vehicle that entered on green or yellow and was still within the intersection when the signal changed to red has not violated 625 ILCS 5/11-306 — and accordingly there is nothing for the automated enforcement system to lawfully record as a violation under 625 ILCS 5/11-208.6. Indeed, per source (4) above, the City itself has publicly committed not to issue tickets in that scenario.`
-  );
-}
-
-/**
- * Defense paragraph for the case where the issued Photo 1 itself fails
- * the City's own published criteria. CDOT/DOF spec: Photo 1 shows front
- * tires BEFORE the stop bar. If Photo 1 actually shows front tires past
- * the stop bar, the issuance violated the criteria — independent ground
- * for dismissal even before the kinematic argument is reached.
- */
-function renderPhoto1SpecMismatchParagraph(): string {
-  return (
-`PROCESSING-CRITERIA FAILURE — Photo 1 does not match the City's own published specification:
-
-Per the City of Chicago's "Automated Red-Light Camera Enforcement Violation Processing Methods & Criteria" (CDOT/DOF, effective 03/15/2018, available on chicago.gov), the photographic evidence package is required to be composed as follows:
-  • "Photo 1 — shows the front tires of the vehicle BEFORE the stop bar with the red signal indication visible in the photo"
-  • "Photo 2 — shows the rear tires of the vehicle past the stop bar with a red signal indication visible in the photo"
-
-Photo 1 in the issued evidence package for this citation does NOT show the front tires before the stop bar; it shows the front tires already past the stop bar, inside the intersection. The City's own processing criteria require an image that captures the moment of entry — front tires not yet over the line — to substantiate that entry occurred during the red phase. The image actually issued does not do this; it shows a vehicle already within the intersection.
-
-This is an independent ground for dismissal. Where the City's own administrative criteria for ticket issuance have not been satisfied, the citation is procedurally defective. I respectfully request that the hearing officer compare the issued Photo 1 against the City's published Photo 1 specification and dismiss this citation on that basis, separate and apart from any other defense raised.`
   );
 }
 
