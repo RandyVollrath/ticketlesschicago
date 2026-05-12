@@ -1253,6 +1253,7 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
               longitude: lng,
               ticketAddress: contest.ticket_location,
               violationCode: contest.violation_code || null,
+              violationDescription: contest.violation_description || null,
             },
             { supabase },
           );
@@ -1558,6 +1559,57 @@ ${uicFindings.some(f => f.id === 'address_transposition_water' || f.id === 'addr
     }
 
     // =====================================================================
+    // DUPLICATE-CITATION CHECK — § 9-100-020
+    // "No person shall be required to pay more than one fine for parking,
+    // standing or compliance violations occurring within the same hour to
+    // the same vehicle." We use 24h as the practical bound (City fixed the
+    // 1-hour rule for compliance violations; we err on the generous side).
+    // If we find another detected_tickets row for the same plate and same
+    // violation code within 24 hours of this one, surface as a defense.
+    // =====================================================================
+    let duplicateCitation: {
+      hasDuplicate: boolean;
+      otherTicketNumber: string | null;
+      hoursBetween: number;
+      sameViolationCode: boolean;
+    } | null = null;
+    if (contest.license_plate && contest.violation_code && contest.ticket_date) {
+      try {
+        const tdateMs = new Date(contest.ticket_date).getTime();
+        if (!isNaN(tdateMs)) {
+          const windowStart = new Date(tdateMs - 24 * 60 * 60 * 1000).toISOString();
+          const windowEnd = new Date(tdateMs + 24 * 60 * 60 * 1000).toISOString();
+          const { data: dupRows } = await supabase
+            .from('detected_tickets')
+            .select('ticket_number, violation_code, created_at, violation_date')
+            .eq('plate', contest.license_plate.toUpperCase())
+            .gte('violation_date', windowStart)
+            .lte('violation_date', windowEnd)
+            .neq('ticket_number', contest.ticket_number || '__sentinel__')
+            .limit(5);
+          const matching = (dupRows || []).filter(r =>
+            r.violation_code === contest.violation_code
+          );
+          if (matching.length > 0) {
+            const other = matching[0];
+            const hoursBetween = Math.abs(
+              (new Date(other.violation_date || other.created_at).getTime() - tdateMs) / (1000 * 60 * 60)
+            );
+            duplicateCitation = {
+              hasDuplicate: true,
+              otherTicketNumber: other.ticket_number || null,
+              hoursBetween: Math.round(hoursBetween * 10) / 10,
+              sameViolationCode: true,
+            };
+            console.log(`  ⚠️ Duplicate citation detected: ticket #${other.ticket_number} for same plate + code, ${duplicateCitation.hoursBetween}h apart`);
+          }
+        }
+      } catch (e) {
+        console.log('  Duplicate-citation check skipped:', (e as any)?.message);
+      }
+    }
+
+    // =====================================================================
     // LEAD-DEFENSE PRIORITY CASCADE
     // Multiple defense blocks can each instruct the LLM to "LEAD" the letter.
     // When two or more apply at once (e.g. camera ticket on a stolen plate
@@ -1606,6 +1658,7 @@ ${uicFindings.some(f => f.id === 'address_transposition_water' || f.id === 'addr
       else if (hasFactualInconsistency) leadDefense = 'factual_inconsistency';
       else if (hasLateNotice) leadDefense = 'late_notice_90';
       else if (hasAddressInvalid) leadDefense = 'address_invalid';
+      else if (duplicateCitation?.hasDuplicate) leadDefense = 'duplicate_citation';
       else if (hasComplianceCorrected) leadDefense = 'compliance_corrected';
       else if (hasNonResident) leadDefense = 'non_resident';
       else if (hasStreetCleaningNotScheduled) leadDefense = 'street_cleaning_not_scheduled';
@@ -2095,6 +2148,33 @@ LEGAL BASIS: Chicago Municipal Code § 9-102-050(c) is a codified statutory exem
 
 INSTRUCTIONS: This is the LEAD argument — do not bury it. Two sentences are enough. State (1) the plate was stolen on or before the violation date${stolenPlateDefense.reportNumber ? ' and reference the RD number' : ''}, and (2) cite § 9-102-050(c) and request dismissal on that codified ground. Do NOT also argue yellow timing, vehicle ID, etc. — the stolen-plate defense alone is dispositive.
 ` : ''}
+${(violationType === 'red_light' || violationType === 'speed_camera' ||
+  contest.violation_code === '9-102-010' || contest.violation_code === '9-102-020' ||
+  /red\s*light|speed\s*camera|automated\s+(traffic|enforcement)/i.test(contest.violation_description || '')) ? `
+=== 30-DAY VENDOR NOTICE RULE (625 ILCS 5/11-208.6) — SUPPORTING ARGUMENT ===
+
+LEGAL BASIS: Illinois Vehicle Code 625 ILCS 5/11-208.6 imposes TWO separate timing requirements on automated-enforcement notices:
+(a) Notice must be mailed within 90 days of the violation (the "90-day cap"), AND
+(b) Notice must be mailed within 30 days of the City receiving the violation information from its vendor (the "30-day-from-vendor" rule).
+
+We can independently verify (a) from the violation date and the postmark on the notice. We cannot independently verify (b) without the City's vendor-data ledger.
+
+INSTRUCTIONS: In ONE short paragraph (not as the lead unless 90-day late notice is already leading), include this language:
+
+"Under 625 ILCS 5/11-208.6, automated-enforcement violation notices must be mailed both within 90 days of the violation AND within 30 days of the date the City received the violation information from its enforcement vendor. I request the City produce: (i) the date the City received this violation record from its automated-enforcement vendor, and (ii) the date of mailing of this notice. If the interval between vendor receipt and notice mailing exceeds 30 days, the notice is procedurally deficient under § 11-208.6 and must be dismissed."
+
+This is a SUPPORTING argument because we don't have the vendor receipt date — we're asking the City to produce it. If they can't, the citation is procedurally deficient. If they do produce it and it's within 30 days, the argument doesn't help but we lose nothing by asking.` : ''}
+
+${duplicateCitation?.hasDuplicate ? `
+=== DUPLICATE-CITATION DEFENSE${isLeadDefense('duplicate_citation') ? ' — LEAD WITH THIS' : ' — SUPPORTING ARGUMENT'} (§ 9-100-020) ===
+The same vehicle was cited for the same compliance violation twice within ${duplicateCitation.hoursBetween} hours. The other citation is ticket # ${duplicateCitation.otherTicketNumber || '[on file]'}.
+
+LEGAL BASIS: Chicago Municipal Code § 9-100-020 prohibits issuing multiple compliance citations to the same vehicle within a short window for the same violation. Two citations for the same vehicle and same code within 24 hours indicates duplicate enforcement.
+
+INSTRUCTIONS: ${isLeadDefense('duplicate_citation')
+  ? `Lead the letter with this in two sentences: (1) state that ticket # ${duplicateCitation.otherTicketNumber || '[other ticket]'} was issued to the same vehicle for the same violation ${duplicateCitation.hoursBetween} hours apart; (2) cite § 9-100-020 and request dismissal of this citation as a duplicate.`
+  : `Use as a SUPPORTING argument — a higher-priority defense already leads the letter. State in one sentence that this is a duplicate citation under § 9-100-020 (ticket # ${duplicateCitation.otherTicketNumber || '[other]'} also issued), then move on.`}
+` : ''}
 ${(() => {
   // === COMPLIANCE CORRECTED (§ 9-100-060(a)(8)) ===
   // Distinct from "I had it the whole time" (affirmative compliance). This
@@ -2558,17 +2638,22 @@ City's response summary: "${bodyPreview}"
 INSTRUCTIONS: Mention that a FOIA request was filed and the city responded. If records are incomplete (no officer field notes, no photographs, no device data), argue the incomplete production means key evidence is missing.`);
 
     } else if (foiaFinanceStatus.status === 'sent' && foiaFinanceStatus.daysElapsed >= 7) {
-      foiaSections.push(`=== FOIA EVIDENCE REQUEST — CITY FAILED TO RESPOND ===
+      foiaSections.push(`=== FOIA EVIDENCE REQUEST — CITY FAILED TO RESPOND IN 5 BUSINESS DAYS ===
 
 On ${sentFormatted}, a Freedom of Information Act request (5 ILCS 140) was submitted to the Department of Finance requesting the enforcement records for this citation.
 
-As of this letter, ${foiaFinanceStatus.daysElapsed} days have elapsed and the Department has NOT produced the requested records, exceeding the statutory five-business-day response period.
+As of this letter, ${foiaFinanceStatus.daysElapsed} days have elapsed and the Department has NOT produced the requested records, exceeding the statutory five-business-day response period imposed by 5 ILCS 140/3(d).
 
-INSTRUCTIONS: This is a SUPPLEMENTARY procedural-fairness argument. Do NOT use the phrase "due process violation" — it is too strong as a blanket argument and invites hearing-officer pushback. Do NOT claim this alone prevents the city from establishing a prima facie case (the hearing officer has independent access to the violation photos/video). Use this safer framing, adapted to the letter: "Respondent timely requested records relevant to preparing a defense. The City failed to timely produce them, which impaired respondent's ability to evaluate the evidence and present a full defense. Any ambiguity created by the missing records should be construed against the City, and the citation should be dismissed." Include:
-1. The FOIA request was filed on ${sentFormatted} and the city failed to respond within the statutory five-business-day deadline (5 ILCS 140/3)
-2. The respondent was unable to evaluate the enforcement evidence or prepare a full defense
-3. Any ambiguity created by the missing records should be construed against the City as the party that failed to comply with its own disclosure obligations
-4. Request dismissal on this ground as a supplementary (not sole) argument that reinforces the other substantive defenses in this letter.`);
+INSTRUCTIONS: This is a SUPPLEMENTARY procedural-fairness argument. Do NOT use the phrase "due process violation" — it is too strong as a blanket argument and invites hearing-officer pushback. Do NOT claim this alone prevents the city from establishing a prima facie case (the hearing officer has independent access to the violation photos/video). Use this safer framing, adapted to the letter:
+
+"Respondent submitted a Freedom of Information Act request on ${sentFormatted} for the enforcement records of this citation. Under 5 ILCS 140/3(d), the Department of Finance was required to respond within five (5) business days. As of this submission, ${foiaFinanceStatus.daysElapsed} days have elapsed without production. Failure to comply with the response deadline constitutes a violation of 5 ILCS 140/3 and, under 5 ILCS 140/3(d), waives the City's right to invoke any exemption it might otherwise have asserted. Respondent was unable to evaluate the enforcement evidence or prepare a full defense as a direct result of this non-response. Any ambiguity created by the City's failure to produce its own records should be construed against the City, and the citation should be dismissed."
+
+Include:
+1. The FOIA request was filed on ${sentFormatted} and the City failed to respond within the statutory five-business-day deadline under 5 ILCS 140/3(d)
+2. Under 5 ILCS 140/3(d), the City has waived any exemption it could have claimed by failing to respond timely
+3. The respondent was unable to evaluate the enforcement evidence or prepare a full defense
+4. Any ambiguity created by the missing records should be construed against the City as the party that failed to comply with its own disclosure obligations
+5. Request dismissal on this ground as a supplementary (not sole) argument that reinforces the other substantive defenses in this letter.`);
 
     } else if (foiaFinanceStatus.status === 'sent') {
       foiaSections.push(`=== FOIA EVIDENCE REQUEST — PENDING ===
