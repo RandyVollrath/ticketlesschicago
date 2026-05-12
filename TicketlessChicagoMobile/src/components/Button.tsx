@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   },
   // Text
   text: {
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   text_sm: {
     fontSize: typography.sizes.sm,

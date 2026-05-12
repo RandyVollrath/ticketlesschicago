@@ -47,8 +47,22 @@ export const colors = {
   overlayLight: 'rgba(0, 0, 0, 0.3)',
 };
 
-// Typography - Clean, modern hierarchy
+// Typography - matched to autopilotamerica.com (Space Grotesk display + Inter body)
+// IMPORTANT: When applying these custom fonts, use the weight-specific
+// fontFamily (e.g. 'Inter-SemiBold') and DROP fontWeight. Combining a
+// fontFamily with a numeric fontWeight produces synthetic faux-bold on iOS.
 export const typography = {
+  // Font Families — PostScript name on iOS, filename (minus .ttf) on Android.
+  // Names match across both platforms for these specific TTFs.
+  fontFamily: {
+    displayRegular: 'SpaceGrotesk-Regular',
+    displayBold: 'SpaceGrotesk-Bold',
+    body: 'Inter-Regular',
+    bodyMedium: 'Inter-Medium',
+    bodySemibold: 'Inter-SemiBold',
+    bodyBold: 'Inter-Bold',
+  },
+
   // Font Sizes
   sizes: {
     xs: 11,
@@ -61,7 +75,7 @@ export const typography = {
     xxxl: 34,
   },
 
-  // Font Weights (as string literals for React Native)
+  // Font Weights (still exported for legacy callers; prefer fontFamily above)
   weights: {
     regular: '400' as const,
     medium: '500' as const,
@@ -185,29 +199,31 @@ export const commonStyles = StyleSheet.create({
     marginBottom: spacing.md,
   },
 
-  // Typography
+  // Typography — Space Grotesk for display, Inter for body
   title: {
+    fontFamily: typography.fontFamily.displayBold,
     fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
     color: colors.textPrimary,
   },
   subtitle: {
+    fontFamily: typography.fontFamily.bodyMedium,
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.medium,
     color: colors.textSecondary,
   },
   heading: {
+    fontFamily: typography.fontFamily.displayBold,
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
   body: {
+    fontFamily: typography.fontFamily.body,
     fontSize: typography.sizes.base,
     color: colors.textSecondary,
     lineHeight: typography.sizes.base * typography.lineHeights.normal,
   },
   caption: {
+    fontFamily: typography.fontFamily.body,
     fontSize: typography.sizes.sm,
     color: colors.textTertiary,
   },
@@ -224,9 +240,9 @@ export const commonStyles = StyleSheet.create({
     ...shadows.primaryGlow,
   },
   primaryButtonText: {
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textInverse,
     fontSize: 18,
-    fontWeight: typography.weights.bold,
   },
   secondaryButton: {
     backgroundColor: colors.primaryTint,
@@ -238,9 +254,9 @@ export const commonStyles = StyleSheet.create({
     minHeight: 52,
   },
   secondaryButtonText: {
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
   },
   dangerButton: {
     backgroundColor: colors.error,
@@ -252,9 +268,9 @@ export const commonStyles = StyleSheet.create({
     minHeight: 52,
   },
   dangerButtonText: {
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textInverse,
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
   },
 
   // Row layouts
@@ -288,6 +304,7 @@ export const commonStyles = StyleSheet.create({
     borderColor: colors.border,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.base,
+    fontFamily: typography.fontFamily.body,
     fontSize: typography.sizes.base,
     color: colors.textPrimary,
   },
@@ -299,8 +316,8 @@ export const commonStyles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   badgeText: {
+    fontFamily: typography.fontFamily.bodySemibold,
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
   },
 });
 

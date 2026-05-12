@@ -90,6 +90,12 @@
 		<string>MaterialIcons.ttf</string>
 		<string>FontAwesome6_Regular.ttf</string>
 		<string>FontAwesome.ttf</string>
+		<string>Inter-SemiBold.ttf</string>
+		<string>Inter-Regular.ttf</string>
+		<string>SpaceGrotesk-Regular.ttf</string>
+		<string>Inter-Medium.ttf</string>
+		<string>SpaceGrotesk-Bold.ttf</string>
+		<string>Inter-Bold.ttf</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
