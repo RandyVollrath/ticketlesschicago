@@ -436,6 +436,8 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
   const worthIt = analysis.perTicket.filter(t => t.recommendation === 'contest');
   const maybe = analysis.perTicket.filter(t => t.recommendation === 'maybe');
   const skip = analysis.perTicket.filter(t => t.recommendation === 'skip');
+  const filable = worthIt.length + maybe.length;
+  const deadlineRiskCount = analysis.perTicket.filter(t => t.pastMailWindow).length;
 
   return (
     <section style={{ maxWidth: 880, margin: '0 auto', padding: '24px' }}>
@@ -450,6 +452,16 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
             {analysis.totalTickets} ticket{analysis.totalTickets === 1 ? '' : 's'} • ${analysis.totalAmountDue.toFixed(2)} outstanding
           </div>
         </div>
+
+        {filable > 0 && (
+          <HeroCallout
+            totalTickets={analysis.totalTickets}
+            totalAmount={analysis.totalAmountDue}
+            worthCount={worthIt.length}
+            maybeCount={maybe.length}
+            deadlineRiskCount={deadlineRiskCount}
+          />
+        )}
 
         {analysis.totalTickets === 0 && (
           <>
@@ -518,24 +530,77 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
             color: '#fff',
           }}>
             <div style={{ fontSize: 18, fontWeight: 800 }}>
-              Let Autopilot file {worthIt.length + maybe.length === 1 ? 'this contest' : `all ${worthIt.length + maybe.length} contests`} for you.
+              File {worthIt.length + maybe.length === 1 ? 'this contest' : `all ${worthIt.length + maybe.length} contests`} the right way.
             </div>
             <div style={{ marginTop: 10, fontSize: 14, color: '#CBD5E1', lineHeight: 1.6 }}>
-              For $79/year Autopilot writes and mails the formal contest letter for every ticket on your plate, files
-              the FOIA requests with the City for the cited address and officer notes, attaches the evidence you provide,
-              and tracks the city's response through final determination. Our 2023–2025 mail-in win rate is 57%.
+              For $79/year Autopilot writes and mails the contest letter for every ticket on your plate, requests the
+              city's records on your behalf, attaches the evidence you upload, and tracks each citation through to a
+              final decision. We also catch new tickets and street-cleaning days going forward.
             </div>
             <a href="/get-started" style={{
               display: 'inline-block', marginTop: 16, padding: '12px 20px', borderRadius: 10,
               background: COLORS.signal, color: '#04221A', fontWeight: 800, fontSize: 15,
               textDecoration: 'none',
             }}>
-              Start Autopilot — $79/year →
+              File these for me — $79/year →
             </a>
+            <div style={{ marginTop: 14, fontSize: 12, color: '#94A3B8', lineHeight: 1.5 }}>
+              Win rates shown per ticket type are historical dismissal rates from our Chicago FOIA dataset — your
+              specific outcome is not guaranteed. Autopilot's actual 2023–2025 mail-in win rate is 57%.
+            </div>
           </div>
         )}
       </div>
     </section>
+  );
+}
+
+function HeroCallout({
+  totalTickets,
+  totalAmount,
+  worthCount,
+  maybeCount,
+  deadlineRiskCount,
+}: {
+  totalTickets: number;
+  totalAmount: number;
+  worthCount: number;
+  maybeCount: number;
+  deadlineRiskCount: number;
+}) {
+  const filable = worthCount + maybeCount;
+  const verdict = worthCount > 0 && maybeCount > 0
+    ? `${worthCount} strong contest${worthCount === 1 ? '' : 's'} and ${maybeCount} possible contest${maybeCount === 1 ? '' : 's'}`
+    : worthCount > 0
+      ? `${worthCount} strong contest${worthCount === 1 ? '' : 's'}`
+      : `${maybeCount} possible contest${maybeCount === 1 ? '' : 's'}`;
+  return (
+    <div style={{
+      marginTop: 18, padding: 22, background: COLORS.deepHarbor, borderRadius: 14, color: '#fff',
+    }}>
+      <div style={{ fontSize: 13, color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+        What we found
+      </div>
+      <div style={{ marginTop: 8, fontSize: 20, fontWeight: 800, lineHeight: 1.3 }}>
+        {totalTickets} ticket{totalTickets === 1 ? '' : 's'} totaling ${totalAmount.toFixed(2)} outstanding.
+      </div>
+      <div style={{ marginTop: 6, fontSize: 16, color: '#CBD5E1', lineHeight: 1.5 }}>
+        Autopilot found <strong style={{ color: '#fff' }}>{verdict}</strong> on your plate.
+        {deadlineRiskCount > 0 && (
+          <> <span style={{ color: '#FCD34D' }}>{deadlineRiskCount} {deadlineRiskCount === 1 ? 'ticket is' : 'tickets are'} past the 21-day mail deadline</span> — switching to the in-person/virtual hearing path is the right move.</>
+        )}
+      </div>
+      <a href="/get-started" style={{
+        display: 'inline-block', marginTop: 18, padding: '14px 22px', borderRadius: 10,
+        background: COLORS.signal, color: '#04221A', fontWeight: 800, fontSize: 16,
+        textDecoration: 'none',
+      }}>
+        {filable === 1 ? 'File this contest for me' : `File these ${filable} contests for me`} — $79/year →
+      </a>
+      <div style={{ marginTop: 10, fontSize: 12, color: '#94A3B8' }}>
+        We write the letters, request the city's records, attach the evidence you provide, and track every citation to a final decision.
+      </div>
+    </div>
   );
 }
 
@@ -584,8 +649,8 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
 
       {t.baseWinRate != null && (
         <div style={{ marginTop: 10, fontSize: 13, color: COLORS.slate }}>
-          Standard template win rate: <strong style={{ color: COLORS.deepHarbor }}>{Math.round(t.baseWinRate * 100)}%</strong>
-          {t.templateArgumentName && <> · uses "<em>{t.templateArgumentName}</em>"</>}
+          Historical dismissal rate for this violation type: <strong style={{ color: COLORS.deepHarbor }}>{Math.round(t.baseWinRate * 100)}%</strong>{' '}
+          <span style={{ color: COLORS.slate }}>(Chicago FOIA dataset)</span>
         </div>
       )}
 
@@ -626,8 +691,39 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
   );
 }
 
+function strengthLabel(s: Strength): string {
+  if (s === 'strong') return 'Strong impact';
+  if (s === 'moderate') return 'Helpful';
+  return 'Minor';
+}
+
 function renderArgGroup(heading: string, args: BeyondTemplateArgument[]) {
   if (args.length === 0) return null;
+  // For "cure" and "evidence" findings we deliberately hide the tactical
+  // recipe on the free page — titles reveal that a path exists; the exact
+  // step list is part of the paid experience. We collapse the whole group
+  // into a single locked-teaser block so the page does not become a
+  // free instruction manual.
+  const isUserActionGroup = args.every(a => a.kind === 'cure' || a.kind === 'evidence');
+  if (isUserActionGroup) {
+    return (
+      <div style={{ marginTop: 14 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.deepHarbor, marginBottom: 8 }}>
+          {heading}
+        </div>
+        <div style={{
+          padding: 14, border: `1px dashed ${COLORS.border}`, borderRadius: 10, background: COLORS.concrete,
+        }}>
+          <div style={{ fontSize: 13, color: COLORS.deepHarbor, lineHeight: 1.55 }}>
+            We found <strong>{args.length} thing{args.length === 1 ? '' : 's'}</strong> that would strengthen this contest beyond the standard letter — usually a single photo, receipt, or document you can produce after the fact.
+          </div>
+          <div style={{ marginTop: 8, fontSize: 12, color: COLORS.slate, lineHeight: 1.5 }}>
+            Autopilot sends you the exact checklist after signup. You upload — we write the letter, file the city's records request, and attach everything to the contest.
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div style={{ marginTop: 14 }}>
       <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.deepHarbor, marginBottom: 8 }}>
@@ -636,7 +732,6 @@ function renderArgGroup(heading: string, args: BeyondTemplateArgument[]) {
       {args.map(arg => {
         const kind = arg.kind ?? 'fact';
         const isAutopilot = kind === 'autopilot';
-        const isAction = kind === 'cure' || kind === 'evidence';
         const palette = isAutopilot
           ? { bg: '#EEF2FF', border: '#C7D2FE', accent: '#3730A3' } // indigo — distinctive Autopilot tier
           : arg.strength === 'strong'
@@ -659,27 +754,12 @@ function renderArgGroup(heading: string, args: BeyondTemplateArgument[]) {
                   Autopilot
                 </span>
               )}
-              {isAction && (
-                <span style={{
-                  display: 'inline-block', fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
-                  letterSpacing: 0.5, padding: '2px 6px', borderRadius: 4, marginRight: 8,
-                  background: palette.accent, color: '#fff',
-                }}>
-                  {kind === 'cure' ? 'Action' : 'Evidence'}
-                </span>
-              )}
               {arg.title}
-              <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: palette.accent }}>
-                +{Math.round(arg.estimatedUpliftPct * 100)} pp · {arg.strength}
-              </span>
             </div>
             <div style={{ marginTop: 6, fontSize: 13, color: COLORS.graphite, lineHeight: 1.5 }}>{arg.explanation}</div>
-            {arg.actionForUser && (
-              <div style={{ marginTop: 8, padding: '8px 10px', background: '#fff', borderRadius: 6, fontSize: 13, color: COLORS.deepHarbor, lineHeight: 1.5 }}>
-                <strong>Do this:</strong> {arg.actionForUser}
-              </div>
-            )}
-            <div style={{ marginTop: 6, fontSize: 12, color: COLORS.slate, lineHeight: 1.5 }}>{arg.uplift}</div>
+            <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: palette.accent, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Impact: {strengthLabel(arg.strength)}
+            </div>
           </div>
         );
       })}
