@@ -1223,6 +1223,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Send notification email to you
     try {
+      // Replies to randy@autopilotamerica.com (the From: address on drip
+      // emails) are real customer replies, not workflow signals. Forward
+      // them as a clean email straight to hiautopilotamerica@gmail.com with
+      // reply-to set to the original sender, so hitting Reply in Gmail
+      // just talks back to the customer. Other inboxes (hello@, support@,
+      // etc.) keep the portal-style notification below.
+      const isCustomerReplyInbox = toEmail.includes('randy@autopilotamerica.com');
+
+      const escapeHtml = (s: string) =>
+        String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
       const actionNeeded = isPermitDocs ? '📄 PERMIT DOCUMENTS RECEIVED - Review in admin!' :
                           isYes ? '🟢 USER SAID YES - Send activation link!' :
                           isInfo ? '🔵 USER WANTS INFO - Send protection details!' :
@@ -1315,6 +1326,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         </div>
       `;
 
+      // Build the outbound payload. Drip-reply inbox (randy@) gets a clean
+      // forward; everything else gets the action-flagged notification.
+      let outboundPayload: Record<string, any>;
+      if (isCustomerReplyInbox) {
+        // Forward attachments so receipts/photos travel with the email.
+        const forwardAttachments: { filename: string; content: string }[] = [];
+        for (const att of attachments) {
+          const buf = await getAttachmentBuffer(att);
+          if (buf) {
+            forwardAttachments.push({
+              filename: att.filename || `attachment-${Date.now()}`,
+              content: buf.toString('base64'),
+            });
+          }
+        }
+
+        const bodyHtml = html
+          ? html
+          : `<pre style="white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 14px; margin: 0;">${escapeHtml(text || '(no body)')}</pre>`;
+
+        outboundPayload = {
+          from: 'Autopilot America <alerts@autopilotamerica.com>',
+          to: 'hiautopilotamerica@gmail.com',
+          reply_to: fromEmail,
+          subject: subject?.toLowerCase().startsWith('fwd:') ? subject : `Fwd: ${subject}`,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 720px; margin: 0 auto;">
+              <div style="color: #6b7280; font-size: 13px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb; margin-bottom: 16px;">
+                <div><strong>From:</strong> ${escapeHtml(fromEmail)}</div>
+                <div><strong>To:</strong> randy@autopilotamerica.com</div>
+                <div><strong>Subject:</strong> ${escapeHtml(subject)}</div>
+                ${attachments.length > 0 ? `<div><strong>Attachments:</strong> ${attachments.length}</div>` : ''}
+              </div>
+              ${bodyHtml}
+            </div>
+          `,
+          ...(forwardAttachments.length > 0 ? { attachments: forwardAttachments } : {}),
+        };
+      } else {
+        outboundPayload = {
+          from: 'Autopilot America <alerts@autopilotamerica.com>',
+          to: process.env.ADMIN_NOTIFICATION_EMAIL || 'hiautopilotamerica@gmail.com',
+          subject: emailSubject,
+          html: emailHtml,
+        };
+      }
+
       // Add timeout to prevent webhook from hanging
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
@@ -1325,18 +1383,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          from: 'Autopilot America <alerts@autopilotamerica.com>',
-          to: process.env.ADMIN_NOTIFICATION_EMAIL || 'hiautopilotamerica@gmail.com',
-          subject: emailSubject,
-          html: emailHtml
-        }),
+        body: JSON.stringify(outboundPayload),
         signal: controller.signal
       });
       clearTimeout(timeoutId);
 
       if (resendResponse.ok) {
-        console.log('✅ Notification email sent to hiautopilotamerica@gmail.com');
+        console.log(`✅ ${isCustomerReplyInbox ? 'Forwarded' : 'Notification'} email sent to ${outboundPayload.to}`);
 
         // Mark notification as sent
         await supabaseAdmin
