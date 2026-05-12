@@ -75,6 +75,18 @@ async function unitTests() {
     new Date(noonToday.getTime() + 3 * 3600_000) // 3 hours later
   );
   check('short active session that never crosses 02:00 → 0 buckets', shortActive.length === 0, { count: shortActive.length });
+
+  // Future-dated cleared_at must not walk the loop into the future.
+  // Parked yesterday, cleared_at = 30 days from now (clock skew). Should yield
+  // exactly 1 bucket (today), not 30.
+  const skewNow = new Date('2026-05-12T12:00:00Z');
+  const skewParked = new Date(skewNow.getTime() - 86400_000).toISOString();
+  const skewCleared = new Date(skewNow.getTime() + 30 * 86400_000).toISOString();
+  const skewed = bucketOvernights(
+    [{ latitude: 41.9, longitude: -87.6, parked_at: skewParked, cleared_at: skewCleared }],
+    skewNow
+  );
+  check('future-dated cleared_at is clamped to now → ≤1 bucket', skewed.length <= 1, { count: skewed.length });
 }
 
 async function liveRun() {
