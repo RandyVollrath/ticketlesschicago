@@ -427,8 +427,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             );
             console.log(`  History FOIA: ${historyResult.action} (${historyResult.parsedTicketCount} tickets parsed)`);
 
-            // Notify admin — different email for extensions vs actual responses
-            if (process.env.RESEND_API_KEY) {
+            // Notify admin — different email for extensions vs actual responses.
+            // Skip duplicate extension notices: the city sometimes sends the same
+            // extension letter more than once. We only want one admin email per
+            // request transition into `extension_requested`.
+            if (process.env.RESEND_API_KEY && !historyResult.isDuplicateExtension) {
               const isExt = historyResult.isExtension;
               await fetch('https://api.resend.com/emails', {
                 method: 'POST',
@@ -498,9 +501,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           // ── Extension: admin-only notification, skip letter regen and user notification ──
           if (foiaResult.isExtension) {
-            console.log(`  Evidence FOIA extension detected — skipping letter regen and user notification`);
+            const isDuplicate = (foiaResult as any).isDuplicateExtension === true;
+            console.log(`  Evidence FOIA extension detected — skipping letter regen and user notification${isDuplicate ? ' (duplicate notice — admin email also suppressed)' : ''}`);
             try {
-              if (process.env.RESEND_API_KEY) {
+              // Only send the admin notice on the first extension. The city
+              // sometimes sends the same extension letter multiple times; we
+              // dedupe by checking whether the request was already in
+              // `extension_requested` status when this email arrived.
+              if (process.env.RESEND_API_KEY && !isDuplicate) {
                 await fetch('https://api.resend.com/emails', {
                   method: 'POST',
                   headers: {

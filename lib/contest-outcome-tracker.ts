@@ -1191,6 +1191,7 @@ export async function processFoiaResponse(
   foiaType: 'evidence' | 'history' | 'unknown';
   action: string;
   isExtension?: boolean;
+  isDuplicateExtension?: boolean;
 }> {
   const foiaType = classifyFoiaResponseType(subject, body);
   const referenceId = extractReferenceId(subject, body);
@@ -1386,13 +1387,15 @@ async function processEvidenceFoiaMatch(
   foiaType: 'evidence';
   action: string;
   isExtension?: boolean;
+  isDuplicateExtension?: boolean;
 }> {
   // ── Extension check — must come BEFORE fulfillment/denial classification ──
   // Guard: Don't downgrade an already-fulfilled/denied request back to extension_requested.
   // This handles the edge case where the city sends a late extension notice AFTER the real response.
   const terminalStatuses = ['fulfilled', 'fulfilled_with_records', 'fulfilled_denial', 'no_records'];
   if (isExtensionResponse(subject, body) && !terminalStatuses.includes(matchedRequest.status)) {
-    console.log(`  Extension detected for evidence FOIA ${matchedRequest.id} — NOT marking as fulfilled`);
+    const wasAlreadyExtension = matchedRequest.status === 'extension_requested';
+    console.log(`  Extension detected for evidence FOIA ${matchedRequest.id} — NOT marking as fulfilled${wasAlreadyExtension ? ' (duplicate — already extension_requested)' : ''}`);
     const ticketNumber = matchedRequest.detected_tickets?.ticket_number || null;
 
     await supabase
@@ -1413,8 +1416,8 @@ async function processEvidenceFoiaMatch(
       })
       .eq('id', matchedRequest.id);
 
-    // Audit log
-    if (matchedRequest.ticket_id) {
+    // Audit log — only on the first extension notice (city often sends duplicates).
+    if (matchedRequest.ticket_id && !wasAlreadyExtension) {
       await supabase.from('ticket_audit_log').insert({
         ticket_id: matchedRequest.ticket_id,
         action: 'foia_extension_received',
@@ -1433,8 +1436,9 @@ async function processEvidenceFoiaMatch(
       requestId: matchedRequest.id,
       ticketNumber,
       foiaType: 'evidence',
-      action: 'foia_extension_requested',
+      action: wasAlreadyExtension ? 'foia_extension_duplicate' : 'foia_extension_requested',
       isExtension: true,
+      isDuplicateExtension: wasAlreadyExtension,
     };
   }
 
@@ -1612,6 +1616,7 @@ export async function processHistoryFoiaResponse(
   action: string;
   parsedTicketCount: number;
   isExtension: boolean;
+  isDuplicateExtension?: boolean;
 }> {
   // Fetch the history request
   const { data: historyRequest, error } = await supabase
@@ -1629,7 +1634,8 @@ export async function processHistoryFoiaResponse(
   // Guard: Don't downgrade an already-fulfilled request back to extension_requested.
   const historyTerminalStatuses = ['fulfilled', 'fulfilled_with_records', 'fulfilled_denial'];
   if (isExtensionResponse(subject, body) && !historyTerminalStatuses.includes(historyRequest.status)) {
-    console.log(`  Extension detected for history FOIA ${requestId} — NOT marking as fulfilled`);
+    const wasAlreadyExtension = historyRequest.status === 'extension_requested';
+    console.log(`  Extension detected for history FOIA ${requestId} — NOT marking as fulfilled${wasAlreadyExtension ? ' (duplicate — already extension_requested)' : ''}`);
     await supabase
       .from('foia_history_requests')
       .update({
@@ -1647,7 +1653,12 @@ export async function processHistoryFoiaResponse(
       } as any)
       .eq('id', requestId);
 
-    return { action: 'history_foia_extension_requested', parsedTicketCount: 0, isExtension: true };
+    return {
+      action: wasAlreadyExtension ? 'history_foia_extension_duplicate' : 'history_foia_extension_requested',
+      parsedTicketCount: 0,
+      isExtension: true,
+      isDuplicateExtension: wasAlreadyExtension,
+    };
   }
 
   // Guard: If the request is already in a terminal status, don't reprocess.
