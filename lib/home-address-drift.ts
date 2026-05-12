@@ -17,6 +17,11 @@ export interface DriftResult {
   home_fraction: number | null;
   overnight_event_count: number;
   window_days: number;
+  // Representative coord of the candidate section — the lat/lng of the most-
+  // frequently-seen overnight bucket that mapped to (candidate_ward, candidate_section).
+  // Used downstream for reverse-geocoding the candidate to a street name.
+  candidate_lat: number | null;
+  candidate_lng: number | null;
 }
 
 // Tuned for the "3 weeks at a new address consistently" definition of moved.
@@ -157,6 +162,8 @@ export async function computeDriftForUser(
       home_fraction: null,
       overnight_event_count: buckets.length,
       window_days: WINDOW_DAYS,
+      candidate_lat: null,
+      candidate_lng: null,
     };
   }
 
@@ -178,16 +185,20 @@ export async function computeDriftForUser(
   }
 
   // Build section counts (drop buckets outside any Chicago zone — vacation,
-  // suburbs, etc.).
-  const counts = new Map<string, { ward: string; section: string; n: number }>();
+  // suburbs, etc.). Also track the per-section coord histogram so we can pick
+  // a representative lat/lng for the eventual candidate.
+  const counts = new Map<string, { ward: string; section: string; n: number; coords: Map<string, { lat: number; lng: number; n: number }> }>();
   let included = 0;
   for (const b of buckets) {
     const key = `${b.latitude.toFixed(5)},${b.longitude.toFixed(5)}`;
     const snap = coordToSection.get(key);
     if (!snap) continue;
     const k = `${snap.ward}|${snap.section}`;
-    const e = counts.get(k) ?? { ward: snap.ward, section: snap.section, n: 0 };
+    const e = counts.get(k) ?? { ward: snap.ward, section: snap.section, n: 0, coords: new Map() };
     e.n++;
+    const c = e.coords.get(key) ?? { lat: b.latitude, lng: b.longitude, n: 0 };
+    c.n++;
+    e.coords.set(key, c);
     counts.set(k, e);
     included++;
   }
@@ -204,6 +215,8 @@ export async function computeDriftForUser(
       home_fraction: null,
       overnight_event_count: included,
       window_days: WINDOW_DAYS,
+      candidate_lat: null,
+      candidate_lng: null,
     };
   }
 
@@ -222,6 +235,8 @@ export async function computeDriftForUser(
       home_fraction,
       overnight_event_count: included,
       window_days: WINDOW_DAYS,
+      candidate_lat: null,
+      candidate_lng: null,
     };
   }
 
@@ -245,10 +260,26 @@ export async function computeDriftForUser(
       home_fraction,
       overnight_event_count: included,
       window_days: WINDOW_DAYS,
+      candidate_lat: null,
+      candidate_lng: null,
     };
   }
   const top = counts.get(topKey)!;
   const candidate_fraction = round3(top.n / included);
+
+  // Pick the most-frequent lat/lng inside the candidate section as the
+  // representative coord. If there's a tie, Map iteration preserves
+  // insertion order, so we get the earliest-seen tied coord.
+  let candidate_lat: number | null = null;
+  let candidate_lng: number | null = null;
+  let bestCoordN = 0;
+  for (const c of top.coords.values()) {
+    if (c.n > bestCoordN) {
+      bestCoordN = c.n;
+      candidate_lat = c.lat;
+      candidate_lng = c.lng;
+    }
+  }
 
   if (homeKey && topKey === homeKey) {
     return {
@@ -261,6 +292,8 @@ export async function computeDriftForUser(
       home_fraction,
       overnight_event_count: included,
       window_days: WINDOW_DAYS,
+      candidate_lat,
+      candidate_lng,
     };
   }
 
@@ -275,6 +308,8 @@ export async function computeDriftForUser(
       home_fraction,
       overnight_event_count: included,
       window_days: WINDOW_DAYS,
+      candidate_lat,
+      candidate_lng,
     };
   }
 
@@ -288,6 +323,8 @@ export async function computeDriftForUser(
     home_fraction,
     overnight_event_count: included,
     window_days: WINDOW_DAYS,
+    candidate_lat,
+    candidate_lng,
   };
 }
 

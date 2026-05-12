@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { computeDriftForUser, DRIFT_THRESHOLDS, type DriftStatus } from '../../../lib/home-address-drift';
+import { reverseGeocode } from '../../../lib/reverse-geocoder';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -90,6 +91,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           home_fraction: result.home_fraction,
           overnight_event_count: result.overnight_event_count,
           window_days: result.window_days,
+          candidate_lat: result.candidate_lat,
+          candidate_lng: result.candidate_lng,
         });
         if (insertErr) throw new Error(`signal insert: ${insertErr.message}`);
 
@@ -98,6 +101,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (result.status === 'DRIFT_DETECTED') {
           // Look up the user's email for the admin digest.
           const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+          // Reverse-geocode the candidate coord so the email is actionable.
+          // Best-effort — if it fails, just omit the street address.
+          let candidateAddress: string | null = null;
+          if (result.candidate_lat != null && result.candidate_lng != null) {
+            try {
+              const geo = await reverseGeocode(result.candidate_lat, result.candidate_lng);
+              candidateAddress = geo?.formatted_address ?? null;
+            } catch (geoErr: any) {
+              console.warn(`detect-home-drift: reverse-geocode failed for ${userId}:`, geoErr?.message || geoErr);
+            }
+          }
           drifts.push({
             user_id: userId,
             user_email: authUser?.user?.email ?? null,
@@ -107,6 +121,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             candidate_fraction: result.candidate_fraction ?? 0,
             overnight_event_count: result.overnight_event_count,
             is_new: priorStatus !== 'DRIFT_DETECTED',
+            candidate_lat: result.candidate_lat,
+            candidate_lng: result.candidate_lng,
+            candidate_address: candidateAddress,
           });
         }
       } catch (e: any) {
@@ -181,6 +198,9 @@ interface DriftEntry {
   candidate_fraction: number;
   overnight_event_count: number;
   is_new: boolean;
+  candidate_lat: number | null;
+  candidate_lng: number | null;
+  candidate_address: string | null;
 }
 
 function renderDriftDigestHtml(drifts: DriftEntry[]): string {
@@ -189,12 +209,18 @@ function renderDriftDigestHtml(drifts: DriftEntry[]): string {
       const pct = Math.round(d.candidate_fraction * 100);
       const email = escapeHtml(d.user_email || 'unknown');
       const home = escapeHtml(d.home_address_full || '—');
+      const candidateAddress = d.candidate_address
+        ? escapeHtml(d.candidate_address)
+        : `(no reverse-geocode — ${escapeHtml(d.candidate_label)})`;
+      const mapsLink =
+        d.candidate_lat != null && d.candidate_lng != null
+          ? `<a href="https://www.google.com/maps/search/?api=1&query=${d.candidate_lat},${d.candidate_lng}" style="color:#2563eb;">map</a>`
+          : '';
       return `
         <tr style="border-bottom:1px solid #e5e7eb;">
           <td style="padding:10px 12px;font-size:13px;">${email}</td>
-          <td style="padding:10px 12px;font-size:13px;">${home}</td>
-          <td style="padding:10px 12px;font-size:13px;">${escapeHtml(d.home_label)}</td>
-          <td style="padding:10px 12px;font-size:13px;font-weight:600;">${escapeHtml(d.candidate_label)}</td>
+          <td style="padding:10px 12px;font-size:13px;">${home}<br><span style="color:#9ca3af;font-size:11px;">${escapeHtml(d.home_label)}</span></td>
+          <td style="padding:10px 12px;font-size:13px;font-weight:600;">${candidateAddress}<br><span style="color:#9ca3af;font-size:11px;">${escapeHtml(d.candidate_label)} ${mapsLink}</span></td>
           <td style="padding:10px 12px;font-size:13px;">${pct}% (${d.overnight_event_count} nights)</td>
           <td style="padding:10px 12px;font-size:12px;color:#6b7280;">${escapeHtml(d.user_id)}</td>
         </tr>`;
@@ -220,12 +246,16 @@ function renderDriftDigestHtml(drifts: DriftEntry[]): string {
         overnights at the new section. May indicate a move. Verify before changing
         their address.
       </p>
+      <p style="color:#374151;font-size:14px;line-height:1.5;">
+        Review at
+        <a href="https://www.autopilotamerica.com/admin/home-drift" style="color:#2563eb;">/admin/home-drift</a>
+        to dismiss or act on each one.
+      </p>
       <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:16px;">
         <tr style="background:#f3f4f6;text-align:left;">
           <th style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">User</th>
           <th style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">Stated home</th>
-          <th style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">Home W/S</th>
-          <th style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">Detected W/S</th>
+          <th style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">Detected location</th>
           <th style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">Confidence</th>
           <th style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">User ID</th>
         </tr>
