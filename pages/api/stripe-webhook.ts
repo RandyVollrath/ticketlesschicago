@@ -30,6 +30,45 @@ const stripe = new Stripe(stripeConfig.secretKey!, {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Module-level rate limiter for signature-verification failure alerts.
+// Stripe retries failed webhooks with exponential backoff; without this
+// rate limit a misconfigured secret would email-blast the admin inbox.
+// 1 alert per hour per warm instance is enough to surface the outage
+// while still rate-limiting noise. Cold-start resets are fine — that
+// just means we re-alert sooner, which is the right behavior anyway.
+let lastSigFailureAlertAt = 0;
+async function maybeAlertOnSignatureFailure(reason: string, headers: Record<string, any>) {
+  const now = Date.now();
+  if (now - lastSigFailureAlertAt < 60 * 60 * 1000) return; // 1/hr
+  lastSigFailureAlertAt = now;
+  try {
+    await resend.emails.send({
+      from: 'Autopilot America <alerts@autopilotamerica.com>',
+      to: ['randyvollrath@gmail.com', 'hiautopilotamerica@gmail.com'],
+      subject: '🚨 Stripe webhook signature verification FAILING',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+          <div style="background: #DC2626; color: white; padding: 18px; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 18px;">Stripe webhook is rejecting Stripe</h1>
+          </div>
+          <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+            <p>The Stripe webhook handler returned 400 because the signature couldn't be verified. This usually means <code>STRIPE_WEBHOOK_SECRET</code> in Vercel no longer matches the signing secret on the Stripe endpoint (rotated, recreated, or wrong env).</p>
+            <p><strong>Reason:</strong> ${reason}</p>
+            <p><strong>User-Agent:</strong> ${String(headers['user-agent'] || '(none)')}</p>
+            <p><strong>X-Forwarded-For:</strong> ${String(headers['x-forwarded-for'] || '(none)')}</p>
+            <p style="background: #FEF3C7; padding: 12px; border-radius: 8px; border-left: 4px solid #D97706;">
+              Fix: open https://dashboard.stripe.com/webhooks → click the endpoint → reveal signing secret → update <code>STRIPE_WEBHOOK_SECRET</code> in Vercel production → redeploy. Then replay failed events from the endpoint's deliveries tab.
+            </p>
+            <p style="color: #6b7280; font-size: 12px;">Rate limited to one alert per hour per warm instance.</p>
+          </div>
+        </div>
+      `,
+    });
+  } catch (alertErr: any) {
+    console.error('Failed to send sig-failure alert:', alertErr?.message);
+  }
+}
+
 // Helper to check if a string has meaningful content (not null, undefined, or empty)
 function hasValue(str: string | null | undefined): boolean {
   return !!str && str.trim() !== '';
@@ -131,6 +170,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('❌ Webhook signature verification failed:', err.message);
     console.error('Signature header:', sig ? 'Present' : 'Missing');
     console.error('Webhook secret configured:', webhookSecret ? 'Yes' : 'No');
+    // Fire-and-forget alert so a stale STRIPE_WEBHOOK_SECRET never silently
+    // burns 9 days of paid signups again. Rate-limited inside the helper.
+    maybeAlertOnSignatureFailure(err?.message || 'unknown', req.headers as any).catch(() => {});
     return res.status(400).send('Webhook signature verification failed');
   }
 
