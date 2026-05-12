@@ -102,6 +102,139 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+/**
+ * Derive the structured boolean facts the kit policy engine looks for from
+ * the user's contestGrounds + receipts + ticket facts. Many kit situational
+ * arguments are gated on field names like `recentlyRenewed`, `wasActivelyLoading`,
+ * `meterWasMalfunctioning` that aren't part of the base TicketFacts schema —
+ * without these derivations, evaluateCondition returns false for those fields
+ * and the situational argument is unreachable, silently falling back to a
+ * weaker primary. We populate them here so the kit can actually choose the
+ * codified defense the user selected.
+ */
+function deriveStructuredFacts(args: {
+  contestGrounds: string[];
+  cityStickerReceipt: any | null;
+  registrationReceipt: any | null;
+  weatherIsAdverse: boolean;
+  ticketDate: string | null;
+}): Record<string, any> {
+  const { contestGrounds, cityStickerReceipt, registrationReceipt, weatherIsAdverse, ticketDate } = args;
+  const grounds = (contestGrounds || []).join(' | ').toLowerCase();
+  const tdate = ticketDate ? new Date(ticketDate) : null;
+
+  const has = (re: RegExp) => re.test(grounds);
+  const facts: Record<string, any> = {};
+
+  // ── Affirmative-compliance / registration facts ─────────────────────────
+  if (registrationReceipt?.parsed_purchase_date) {
+    const renewalDate = new Date(registrationReceipt.parsed_purchase_date);
+    if (tdate && !isNaN(renewalDate.getTime())) {
+      const daysBetween = (tdate.getTime() - renewalDate.getTime()) / (1000 * 60 * 60 * 24);
+      facts.recentlyRenewed = Math.abs(daysBetween) <= 60;
+      // Registration was valid at ticket time if renewed before ticket and
+      // not yet expired. Expiration defaults to ~12 months after renewal.
+      const expDate = registrationReceipt.parsed_expiration_date
+        ? new Date(registrationReceipt.parsed_expiration_date)
+        : new Date(renewalDate.getTime() + 365 * 24 * 60 * 60 * 1000);
+      facts.registrationWasValid = renewalDate <= tdate && expDate >= tdate;
+      // "Sticker in the mail" — renewed before ticket but very recently
+      facts.stickerInMail = renewalDate <= tdate && daysBetween <= 14;
+    }
+  }
+
+  // ── City sticker facts ──────────────────────────────────────────────────
+  if (cityStickerReceipt?.parsed_purchase_date && tdate) {
+    const purchaseDate = new Date(cityStickerReceipt.parsed_purchase_date);
+    if (!isNaN(purchaseDate.getTime())) {
+      facts.hadValidSticker = purchaseDate <= tdate;
+      facts.purchasedStickerAfterTicket = purchaseDate > tdate;
+    }
+  }
+
+  // ── Meter / payment grounds ─────────────────────────────────────────────
+  if (has(/meter.*malfunction|meter.*broken|meter.*not.*work|parkchicago.*not.*work|paid.*meter.*didn.t/i)) {
+    facts.meterWasMalfunctioning = true;
+    facts.meterRejectedPayment = true;
+  }
+  if (has(/paid.*park|valid.*payment|parkchicago.*session|active.*session/i)) {
+    facts.hasValidPayment = true;
+  }
+
+  // ── Loading / unloading grounds ─────────────────────────────────────────
+  if (has(/loading.*unloading|unloading.*loading|briefly.*stopped.*to (load|unload|drop)|actively.*loading|commercial.*deliver/i)) {
+    facts.wasActivelyLoading = true;
+    facts.wasLoadingUnloading = true;
+    facts.wasLoadingPassengers = true;
+  }
+
+  // ── Disabled / emergency vehicle grounds ────────────────────────────────
+  if (has(/vehicle.*disabled|broke.*down|breakdown|disabled.*vehicle|mechanical.*failure|emergency.*circumstances|medical.*emergency/i)) {
+    facts.vehicleWasDisabled = true;
+  }
+  if (has(/medical.*emergency|medical.*reason|hospital|ambulance/i)) {
+    facts.hadMedicalEmergency = true;
+  }
+
+  // ── Permit / placard grounds ────────────────────────────────────────────
+  if (has(/valid.*permit.*displayed|valid.*permit.*on file|permit.*was.*displayed/i)) {
+    facts.hadValidPermit = true;
+    facts.permitWasDisplayed = true;
+    facts.placardWasDisplayed = true;
+    facts.hadValidPlacard = true;
+  }
+  if (has(/visitor.*permit|guest.*permit/i)) {
+    facts.hadVisitorPermit = true;
+  }
+  if (has(/placard.*stolen|plate.*stolen|sticker.*stolen/i)) {
+    facts.placardWasStolen = true;
+    facts.stickerWasStolen = true;
+  }
+  if (has(/recently.*moved|new resident|just moved/i)) {
+    facts.recentlyMoved = true;
+  }
+
+  // ── Signage grounds ─────────────────────────────────────────────────────
+  if (has(/sign.*missing|missing.*sign|no.*sign|sign.*obscured|sign.*not.*visible|inadequate.*signage|sign.*faded|sign.*damaged/i)) {
+    facts.noSignagePresent = true;
+    facts.noSignage = true;
+    facts.noSignageOrFadedMarkings = true;
+    facts.noSignageOrMarkings = true;
+    facts.fadedMarkings = true;
+    facts.markingsNotVisible = true;
+  }
+  if (weatherIsAdverse && has(/sign|hydrant|plate|marking/i)) {
+    facts.weatherObscuredMarkings = true;
+    facts.weatherObscuredHydrant = true;
+    facts.weatherObscuredPlate = true;
+  }
+
+  // ── Time / hours grounds ────────────────────────────────────────────────
+  if (has(/outside.*restricted.*hours|outside.*posted.*hours|not.*during.*restricted/i)) {
+    facts.outsideRestrictedHours = true;
+  }
+  if (has(/within.*time.*limit|under.*time.*limit|time.*was.*not.*expired/i)) {
+    facts.withinTimeLimit = true;
+    facts.timeWasNotExpired = true;
+  }
+
+  // ── Identification / plate grounds ──────────────────────────────────────
+  if (has(/plate.*visible|plate.*was.*clear|plate.*not.*obscured/i)) {
+    facts.plateWasVisible = true;
+  }
+  if (has(/dealer.*frame|dealer.*plate.*frame/i)) {
+    facts.hadDealerFrame = true;
+  }
+  if (has(/temporary.*obstruction|temporarily.*obscured/i)) {
+    facts.hadTemporaryObstruction = true;
+  }
+  if (has(/issue.*corrected|already.*fixed|in compliance now|since.*come.*into compliance/i)) {
+    facts.issueHasBeenCorrected = true;
+  }
+
+  return facts;
+}
+
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 })
   : null;
@@ -442,6 +575,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             nonResidentState: (profile as any).mailing_state || undefined,
           } : {};
         })() : {}),
+        // Fill the orphan condition fields the kits gate situational arguments
+        // on so they can actually fire. The receipts and weather aren't loaded
+        // yet at this point (that happens further down the request), so pass
+        // null/false — we re-derive after evidence is loaded.
+        ...deriveStructuredFacts({
+          contestGrounds: contestGrounds || [],
+          cityStickerReceipt: null,
+          registrationReceipt: null,
+          weatherIsAdverse: false,
+          ticketDate: contest.ticket_date || null,
+        }),
       };
 
       try {
@@ -1509,11 +1653,78 @@ INSTRUCTIONS:
           /facts\s+alleged.*inconsistent|wrong (plate|state|vehicle)/i.test(g)
         ),
         cleaningDidNotOccur: true,
+        // Same orphan-field derivation as the initial ticketFacts build,
+        // now with all evidence (receipts, weather) loaded.
+        ...deriveStructuredFacts({
+          contestGrounds: contestGrounds || [],
+          cityStickerReceipt,
+          registrationReceipt,
+          weatherIsAdverse: !!weatherData?.hasAdverseWeather,
+          ticketDate: contest.ticket_date || null,
+        }),
       };
       try {
         kitEvaluation = await evaluateContest(updatedFacts, userEvidence, contestGrounds);
       } catch (e) {
         console.error('Re-evaluation with schedule data failed:', e);
+      }
+    }
+
+    // Final kit re-evaluation: even when street cleaning didn't trigger the
+    // re-eval above, the initial kit run happened BEFORE receipts and weather
+    // were loaded. Re-run now so kit situational arguments that depend on
+    // recentlyRenewed / hadValidSticker / weatherObscured* / etc. can fire.
+    if (contestKit && contest.violation_code && (cityStickerReceipt || registrationReceipt || weatherData?.hasAdverseWeather)) {
+      try {
+        const refreshedFacts: TicketFacts = {
+          ...(kitEvaluation ? { ...(kitEvaluation as any).__lastFacts || {} } : {}),
+          ticketNumber: contest.ticket_number || '',
+          violationCode: contest.violation_code,
+          violationDescription: contest.violation_description || '',
+          ticketDate: contest.ticket_date || contest.extracted_data?.date || '',
+          ticketTime: contest.extracted_data?.time,
+          location: contest.ticket_location || '',
+          amount: contest.ticket_amount || 0,
+          daysSinceTicket: contest.ticket_date
+            ? Math.floor((Date.now() - new Date(contest.ticket_date).getTime()) / (1000 * 60 * 60 * 24))
+            : 0,
+          hasSignageIssue: contestGrounds?.some(g =>
+            g.toLowerCase().includes('sign') || g.toLowerCase().includes('signage')
+          ),
+          hasEmergency: contestGrounds?.some(g => g.toLowerCase().includes('emergency')),
+          vehicleWasStolen:
+            plateStolenInput === true ||
+            contestGrounds?.some(g => /plate.*stolen|stolen.*plate|lost.*or used without/i.test(g)),
+          vehicleWasSold: contestGrounds?.some(g => /sold or transferred before the violation date/i.test(g)),
+          hasFootageIssue: contestGrounds?.some(g => /facts\s+alleged.*inconsistent|factual(ly)?\s+inconsistent/i.test(g)),
+          hasIdentificationIssue: contestGrounds?.some(g => /facts\s+alleged.*inconsistent|wrong (plate|state|vehicle)/i.test(g)),
+          ...deriveStructuredFacts({
+            contestGrounds: contestGrounds || [],
+            cityStickerReceipt,
+            registrationReceipt,
+            weatherIsAdverse: !!weatherData?.hasAdverseWeather,
+            ticketDate: contest.ticket_date || null,
+          }),
+          ...(profile && (contest.violation_code === '9-64-125' || contest.violation_code === '9-100-010') ? (() => {
+            const city = ((profile as any).mailing_city || '').trim().toLowerCase();
+            const isNonRes = city !== '' && city !== 'chicago';
+            return isNonRes ? {
+              isNonResident: true,
+              nonResidentCity: (profile as any).mailing_city || undefined,
+              nonResidentState: (profile as any).mailing_state || undefined,
+            } : {};
+          })() : {}),
+        };
+        const refreshed = await evaluateContest(refreshedFacts, userEvidence, contestGrounds);
+        // Prefer the refreshed evaluation if it picked a different (more
+        // specific) situational argument than the initial run. Same argument
+        // = no point switching.
+        if (refreshed && refreshed.selectedArgument.id !== kitEvaluation?.selectedArgument.id) {
+          console.log(`  Kit refresh picked stronger argument: ${kitEvaluation?.selectedArgument.id} → ${refreshed.selectedArgument.id}`);
+          kitEvaluation = refreshed;
+        }
+      } catch (e) {
+        console.error('Final kit refresh failed (non-fatal):', e);
       }
     }
 
