@@ -721,8 +721,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       return;
     }
     const ageMs = Date.now() - lastParkingCheck.timestamp;
-    // Show only for recent park detections to allow immediate correction loop.
-    setShowGroundTruthBanner(ageMs <= 20 * 60 * 1000);
+    // Window for the "Is this correct?" banner. 60 min — wide enough to
+    // catch the user opening the app after running an errand, narrow
+    // enough not to haunt them the next morning. Most ground-truth
+    // taps come within an hour of parking; older parks aren't reliably
+    // recallable anyway. Re-tunable: bump higher if confirmation
+    // volume is too low, drop lower if the banner feels stale.
+    setShowGroundTruthBanner(ageMs <= 60 * 60 * 1000);
   }, [lastParkingCheck, isMonitoring]);
 
   const handleCarDisconnect = async () => {
