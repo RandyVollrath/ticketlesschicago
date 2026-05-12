@@ -1172,6 +1172,8 @@ function SettingsPageInner() {
     has_credentials: boolean;
     updated_at: string | null;
     invalid_at: string | null;
+    auto_renewal_authorized?: boolean;
+    auto_renewal_authorized_at?: string | null;
   } | null>(null);
   const [ilCredsSaveState, setIlCredsSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [ilCredsError, setIlCredsError] = useState<string | null>(null);
@@ -3206,6 +3208,19 @@ function SettingsPageInner() {
           <p style={{ margin: '0 0 12px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
             Add your Illinois Registration ID and PIN once and we'll renew your plate sticker for you each year. Find both on your IL Vehicle Registration Card or the renewal notice the state mails you.
           </p>
+          {ilCredsStatus?.auto_renewal_authorized && (
+            <div style={{
+              padding: '10px 12px',
+              borderRadius: 8,
+              backgroundColor: '#ECFDF5',
+              border: '1px solid #A7F3D0',
+              fontSize: 13,
+              color: '#065F46',
+              marginBottom: 12,
+            }}>
+              ✓ Auto-renewal enabled by Autopilot{ilCredsStatus.auto_renewal_authorized_at ? ` on ${new Date(ilCredsStatus.auto_renewal_authorized_at).toLocaleDateString()}` : ''}. We'll email you to confirm before each yearly renewal — nothing happens without your explicit OK.
+            </div>
+          )}
           {ilCredsStatus?.invalid_at && (
             <div style={{
               padding: '10px 12px',

@@ -39,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'GET') {
       const { data, error } = await supabaseAdmin
         .from('user_profiles')
-        .select('il_pin_encrypted, il_registration_id_encrypted, il_credentials_updated_at, il_credentials_invalid_at' as any)
+        .select('il_pin_encrypted, il_registration_id_encrypted, il_credentials_updated_at, il_credentials_invalid_at, auto_renewal_authorized, auto_renewal_authorized_at' as any)
         .eq('user_id', auth.userId)
         .maybeSingle();
 
@@ -49,12 +49,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         il_registration_id_encrypted: string | null;
         il_credentials_updated_at: string | null;
         il_credentials_invalid_at: string | null;
+        auto_renewal_authorized: boolean | null;
+        auto_renewal_authorized_at: string | null;
       };
 
       return res.status(200).json({
         has_credentials: Boolean(row?.il_pin_encrypted && row?.il_registration_id_encrypted),
         updated_at: row?.il_credentials_updated_at ?? null,
         invalid_at: row?.il_credentials_invalid_at ?? null,
+        auto_renewal_authorized: Boolean(row?.auto_renewal_authorized),
+        auto_renewal_authorized_at: row?.auto_renewal_authorized_at ?? null,
       });
     }
 
