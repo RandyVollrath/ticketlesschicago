@@ -25,6 +25,13 @@ import { getContestKit } from '../contest-kits';
 export interface PerTicketAnalysis {
   ticketNumber: string;
   issueDate: string | null;
+  /** Days between issue date and today. null when issueDate can't be parsed. */
+  daysSinceIssue: number | null;
+  /**
+   * True when the ticket is past the 21-day mail-contest window (§ 9-100-050).
+   * UI uses this to surface a "this is what we WOULD have done for you" message.
+   */
+  pastMailWindow: boolean;
   amount: number;
   violationDescription: string;
   violationName: string;
@@ -82,9 +89,12 @@ export function buildAnalysis(
     const beyond = [...autopilotFindings, ...factFindings, ...cureFindings];
     const { recommendation, reason } = recommendForTicket(t, classified, beyond);
 
+    const daysSince = daysSinceIssue(t.issue_date);
     perTicket.push({
       ticketNumber: t.ticket_number,
       issueDate: t.issue_date || null,
+      daysSinceIssue: daysSince,
+      pastMailWindow: daysSince !== null && daysSince > CHICAGO_MAIL_CONTEST_WINDOW_DAYS,
       amount: t.current_amount_due ?? t.original_amount ?? 0,
       violationDescription: t.violation_description || '',
       violationName: classified.violationName,
