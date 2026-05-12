@@ -79,15 +79,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       issues.push('No users have email notifications enabled');
     }
 
-    // Home-address drift detector freshness: at least one signal row should
-    // have been inserted in the last 24h, even if it's INSUFFICIENT_DATA.
-    // Zero rows means the daily cron failed to run.
-    const { count: driftSignals24h } = await supabase
+    // Home-address drift detector freshness: with the "skip inactive users +
+    // don't store INSUFFICIENT_DATA" optimization, daily rows only come from
+    // active users with assessable signal. With ~2 active users today, we
+    // expect ~2 rows/day — but vacations or app uninstalls could legitimately
+    // produce zero rows for a few days. 7-day window is robust to that while
+    // still catching silent cron failures.
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { count: driftSignals7d } = await supabase
       .from('home_address_drift_signals')
       .select('*', { count: 'exact', head: true })
-      .gte('detected_at', yesterday);
-    if (!driftSignals24h || driftSignals24h === 0) {
-      issues.push('Home-address drift detector produced 0 signal rows in the last 24h (cron may not be firing)');
+      .gte('detected_at', sevenDaysAgo);
+    if (!driftSignals7d || driftSignals7d === 0) {
+      issues.push('Home-address drift detector produced 0 signal rows in the last 7 days (cron may not be firing, or all paid users went inactive)');
     }
 
     const report = {
