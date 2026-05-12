@@ -659,15 +659,22 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
       {t.beyondTemplate.length > 0 ? (
         <>
           {renderArgGroup(
-            'What Autopilot does for you on this ticket:',
-            t.beyondTemplate.filter(a => a.kind === 'autopilot'),
+            'What Autopilot found on this ticket:',
+            // Hide the generic FOIA-on-behalf finding — it fires identically on
+            // every ticket. The hero callout already promises "we request the
+            // city's records." Per-ticket cards only show Autopilot findings
+            // that are specific to THIS ticket (resolved address, officer
+            // pattern, block pattern).
+            t.beyondTemplate.filter(a =>
+              a.kind === 'autopilot' && !a.id.startsWith('autopilot_foia_request'),
+            ),
           )}
           {renderArgGroup(
-            'What Autopilot writes into the contest letter automatically:',
+            'Why this ticket is contestable:',
             t.beyondTemplate.filter(a => (a.kind ?? 'fact') === 'fact'),
           )}
           {renderArgGroup(
-            'What you\'ll handle on your end (Autopilot still files the letter):',
+            'What you\'ll handle on your end:',
             t.beyondTemplate.filter(a => a.kind === 'cure' || a.kind === 'evidence'),
           )}
         </>
@@ -726,6 +733,9 @@ function renderArgGroup(heading: string, args: BeyondTemplateArgument[]) {
       </div>
     );
   }
+  // If filtering removed everything (e.g. only the generic FOIA-on-behalf was
+  // here), don't render an empty section heading.
+  if (args.length === 0) return null;
   return (
     <div style={{ marginTop: 14 }}>
       <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.deepHarbor, marginBottom: 8 }}>
@@ -741,12 +751,17 @@ function renderArgGroup(heading: string, args: BeyondTemplateArgument[]) {
             : arg.strength === 'moderate'
               ? { bg: '#FFFBEB', border: '#FDE68A', accent: '#78350F' }
               : { bg: '#F1F5F9', border: '#CBD5E1', accent: '#334155' };
+        // Free-tier render: title + strength chip only. The body paragraphs
+        // (which include the FOIA letter recipe, URLs like chicago.gov/finance,
+        // exact hearing dates, etc.) are the EXACTLY-HOW that lives behind
+        // signup. The title is the WHAT, the strength is the WHY — that's the
+        // disclosure the free page is supposed to make.
         return (
           <div key={arg.id} style={{
-            padding: 12, border: `1px solid ${palette.border}`, borderRadius: 10, marginBottom: 8,
-            background: palette.bg,
+            padding: '10px 12px', border: `1px solid ${palette.border}`, borderRadius: 10, marginBottom: 6,
+            background: palette.bg, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
           }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: palette.accent }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: palette.accent, flex: '1 1 auto' }}>
               {isAutopilot && (
                 <span style={{
                   display: 'inline-block', fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
@@ -758,9 +773,8 @@ function renderArgGroup(heading: string, args: BeyondTemplateArgument[]) {
               )}
               {arg.title}
             </div>
-            <div style={{ marginTop: 6, fontSize: 13, color: COLORS.graphite, lineHeight: 1.5 }}>{arg.explanation}</div>
-            <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: palette.accent, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Impact: {strengthLabel(arg.strength)}
+            <div style={{ fontSize: 11, fontWeight: 700, color: palette.accent, textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>
+              {strengthLabel(arg.strength)}
             </div>
           </div>
         );
