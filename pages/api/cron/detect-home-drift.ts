@@ -37,7 +37,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('user_profiles')
       .select('user_id, home_address_ward, home_address_section')
       .eq('is_paid', true)
-      .not('home_address_section', 'is', null);
+      .not('home_address_section', 'is', null)
+      .neq('home_address_section', '');
     if (error) throw new Error(`user_profiles fetch: ${error.message}`);
 
     const nowIso = new Date().toISOString();
@@ -46,21 +47,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const userId = (u as any).user_id as string;
       try {
         // Skip if a still-active cooldown row exists.
-        const { data: cooldownRows } = await supabase
+        const { data: cooldownRows, error: cooldownErr } = await supabase
           .from('home_address_drift_signals')
           .select('id, cooldown_until')
           .eq('user_id', userId)
           .gt('cooldown_until', nowIso)
           .limit(1);
+        if (cooldownErr) throw new Error(`cooldown query: ${cooldownErr.message}`);
         if (cooldownRows && cooldownRows.length > 0) {
           summary.skipped_cooldown++;
           continue;
         }
 
         const result = await computeDriftForUser(supabase, userId);
-        summary[result.status]++;
 
-        await supabase.from('home_address_drift_signals').insert({
+        const { error: insertErr } = await supabase.from('home_address_drift_signals').insert({
           user_id: userId,
           status: result.status,
           home_ward: result.home_ward,
@@ -72,6 +73,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           overnight_event_count: result.overnight_event_count,
           window_days: result.window_days,
         });
+        if (insertErr) throw new Error(`signal insert: ${insertErr.message}`);
+
+        // Increment counters only after the row landed — otherwise insert
+        // failures would silently inflate the status counts.
+        summary[result.status]++;
 
         if (result.status === 'DRIFT_DETECTED') {
           drifts.push({

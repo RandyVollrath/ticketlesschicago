@@ -43,10 +43,14 @@ interface OvernightBucket {
 // is where you slept. This handles all the edge cases (afternoon-to-morning,
 // arrival after midnight, multi-night sessions) with one rule.
 export function bucketOvernights(rows: ParkingRow[], now: Date = new Date()): OvernightBucket[] {
+  const nowMs = now.getTime();
   const buckets = new Map<string, OvernightBucket>();
   for (const row of rows) {
     const start = new Date(row.parked_at).getTime();
-    const end = row.cleared_at ? new Date(row.cleared_at).getTime() : now.getTime();
+    const rawEnd = row.cleared_at ? new Date(row.cleared_at).getTime() : nowMs;
+    // Clamp end to now so a future-dated cleared_at (clock skew, dirty data)
+    // doesn't walk the loop into the future and attribute phantom buckets.
+    const end = Math.min(rawEnd, nowMs);
     if (!isFinite(start) || !isFinite(end) || end <= start) continue;
 
     // Walk every 02:00 America/Chicago between start and end. Range is bounded
