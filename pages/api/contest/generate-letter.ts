@@ -1274,7 +1274,9 @@ INSTRUCTIONS:
 - Use the DEFENSE PARAGRAPH text above as a primary argument in the letter.
 - Cite § 9-100-060(a)(7) (codified defense — violation did not in fact occur as charged).
 - Do not soften the language — the underlying data verification is direct.
-`;
+${uicFindings.some(f => f.id === 'address_transposition_water' || f.id === 'address_transposition_off_grid') ? `
+- ADDRESS-INVALID FINDING DETECTED: the cited location geocodes to a non-existent address (water / off-grid). This is a § 9-100-060(a)(7) violation — the ticket cites a location that doesn't exist as a parking-regulated street. Treat as case-dispositive and LEAD the letter with this if no higher-priority defense (stolen plate, factual inconsistency, late notice) has fired.
+` : ''}`;
           }
         } catch (e) {
           console.error('UIC erroneous checks failed (non-fatal):', e);
@@ -1554,6 +1556,65 @@ INSTRUCTIONS:
         console.error('Red-light defense analysis failed:', e);
       }
     }
+
+    // =====================================================================
+    // LEAD-DEFENSE PRIORITY CASCADE
+    // Multiple defense blocks can each instruct the LLM to "LEAD" the letter.
+    // When two or more apply at once (e.g. camera ticket on a stolen plate
+    // AFTER a late notice), the LLM gets contradictory instructions. We
+    // resolve to a single winner here so each prompt block can decide
+    // whether to use LEAD framing or supporting-argument framing.
+    //
+    // Priority matches autopilot-generate-letters.ts pickMandatoryLeadArgument
+    // cascade: case-dispositive defenses first (statutory exemptions, wrong
+    // vehicle), then strong procedural ones, then merit defenses.
+    // =====================================================================
+    type LeadDefense =
+      | 'stolen_plate'
+      | 'factual_inconsistency'
+      | 'late_notice_90'
+      | 'address_invalid'
+      | 'duplicate_citation'
+      | 'compliance_corrected'
+      | 'non_resident'
+      | 'street_cleaning_not_scheduled'
+      | null;
+
+    let leadDefense: LeadDefense = null;
+    {
+      const hasFactualInconsistency =
+        !!factualInconsistency?.hasInconsistency ||
+        !!redLightDefense?.factualInconsistency?.hasInconsistency;
+      const hasLateNotice = !!redLightDefense?.lateNotice?.exceeds90Days;
+      // Address-invalid surfaces from UIC checks (geocode failure / off-grid)
+      const hasAddressInvalid = uicFindings.some(f =>
+        f.id === 'address_transposition_water' || f.id === 'address_transposition_off_grid'
+      );
+      const hasComplianceCorrected =
+        (cityStickerReceipt && cityStickerReceipt.parsed_purchase_date &&
+          contest.ticket_date &&
+          new Date(cityStickerReceipt.parsed_purchase_date) > new Date(contest.ticket_date)) ||
+        (registrationReceipt && registrationReceipt.parsed_purchase_date &&
+          contest.ticket_date &&
+          new Date(registrationReceipt.parsed_purchase_date) > new Date(contest.ticket_date)) ||
+        contestGrounds?.some(g => /compliance.*corrected|since.*come.*into compliance|issue.*has been.*corrected/i.test(g));
+      const hasStreetCleaningNotScheduled =
+        streetCleaningVerification.checked && !streetCleaningVerification.scheduledOnDate;
+      const hasNonResident = !!nonResidentDetected?.isNonResident;
+
+      if (stolenPlateDefense?.applicable) leadDefense = 'stolen_plate';
+      else if (hasFactualInconsistency) leadDefense = 'factual_inconsistency';
+      else if (hasLateNotice) leadDefense = 'late_notice_90';
+      else if (hasAddressInvalid) leadDefense = 'address_invalid';
+      else if (hasComplianceCorrected) leadDefense = 'compliance_corrected';
+      else if (hasNonResident) leadDefense = 'non_resident';
+      else if (hasStreetCleaningNotScheduled) leadDefense = 'street_cleaning_not_scheduled';
+
+      if (leadDefense) {
+        console.log(`  Lead defense selected: ${leadDefense}`);
+      }
+    }
+    const isLeadDefense = (name: LeadDefense) => leadDefense === name;
 
     // =====================================================================
     // FOIA REQUEST STATUS — Check if we have outstanding or responded FOIAs
@@ -2034,6 +2095,35 @@ LEGAL BASIS: Chicago Municipal Code § 9-102-050(c) is a codified statutory exem
 
 INSTRUCTIONS: This is the LEAD argument — do not bury it. Two sentences are enough. State (1) the plate was stolen on or before the violation date${stolenPlateDefense.reportNumber ? ' and reference the RD number' : ''}, and (2) cite § 9-102-050(c) and request dismissal on that codified ground. Do NOT also argue yellow timing, vehicle ID, etc. — the stolen-plate defense alone is dispositive.
 ` : ''}
+${(() => {
+  // === COMPLIANCE CORRECTED (§ 9-100-060(a)(8)) ===
+  // Distinct from "I had it the whole time" (affirmative compliance). This
+  // is the curative prong: if a compliance violation (sticker, plate,
+  // registration, broken-equipment) has been corrected BEFORE the hearing
+  // date, the citation MUST be dismissed.
+  const tdate = contest.ticket_date ? new Date(contest.ticket_date) : null;
+  const stickerCorrected = cityStickerReceipt?.parsed_purchase_date && tdate &&
+    new Date(cityStickerReceipt.parsed_purchase_date) > tdate;
+  const regCorrected = registrationReceipt?.parsed_purchase_date && tdate &&
+    new Date(registrationReceipt.parsed_purchase_date) > tdate;
+  const userClaims = contestGrounds?.some(g =>
+    /compliance.*corrected|fix(ed)?.*before.*hearing|since.*come.*into compliance|issue.*corrected/i.test(g)
+  );
+  if (!stickerCorrected && !regCorrected && !userClaims) return '';
+  const what = stickerCorrected ? `city sticker purchased ${cityStickerReceipt!.parsed_purchase_date}`
+    : regCorrected ? `vehicle registration renewed ${registrationReceipt!.parsed_purchase_date}`
+    : 'the underlying compliance issue has since been corrected';
+  return `
+=== COMPLIANCE CORRECTED DEFENSE${isLeadDefense('compliance_corrected') ? ' — LEAD WITH THIS' : ' — SUPPORTING ARGUMENT'} ===
+The compliance violation cited in the notice has been corrected prior to the hearing date: ${what}.
+
+LEGAL BASIS: Chicago Municipal Code § 9-100-060(a)(8) is a codified affirmative defense — "the compliance violation cited in the notice has been corrected prior to the date of the hearing." For compliance-type violations (sticker, plates, registration, broken equipment), correction-before-hearing requires dismissal.
+
+INSTRUCTIONS: ${isLeadDefense('compliance_corrected')
+  ? `Lead the letter with this in two sentences: (1) state the violation has been corrected (cite the specific receipt date and order number); (2) cite § 9-100-060(a)(8) and request dismissal. The receipt is attached as evidence.`
+  : `Use as a SUPPORTING argument — a higher-priority defense already leads the letter. State in one sentence that the violation has been corrected per § 9-100-060(a)(8) with the receipt attached, then move on.`}
+`;
+})()}
 ${uicFindingsText}
 ${weatherDefenseText}
 ${parkingEvidenceText}
@@ -2052,21 +2142,19 @@ INSTRUCTIONS: This receipt proves the user purchased a city sticker. Compare the
 - If purchased AFTER the citation: State the user has since come into compliance and respectfully requests the citation be dismissed in light of their good-faith compliance. Hearing officers dismiss these cases approximately half the time.
 - In either case, reference the specific purchase date. This receipt is attached as evidence.` : ''}
 ${nonResidentDetected?.isNonResident ? `
-=== NON-RESIDENT DEFENSE — THIS IS THE PRIMARY ARGUMENT (80% WIN RATE) ===
+=== NON-RESIDENT DEFENSE${isLeadDefense('non_resident') ? ' — LEAD WITH THIS' : ' — SUPPORTING ARGUMENT'} ===
 
-CRITICAL: The user is NOT a Chicago resident. Their mailing address is in ${nonResidentDetected.mailingCity || 'a city outside Chicago'}${nonResidentDetected.mailingState ? `, ${nonResidentDetected.mailingState}` : ''}.
+The user is NOT a Chicago resident. Their mailing address is in ${nonResidentDetected.mailingCity || 'a city outside Chicago'}${nonResidentDetected.mailingState ? `, ${nonResidentDetected.mailingState}` : ''}.
 
 LEGAL BASIS: Chicago Municipal Code Section 9-64-125 requires a city vehicle sticker for vehicles "principally used or kept" in Chicago. Section 9-100-030 states that the prima facie case for automated violations requires the registered owner to be subject to the ordinance. A non-resident is NOT subject to the city sticker requirement.
 
-This is a TRUE PRIMA FACIE CASE FAILURE — the city literally cannot establish the violation against a non-resident.
-
 INSTRUCTIONS:
-1. LEAD with the non-resident defense — it is the STRONGEST possible argument (80% win rate in FOIA data)
+${isLeadDefense('non_resident')
+  ? `1. LEAD with this defense — it is case-dispositive (~80% win rate in FOIA data) when the user is a non-resident.
 2. State clearly: "I am not a resident of the City of Chicago. My permanent address is in ${nonResidentDetected.mailingCity || '[city]'}${nonResidentDetected.mailingState ? `, ${nonResidentDetected.mailingState}` : ''}."
-3. Cite CMC 9-64-125 and explain that the city sticker requirement applies only to vehicles principally used or kept in Chicago
-4. State: "As a non-resident, I am not subject to this ordinance, and the City cannot establish a prima facie case under 9-100-030."
-5. If a city sticker receipt is also available, mention it as an alternative argument but keep non-residency as the PRIMARY argument
-6. Request dismissal based on non-resident status` : ''}
+3. Cite CMC 9-64-125 and 9-100-030 — the city sticker requirement applies only to vehicles principally used or kept in Chicago.
+4. Two sentences are enough — do not pad with other defenses.`
+  : `Use this as a SUPPORTING argument only — a higher-priority codified defense already leads the letter. Mention in one short paragraph that the user is a non-resident of Chicago and cite § 9-64-125 to bolster the lead defense, then move on. Do NOT use LEAD framing.`}` : ''}
 ${registrationReceipt ? `
 === VEHICLE REGISTRATION EVIDENCE ===
 The user has vehicle registration/renewal documentation on file:
@@ -2205,19 +2293,23 @@ VIOLATION SPIKE ANALYSIS (CAMERA MALFUNCTION INDICATOR):
 INSTRUCTIONS: Use this as a SUPPORTING argument suggesting possible camera malfunction or miscalibration. An abnormally high number of violations on the date in question suggests the camera system may have been malfunctioning. Reference the specific spike ratio and daily count vs. average. Request that the city provide camera calibration and maintenance records for this date. Note that the Chicago Inspector General has previously found camera timing and calibration issues.` : ''}
 
 ${redLightDefense.lateNotice?.exceeds90Days ? `
-LATE NOTICE DEFENSE (PROCEDURAL — CASE DISPOSITIVE):
+LATE NOTICE DEFENSE${isLeadDefense('late_notice_90') ? ' — LEAD WITH THIS (PROCEDURAL, CASE-DISPOSITIVE)' : ' — SUPPORTING ARGUMENT'}:
 - Days Between Violation & Notice: ${redLightDefense.lateNotice.daysBetween}
 - Exceeds 90-Day Statutory Limit: YES
 - Analysis: ${redLightDefense.lateNotice.explanation}
 
-INSTRUCTIONS: This is a STRONG procedural defense that should LEAD the letter. Under 625 ILCS 5/11-208.6, violation notices must be mailed within 90 days of the violation. This notice was sent ${redLightDefense.lateNotice.daysBetween} days after the violation, exceeding the statutory limit. Argue that the citation is procedurally deficient and must be dismissed regardless of the underlying facts. This is a purely legal/procedural argument — the merits of the violation are irrelevant if the notice was late.` : ''}
+INSTRUCTIONS: ${isLeadDefense('late_notice_90')
+  ? `Under 625 ILCS 5/11-208.6, automated-enforcement violation notices must be mailed within 90 days of the violation. This notice was sent ${redLightDefense.lateNotice.daysBetween} days after the violation, exceeding the statutory limit. Lead the letter with this defense in two sentences: (1) state the days-between vs. the 90-day cap and cite 625 ILCS 5/11-208.6; (2) request dismissal on procedural grounds — the merits of the violation are irrelevant if the notice was late.`
+  : `Use as a SUPPORTING argument — a higher-priority defense already leads the letter. Mention in one short paragraph that the notice exceeded the 90-day cap under 625 ILCS 5/11-208.6, then move on.`}` : ''}
 
 ${redLightDefense.factualInconsistency?.hasInconsistency ? `
-FACTUAL INCONSISTENCY DEFENSE (PROCEDURAL — CASE DISPOSITIVE):
+FACTUAL INCONSISTENCY DEFENSE${isLeadDefense('factual_inconsistency') ? ' — LEAD WITH THIS (CASE-DISPOSITIVE)' : ' — SUPPORTING ARGUMENT'}:
 - Inconsistency Type: ${redLightDefense.factualInconsistency.inconsistencyType}
 - Analysis: ${redLightDefense.factualInconsistency.explanation}
 
-INSTRUCTIONS: This is a STRONG procedural defense. Under Chicago Municipal Code 9-100-060, facts alleged in the violation notice that are inconsistent with the actual vehicle are grounds for dismissal. The ${redLightDefense.factualInconsistency.inconsistencyType} between the ticket and the actual vehicle registration creates reasonable doubt about whether the correct vehicle was identified. Argue that the citation should be dismissed due to this factual inconsistency.` : ''}
+INSTRUCTIONS: ${isLeadDefense('factual_inconsistency')
+  ? `Under § 9-100-060, "the facts alleged in the violation notice are inconsistent or do not support a finding that the cited regulation was violated" is a codified affirmative defense. Lead the letter with this in two sentences: (1) state the specific inconsistency (${redLightDefense.factualInconsistency.inconsistencyType}); (2) cite § 9-100-060 and request dismissal — the merits of the underlying violation are irrelevant if the notice identifies the wrong vehicle.`
+  : `Use as a SUPPORTING argument — a higher-priority defense already leads the letter. Mention the inconsistency in one short paragraph as additional grounds, then move on.`}` : ''}
 
 RANKED DEFENSE ARGUMENTS (strongest first):
 ${redLightDefense.defenseArguments.map((a, i) => `${i + 1}. [${a.strength.toUpperCase()}] ${a.title}: ${a.summary}`).join('\n')}
@@ -2299,11 +2391,12 @@ Our database of the City of Chicago's official street cleaning schedule shows th
 ${streetCleaningVerification.ward ? `Specifically, Ward ${streetCleaningVerification.ward}, Section ${streetCleaningVerification.section} had no cleaning operations listed for this date.` : ''}
 
 INSTRUCTIONS FOR LETTER:
-1. This is a POWERFUL primary argument — the ticket was issued for violating street cleaning restrictions on a date when NO cleaning was scheduled
-2. State clearly that according to the City's own published street cleaning schedule, no cleaning was scheduled for this zone on this date
-3. Argue that tickets should not be issued when the underlying restriction has no active enforcement purpose
-4. Request that the city provide their official cleaning schedule for this ward/section to confirm
-5. This argument should be the LEAD argument in the letter, ahead of signage or weather defenses
+${isLeadDefense('street_cleaning_not_scheduled')
+  ? `1. LEAD with this defense — the ticket was issued for a street-cleaning restriction on a date when NO cleaning was scheduled per the City's own data.
+2. State in one sentence that according to the City's own published street-cleaning schedule, no cleaning was scheduled for this zone on this date.
+3. Cite § 9-100-060(a)(7) (the violation did not in fact occur as charged) and request dismissal.
+4. Do not pad with signage / weather defenses — the not-scheduled fact alone is dispositive.`
+  : `Use this as a SUPPORTING argument — a higher-priority defense already leads the letter. State in one sentence that the City's published schedule shows no cleaning on the cited date, then move on.`}
 ` : `
 Street cleaning WAS scheduled at this location on ${ticketDate}.
 ${streetCleaningVerification.matchingRecords.length > 0 ? `Scheduled blocks:\n${streetCleaningVerification.matchingRecords.map((r: any) => `- ${r.street_name || 'Block'} (${r.side || 'side N/A'})`).join('\n')}` : ''}
@@ -2397,11 +2490,13 @@ ${courtData.similarCases.slice(0, 3).map((c, i) => `${i + 1}. Citation #${c.tick
 ${!userEvidence.hasPhotos && courtData.evidenceGuidance.find(e => e.type === 'photos' && e.success_rate_with > e.success_rate_without + 20) ? '\n⚠️ WARNING: User lacks photos but they significantly improve success rates. Suggest alternative strong arguments.' : ''}
 ` : ''}
 ${factualInconsistency?.hasInconsistency && !redLightDefense?.factualInconsistency?.hasInconsistency ? `
-=== FACTUAL INCONSISTENCY DEFENSE (PROCEDURAL — CASE DISPOSITIVE) ===
+=== FACTUAL INCONSISTENCY DEFENSE${isLeadDefense('factual_inconsistency') ? ' — LEAD WITH THIS (CASE-DISPOSITIVE)' : ' — SUPPORTING ARGUMENT'} ===
 - Inconsistency Type: ${factualInconsistency.inconsistencyType}
 - Analysis: ${factualInconsistency.explanation}
 
-INSTRUCTIONS: This is a STRONG procedural defense that applies to ALL violation types. Under Chicago Municipal Code 9-100-060, "the facts alleged in the violation notice are inconsistent or do not support a finding that the code was violated" is an official defense. The ${factualInconsistency.inconsistencyType} between the ticket and the actual vehicle registration creates reasonable doubt about whether the correct vehicle was identified. This argument should LEAD the letter — it is case-dispositive and the merits of the underlying violation are irrelevant if the notice identifies the wrong vehicle.
+INSTRUCTIONS: ${isLeadDefense('factual_inconsistency')
+  ? `Under § 9-100-060, "the facts alleged in the violation notice are inconsistent or do not support a finding that the code was violated" is a codified affirmative defense. Lead the letter with this in two sentences: (1) state the specific inconsistency (${factualInconsistency.inconsistencyType}); (2) cite § 9-100-060 and request dismissal — the merits of the underlying violation are irrelevant if the notice identifies the wrong vehicle.`
+  : `Use as a SUPPORTING argument — a higher-priority defense already leads the letter. Mention the inconsistency in one short paragraph as additional grounds, then move on.`}
 ` : ''}
 ${notificationHistory.length > 0 ? `
 === GOOD-FAITH COMPLIANCE HISTORY ===
