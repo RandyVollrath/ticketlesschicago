@@ -75,13 +75,25 @@ export default function TicketContester({ userId }: TicketContesterProps) {
 
   // Codified-list framing — wording matches Chicago Municipal Code § 9-100-060
   // affirmative defenses and the labels CPD hearing officers look for.
+  // OCR doesn't always extract the violation code, so fall back to description.
   const violationCode = extractedData?.violationCode || '';
-  const isCameraTicket = violationCode === '9-102-010' || violationCode === '9-102-020' || violationCode === '9-101-020';
-  const isMissingPlate = violationCode === '9-80-040';
+  const violationDesc = (extractedData?.violationDescription || '').toLowerCase();
+  const isCameraTicket =
+    violationCode === '9-102-010' ||
+    violationCode === '9-102-020' ||
+    violationCode === '9-101-020' ||
+    /red\s*light|speed\s*camera|automated\s+(traffic|enforcement|red|speed)/.test(violationDesc);
+  const isMissingPlate =
+    violationCode === '9-80-040' ||
+    /missing.*plate|no.*plate.*display|plate.*not.*display/.test(violationDesc);
+
+  // Single source of truth for the stolen-plate option label so the
+  // "is it checked?" check and the UI text can't drift apart.
+  const STOLEN_PLATE_LABEL = 'My plate was stolen, lost, or used without my permission';
 
   const availableGrounds = (isCameraTicket || isMissingPlate)
     ? [
-        'My plate was stolen, lost, or used without my permission',
+        STOLEN_PLATE_LABEL,
         'The facts alleged in the violation notice are inconsistent (wrong plate, state, or vehicle)',
         'I was not the owner or lessee of the cited vehicle at the time',
         'The vehicle was sold or transferred before the violation date',
@@ -98,7 +110,19 @@ export default function TicketContester({ userId }: TicketContesterProps) {
         'Ticket issued in error (wrong vehicle/plate)',
       ];
 
-  const stolenPlateSelected = contestGrounds.includes('My plate was stolen, lost, or used without my permission');
+  const stolenPlateSelected = contestGrounds.includes(STOLEN_PLATE_LABEL);
+
+  // When the user changes the ticket's violation code (step 2 → step 3 round
+  // trip, or OCR re-run), the previously-selected grounds may not exist in
+  // the new list. Prune stale entries so we don't send "Signs were missing
+  // or obscured" along with a red-light camera ticket.
+  useEffect(() => {
+    setContestGrounds((prev) => {
+      const stillValid = prev.filter((g) => availableGrounds.includes(g));
+      return stillValid.length === prev.length ? prev : stillValid;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCameraTicket, isMissingPlate]);
 
   // Track page view on mount
   useEffect(() => {
@@ -1149,6 +1173,9 @@ export default function TicketContester({ userId }: TicketContesterProps) {
               setAdditionalContext('');
               setContestLetter('');
               setEvidenceChecklist([]);
+              setPlateStolen(false);
+              setPlateStolenIncidentDate('');
+              setPlateStolenReportNumber('');
               setMessage('');
             }}
             style={{

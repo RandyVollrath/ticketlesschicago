@@ -1196,26 +1196,38 @@ INSTRUCTIONS:
     //      block still fires for this letter — the user's attestation alone
     //      is enough to invoke § 9-102-050(c).
     if (plateStolenInput === true) {
+      // Trim once, up front, so " " (whitespace-only) is treated as empty
+      // and we never write blanks into the report-number column.
+      const rdNumberTrimmed = plateStolenReportNumberInput?.trim() || '';
+
       if (detectedTicketData?.id) {
         const update: Record<string, any> = {};
         if (!detectedTicketData.plate_stolen) update.plate_stolen = true;
         if (plateStolenIncidentDateInput && !detectedTicketData.plate_stolen_incident_date) {
           update.plate_stolen_incident_date = plateStolenIncidentDateInput;
         }
-        if (plateStolenReportNumberInput && !detectedTicketData.plate_stolen_report_number) {
-          update.plate_stolen_report_number = plateStolenReportNumberInput.trim();
+        if (rdNumberTrimmed && !detectedTicketData.plate_stolen_report_number) {
+          update.plate_stolen_report_number = rdNumberTrimmed;
           update.plate_stolen_report_agency = 'Chicago Police Department';
         }
         if (Object.keys(update).length > 0) {
+          // Always mirror to in-memory first so the defense still fires for
+          // THIS letter even if the DB write fails. Supabase doesn't throw
+          // on RLS denial — it returns { error } — so we must check it
+          // explicitly rather than rely on try/catch.
+          Object.assign(detectedTicketData, update);
           try {
-            await supabase
+            const { error: persistErr } = await supabase
               .from('detected_tickets')
               .update(update)
               .eq('id', detectedTicketData.id);
-            Object.assign(detectedTicketData, update);
-            console.log(`  Stolen-plate self-report persisted: ${Object.keys(update).join(', ')}`);
+            if (persistErr) {
+              console.log('  Stolen-plate self-report DB write returned error:', persistErr.message);
+            } else {
+              console.log(`  Stolen-plate self-report persisted: ${Object.keys(update).join(', ')}`);
+            }
           } catch (e) {
-            console.log('  Stolen-plate self-report persist skipped:', (e as any)?.message);
+            console.log('  Stolen-plate self-report persist threw:', (e as any)?.message);
           }
         }
       } else {
@@ -1226,8 +1238,8 @@ INSTRUCTIONS:
           ...(detectedTicketData || {}),
           plate_stolen: true,
           plate_stolen_incident_date: plateStolenIncidentDateInput || null,
-          plate_stolen_report_number: plateStolenReportNumberInput?.trim() || null,
-          plate_stolen_report_agency: plateStolenReportNumberInput ? 'Chicago Police Department' : null,
+          plate_stolen_report_number: rdNumberTrimmed || null,
+          plate_stolen_report_agency: rdNumberTrimmed ? 'Chicago Police Department' : null,
         };
         console.log('  Stolen-plate self-report applied in-memory (no detected_tickets row)');
       }
