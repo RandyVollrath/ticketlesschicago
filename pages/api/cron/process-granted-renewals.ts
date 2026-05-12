@@ -28,12 +28,35 @@ import { chargeRenewalConsent, refundRenewalCharge } from '../../../lib/renewal-
 import { runCitySticerRenewal } from '../../../lib/city-sticker-purchase';
 import { runPlateStickerRenewal } from '../../../lib/plate-sticker-automation';
 import { isCircuitTripped } from '../../../lib/renewal-failure-recovery';
-import { uploadRenewalScreenshot, sendUserRenewalReceiptEmail, sendAdminRenewalNotice } from '../../../lib/renewal-receipts';
+import { uploadRenewalScreenshot, sendUserRenewalReceiptEmail, sendAdminRenewalNotice, sendUserRenewalFailedEmail } from '../../../lib/renewal-receipts';
 import { sendRenewalOperatorAlert } from '../../../lib/renewal-alerts';
 import { isAutoRenewalGloballyEnabled } from '../../../lib/auto-renewal-gate';
 
 const supabaseAdmin = typedSupabase as any;
 const BATCH_SIZE = 5;
+
+function isDryRun(): boolean {
+  const v = (process.env.RENEWAL_DRY_RUN || '').toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
+function mapFailureReason(stoppedAt?: string): 'invalid_credentials' | 'card_declined' | 'site_changed' | 'circuit_breaker' | 'other' {
+  switch (stoppedAt) {
+    case 'invalid_credentials':
+    case 'missing_credentials':
+      return 'invalid_credentials';
+    case 'akamai_block':
+    case 'login_form_changed':
+    case 'payment_form':
+    case 'vehicle_search':
+    case 'login':
+      return 'site_changed';
+    case 'gate':
+      return 'circuit_breaker';
+    default:
+      return 'other';
+  }
+}
 
 function isAuthorizedCron(req: NextApiRequest): boolean {
   if (req.headers['x-vercel-cron']) return true;
@@ -59,14 +82,17 @@ async function loadUserVehicle(userId: string): Promise<UserVehicle | null> {
   return (data as UserVehicle) ?? null;
 }
 
-async function processOne(consent: ConsentRecord): Promise<{ outcome: string; detail?: string }> {
+async function processOne(consent: ConsentRecord, dryRun: boolean): Promise<{ outcome: string; detail?: string }> {
   const user = await loadUserVehicle(consent.user_id);
   if (!user || !user.email) {
     return { outcome: 'skipped_no_user', detail: 'user_profiles row missing' };
   }
 
   // Stripe charge first. If the user's card declines, no point hitting the gov site.
-  const charge = await chargeRenewalConsent({ consent, userEmail: user.email });
+  // In dry-run mode we skip the charge entirely.
+  const charge = dryRun
+    ? { success: true, paymentIntentId: null, amountChargedCents: consent.total_amount_cents }
+    : await chargeRenewalConsent({ consent, userEmail: user.email });
   if (!charge.success) {
     await supabaseAdmin
       .from('renewal_purchase_consents')
@@ -83,6 +109,12 @@ async function processOne(consent: ConsentRecord): Promise<{ outcome: string; de
       success: false,
       error: `Stripe charge failed: ${charge.error}`,
     });
+    await sendUserRenewalFailedEmail({
+      consent,
+      userEmail: user.email,
+      reason: 'card_declined',
+      detail: charge.error,
+    });
     return { outcome: 'charge_failed', detail: charge.error };
   }
 
@@ -90,7 +122,7 @@ async function processOne(consent: ConsentRecord): Promise<{ outcome: string; de
   let result;
   if (consent.renewal_type === 'city_sticker') {
     if (!user.license_plate || !user.vin || !user.last_name) {
-      await refundRenewalCharge(charge.paymentIntentId!, 'missing vehicle data');
+      if (charge.paymentIntentId) await refundRenewalCharge(charge.paymentIntentId, 'missing vehicle data');
       await supabaseAdmin
         .from('renewal_purchase_consents')
         .update({ status: 'failed', failure_reason: 'missing license_plate / vin / last_name', updated_at: new Date().toISOString() })
@@ -106,19 +138,19 @@ async function processOne(consent: ConsentRecord): Promise<{ outcome: string; de
         lastName: user.last_name,
         email: user.email,
       },
-      dryRun: false,
+      dryRun,
     });
   } else {
     result = await runPlateStickerRenewal({
       consent,
       userEmail: user.email,
-      dryRun: false,
+      dryRun,
     });
   }
 
   if (!result.success) {
     // Best-effort refund. Don't block on refund result.
-    if (charge.paymentIntentId) {
+    if (!dryRun && charge.paymentIntentId) {
       await refundRenewalCharge(charge.paymentIntentId, `automation: ${result.stoppedAt || 'unknown'}: ${result.error || 'failed'}`);
     }
     await sendAdminRenewalNotice({
@@ -126,8 +158,21 @@ async function processOne(consent: ConsentRecord): Promise<{ outcome: string; de
       userEmail: user.email,
       amountChargedCents: charge.amountChargedCents ?? 0,
       success: false,
-      error: `${result.stoppedAt}: ${result.error}`,
+      error: `${dryRun ? '[DRY RUN] ' : ''}${result.stoppedAt}: ${result.error}`,
     });
+    // Only email user on a real failure that requires their action.
+    if (!dryRun) {
+      const reason = mapFailureReason(result.stoppedAt);
+      // Skip user email for purely operational gating (payment not configured, etc.)
+      if (result.stoppedAt !== 'payment_not_configured' && result.stoppedAt !== 'consent') {
+        await sendUserRenewalFailedEmail({
+          consent,
+          userEmail: user.email,
+          reason,
+          detail: result.error,
+        });
+      }
+    }
     return { outcome: `automation_failed_${result.stoppedAt}`, detail: result.error };
   }
 
@@ -167,6 +212,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!isAutoRenewalGloballyEnabled()) {
     return res.status(200).json({ skipped: true, reason: 'AUTO_RENEWAL_GLOBALLY_ENABLED is not true' });
   }
+  const dryRun = isDryRun();
 
   // Pick up to BATCH_SIZE granted consents.
   const { data: consents, error: listErr } = await supabaseAdmin
@@ -195,7 +241,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       continue;
     }
     try {
-      const r = await processOne(c);
+      const r = await processOne(c, dryRun);
       results.push({ id: c.id, type: c.renewal_type, ...r });
     } catch (e: any) {
       results.push({ id: c.id, type: c.renewal_type, outcome: 'exception', detail: e?.message || String(e) });
@@ -207,5 +253,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
-  return res.status(200).json({ ok: true, processed: results.length, results });
+  return res.status(200).json({ ok: true, dry_run: dryRun, processed: results.length, results });
 }
