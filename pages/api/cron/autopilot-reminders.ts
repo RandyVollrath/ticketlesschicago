@@ -21,6 +21,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sendClickSendSMS } from '../../../lib/sms-service';
 import { pushService } from '../../../lib/push-service';
+import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -464,15 +465,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const name = firstName || 'there';
 
-      // ── Day 17+ AUTO-SEND SAFETY NET ──
-      // Force the letter through regardless of approval status. Day 17 leaves
-      // a 4-day buffer before Chicago's 21-day mail-contest deadline so Lob +
-      // USPS have time to postmark and deliver. Also covers tickets we
-      // detected late (the Mon/Thu portal scraper can lag the city's
-      // issuance date by up to ~3.5 days).
-      if (daysElapsed >= 17 && !ticket.last_chance_sent_at) {
-        // If we haven't even sent a last-chance email, send it now and
-        // let the mail cron handle auto-sending on its next run
+      // ── AUTO-SEND TRIGGER ──
+      // Fires when the ticket's evidence_deadline (+1h buffer) has passed.
+      // evidence_deadline is set per-user by lib/contest-deadlines.ts:
+      //   fast_contest_submission=true (default): detection + 3 days
+      //   fast_contest_submission=false:          issue + 17 days
+      // Either way, this is the moment to flip the letter to 'approved' so
+      // the mail-letters cron picks it up on its next run.
+      const evidenceDeadlinePassed =
+        !!ticket.evidence_deadline &&
+        new Date(ticket.evidence_deadline).getTime() + 60 * 60 * 1000 <= Date.now();
+
+      if (evidenceDeadlinePassed && !ticket.last_chance_sent_at) {
+        // Belt-and-suspenders nudge: if we never sent a heads-up, send one
+        // now even though we're about to auto-mail on the next cron tick.
         const sent = await sendLastChanceEmail(email, name, ticket);
         if (sent) {
           lastChanceSent++;
@@ -485,11 +491,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      if (daysElapsed >= 17) {
+      if (evidenceDeadlinePassed) {
         // Trigger auto-send: update ticket status so mail-letters cron picks it up
         // This bypasses the approval requirement
         if (ticket.status === 'pending_evidence' || ticket.status === 'needs_approval' || ticket.status === 'found' || ticket.status === 'letter_generated') {
-          console.log(`  Day ${daysElapsed}: Auto-sending ticket ${ticket.ticket_number} (safety net - updating ticket to approved)`);
+          console.log(`  Day ${daysElapsed}: Auto-sending ticket ${ticket.ticket_number} (evidence_deadline passed - updating ticket to approved)`);
           const { count: updatedCount } = await supabaseAdmin
             .from('detected_tickets')
             .update({
@@ -519,7 +525,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .select('id');
 
         if (letterUpdate && letterUpdate.length > 0) {
-          console.log(`  Day ${daysElapsed}: Safety net force-approved letter for ticket ${ticket.ticket_number}`);
+          console.log(`  Day ${daysElapsed}: Evidence-deadline auto-send: force-approved letter for ticket ${ticket.ticket_number}`);
 
           // Audit log
           await supabaseAdmin
@@ -531,7 +537,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               details: {
                 days_elapsed: daysElapsed,
                 days_remaining: daysRemaining,
-                reason: 'Day 17 safety net - auto-sending 4 days before 21-day deadline',
+                reason: 'evidence_deadline reached — auto-mailing per user fast_contest_submission setting',
+                evidence_deadline: ticket.evidence_deadline,
                 ticket_status: ticket.status,
                 letters_promoted: letterUpdate.length,
               },
@@ -706,6 +713,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log(`Complete: ${remindersSent} reminders, ${lastChanceSent} last-chance, ${autoSendTriggered} auto-sends, ${smsSent} SMS, ${pushSent} push`);
+
+    // If we promoted any letters to 'approved', fire mail-letters now so the
+    // letter actually goes out today instead of waiting for tomorrow's cron.
+    // Important for fast-mode users where evidence_deadline = detection + 3 days —
+    // the daily lag would push the actual mailing to Day 4 from detection.
+    if (autoSendTriggered > 0) {
+      const trig = await triggerAutopilotMailRun({
+        reason: `reminders-cron-promoted-${autoSendTriggered}-letters`,
+      });
+      console.log(`On-demand mail trigger: ${trig.message}`);
+    }
 
     // ── CONSENT REMINDER EMAILS ──
     // Find users with contest letters stuck in 'awaiting_consent' and remind them

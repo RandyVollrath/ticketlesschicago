@@ -691,7 +691,6 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
       profileData?.fast_contest_submission,
     );
     const autoSendDeadline = deadlines.autoSendDeadline;
-    const contestDeadline = deadlines.contestDeadline;
     const evidenceDeadline = deadlines.evidenceDeadline;
 
     // Past-contest-window check — Chicago MCC 9-100-050 gives 21 calendar days
