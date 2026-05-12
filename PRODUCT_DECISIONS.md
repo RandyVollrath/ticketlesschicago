@@ -1,6 +1,6 @@
 # Product Decisions — Source of Truth
 
-**Last updated: 2026-03-11**
+**Last updated: 2026-05-12**
 
 This document records finalized product decisions. Claude Code MUST NOT change these behaviors without explicit owner approval. If a code change would contradict any decision below, stop and ask first.
 
@@ -21,9 +21,11 @@ This document records finalized product decisions. Claude Code MUST NOT change t
 | Decision | Value | Date |
 |----------|-------|------|
 | Legal contest deadline (Chicago) | 21 days from ticket issue date | — |
-| Evidence submission deadline | **Day 17 from ticket issue date** — unified across ALL code paths (API cron, portal scraper, queue worker, VA upload) | 2026-02-18 |
-| Auto-send deadline | **Day 17** — letters auto-mail on Day 17 regardless of whether user submitted evidence. 4-day buffer before Day 21 hard deadline. | 2026-02-18 |
-| Late ticket fallback | If ticket is old and Day 17 already passed, give at least 48 hours from detection | 2026-02-18 |
+| Evidence submission deadline (default) | **3 days after detection** — capped at Chicago's 21-day mail-contest hard deadline. Controlled by `user_profiles.fast_contest_submission` (default TRUE). | 2026-05-12 |
+| Evidence submission deadline (opt-out) | When user toggles `fast_contest_submission=FALSE`: fall back to **Day 17 from ticket issue date**. User can stretch past Day 21 and accept a late-submission penalty. | 2026-05-12 |
+| Auto-send deadline | Same date as evidence submission deadline — letters auto-mail when the evidence window closes (+1h buffer), regardless of whether the user submitted evidence | 2026-05-12 |
+| Deadline computation | Centralized in `lib/contest-deadlines.ts` — `computeContestDeadlines(issueDate, detectedAt, fastSubmission)`. All detection paths (API cron, portal scraper, queue worker) MUST call this helper. | 2026-05-12 |
+| Late ticket fallback | If ticket is old and the computed window already passed, give at least 48 hours from detection | 2026-02-18 |
 | No violation date fallback | 14 days from detection | 2026-02-18 |
 | Contest letter delivery | USPS via Lob | — |
 
@@ -96,4 +98,4 @@ These are the official City of Chicago fine amounts. **NEVER change these withou
 1. **Before making a change**, check if it contradicts a decision above.
 2. **If it does**, do NOT proceed — ask the owner first.
 3. **To update a decision**, edit this file with the new value and date, then commit.
-4. **Evidence deadline** has been unified to Day 17 across all code paths (confirmed 2026-02-18).
+4. **Evidence deadline** is computed by `lib/contest-deadlines.ts`. Default behavior is 3 days from detection (per user_profiles.fast_contest_submission). The prior Day-17-from-issue safety net is only used when a user opts out. Updated 2026-05-12.

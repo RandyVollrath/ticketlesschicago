@@ -43,6 +43,7 @@ import { analyzeFactualInconsistency } from '../lib/red-light-defense-analysis';
 import { detectVehicleMismatch, parseVehicleFromDescription, hasVehicleInfoForMismatch, VehicleInfo, MismatchResult } from '../lib/vehicle-mismatch';
 import { sendClickSendSMS } from '../lib/sms-service';
 import { isLetterMailable } from '../lib/contest-letter-validator';
+import { computeContestDeadlines } from '../lib/contest-deadlines';
 import { DEFENSE_TEMPLATES } from '../lib/contest-templates';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -73,7 +74,7 @@ const supabaseAdmin = createClient(
 const SCREENSHOT_DIR = process.env.PORTAL_CHECK_SCREENSHOT_DIR || path.resolve(__dirname, '../debug-screenshots');
 // Evidence deadline is calculated per-ticket based on issue date (day 17 from ticket date)
 // Unified across all code paths — auto-send on day 17, hard legal deadline is day 21
-const AUTO_SEND_DAY = 17; // Day 17 from ticket issue date
+// Evidence/auto-send deadline math lives in lib/contest-deadlines.ts now.
 
 // Chicago municipal contest window for parking / automated camera tickets is
 // 21 calendar days from the violation date (MCC 9-100-050). After that the
@@ -2421,27 +2422,22 @@ async function processFoundTicket(
   const isPastContestWindow =
     daysSinceViolation !== null && daysSinceViolation > CHICAGO_MAIL_CONTEST_WINDOW_DAYS;
 
-  // Calculate evidence deadline based on ticket issue date (day 17 from issue)
-  // Auto-send on day 17, leaving 4-day buffer before the 21-day legal deadline
-  let evidenceDeadline: Date;
-  if (violationDate) {
-    const ticketDate = new Date(violationDate);
-    evidenceDeadline = new Date(ticketDate.getTime() + AUTO_SEND_DAY * 24 * 60 * 60 * 1000);
-    // If ticket is old and deadline would be in the past, give at least 48 hours
-    if (evidenceDeadline.getTime() < Date.now() + 48 * 60 * 60 * 1000) {
-      evidenceDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000);
-    }
-  } else {
-    // No violation date — fallback to 14 days from now
-    evidenceDeadline = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-  }
-
-  // Get user profile
+  // Get user profile (needed for fast_contest_submission toggle below)
   const { data: profile } = await supabaseAdmin
     .from('user_profiles')
     .select('*')
     .eq('user_id', user_id)
     .maybeSingle();
+
+  // Deadlines come from lib/contest-deadlines.ts (single source of truth).
+  // Default: mail 3 days after detection. Opt-out: Day-17-from-issue safety net.
+  const deadlines = computeContestDeadlines(
+    violationDate,
+    new Date(),
+    profile?.fast_contest_submission,
+  );
+  const evidenceDeadline = deadlines.evidenceDeadline;
+  const autoSendDeadline = deadlines.autoSendDeadline;
 
   // Get user email
   const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user_id);
@@ -2468,8 +2464,7 @@ async function processFoundTicket(
       source: 'portal_scrape',
       evidence_requested_at: now,
       evidence_deadline: evidenceDeadline.toISOString(),
-      // Auto-send 2 days after evidence deadline (day 19) — gives buffer for late evidence
-      auto_send_deadline: new Date(evidenceDeadline.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+      auto_send_deadline: autoSendDeadline.toISOString(),
       reminder_count: 0,
       // Store the plate/state from the ticket itself for clerical error detection
       ticket_plate: ticket.ticket_plate || null,

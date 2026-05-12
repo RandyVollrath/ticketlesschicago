@@ -49,6 +49,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { lookupPlateOnPortal, LookupResult, PortalTicket } from '../lib/chicago-portal-scraper';
 import { getEvidenceGuidance, generateEvidenceQuestionsHtml, generateQuickTipsHtml } from '../lib/contest-kits/evidence-guidance';
 import { isLetterMailable } from '../lib/contest-letter-validator';
+import { computeContestDeadlines } from '../lib/contest-deadlines';
 import { DEFENSE_TEMPLATES } from '../lib/contest-templates';
 import { chromium, Browser } from 'playwright';
 import * as dotenv from 'dotenv';
@@ -83,7 +84,7 @@ const IDLE_SLEEP_MIN = parseInt(process.env.WORKER_IDLE_SLEEP_MIN || '30');
 const ACTIVE_HOURS_START = parseInt(process.env.WORKER_ACTIVE_HOURS_START || '7');
 const ACTIVE_HOURS_END = parseInt(process.env.WORKER_ACTIVE_HOURS_END || '23');
 const SCREENSHOT_DIR = process.env.PORTAL_CHECK_SCREENSHOT_DIR || path.resolve(__dirname, '../debug-screenshots');
-const EVIDENCE_DEADLINE_DAYS = 17; // Day 17 from ticket issue date (auto-send deadline)
+// Evidence/auto-send deadline math lives in lib/contest-deadlines.ts now.
 
 // Chicago MCC 9-100-050: 21 calendar days from violation date to contest by mail.
 // After this window the city issues a determination of liability and a written
@@ -571,20 +572,6 @@ async function processFoundTicket(
     }
   }
 
-  // Calculate evidence deadline: Day 17 from ticket issue date
-  let evidenceDeadline: Date;
-  if (violationDate) {
-    const ticketDate = new Date(violationDate);
-    evidenceDeadline = new Date(ticketDate.getTime() + EVIDENCE_DEADLINE_DAYS * 24 * 60 * 60 * 1000);
-    // If ticket is old and deadline would be in the past, give at least 48 hours
-    if (evidenceDeadline.getTime() < Date.now() + 48 * 60 * 60 * 1000) {
-      evidenceDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000);
-    }
-  } else {
-    // No violation date — fallback to 14 days from now
-    evidenceDeadline = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-  }
-
   const violationType = mapViolationType(ticket.violation_description || '');
   const amount = ticket.current_amount_due || null;
 
@@ -595,12 +582,20 @@ async function processFoundTicket(
   const isPastContestWindow =
     daysSinceViolation !== null && daysSinceViolation > CHICAGO_MAIL_CONTEST_WINDOW_DAYS;
 
-  // Get user profile
+  // Get user profile (need fast_contest_submission before computing deadlines)
   const { data: profile } = await supabaseAdmin
     .from('user_profiles')
     .select('*')
     .eq('user_id', user_id)
     .maybeSingle();
+
+  // Deadlines come from lib/contest-deadlines.ts (single source of truth).
+  // Default: 3 days from detection. Opt-out: Day-17-from-issue.
+  const evidenceDeadline = computeContestDeadlines(
+    violationDate,
+    new Date(),
+    profile?.fast_contest_submission,
+  ).evidenceDeadline;
 
   // Get user email
   const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user_id);

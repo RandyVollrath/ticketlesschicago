@@ -1157,6 +1157,9 @@ function SettingsPageInner() {
   const [emailOnLetterMailed, setEmailOnLetterMailed] = useState(true);
   const [emailOnApprovalNeeded, setEmailOnApprovalNeeded] = useState(true);
   const [foiaWaitPreference, setFoiaWaitPreference] = useState<'wait_for_foia' | 'send_immediately'>('wait_for_foia');
+  // Fast contest submission: ON = mail 3 days after detection (default).
+  // OFF = hold for evidence; falls back to Day-17-from-issue safety net.
+  const [fastContestSubmission, setFastContestSubmission] = useState(true);
 
   // Receipt forwarding
   const [receiptCount, setReceiptCount] = useState<number | null>(null); // null = not loaded yet
@@ -1210,7 +1213,7 @@ function SettingsPageInner() {
     towAlerts: true, dotPermitAlerts: true, allClearAlerts: true, notificationDays: [30, 7, 1] as number[],
     autoMailEnabled: true, requireApproval: false, allowedTicketTypes: [] as string[],
     emailOnTicketFound: true, emailOnLetterMailed: true, emailOnApprovalNeeded: true,
-    foiaWaitPreference: 'wait_for_foia' as string, isPaidUser: false,
+    foiaWaitPreference: 'wait_for_foia' as string, fastContestSubmission: true, isPaidUser: false,
   });
   // Keep ref in sync every render (assignment, not a hook)
   formStateRef.current = {
@@ -1224,7 +1227,7 @@ function SettingsPageInner() {
     towAlerts, dotPermitAlerts, allClearAlerts, notificationDays,
     autoMailEnabled, requireApproval, allowedTicketTypes,
     emailOnTicketFound, emailOnLetterMailed, emailOnApprovalNeeded,
-    foiaWaitPreference, isPaidUser,
+    foiaWaitPreference, fastContestSubmission, isPaidUser,
   };
 
   useEffect(() => {
@@ -1449,6 +1452,8 @@ function SettingsPageInner() {
         if (profileData.foia_wait_preference) {
           setFoiaWaitPreference(profileData.foia_wait_preference);
         }
+        // Default ON when the column is missing or null on legacy rows.
+        setFastContestSubmission(profileData.fast_contest_submission !== false);
       }
 
       // ── Apply plate data ──
@@ -1664,6 +1669,7 @@ function SettingsPageInner() {
           days_before: s.notificationDays,
         },
         foia_wait_preference: s.foiaWaitPreference,
+        fast_contest_submission: s.fastContestSubmission,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 
@@ -1734,7 +1740,7 @@ function SettingsPageInner() {
       emailNotifications, smsNotifications, phoneCallNotifications,
       streetCleaningAlerts, snowBanAlerts, dotPermitAlerts, allClearAlerts, notificationDays,
       autoMailEnabled, requireApproval, allowedTicketTypes, emailOnTicketFound,
-      emailOnLetterMailed, emailOnApprovalNeeded, foiaWaitPreference]);
+      emailOnLetterMailed, emailOnApprovalNeeded, foiaWaitPreference, fastContestSubmission]);
 
   // Debounced save: polls generation counter every 1.5s
   useEffect(() => {
@@ -3427,6 +3433,34 @@ function SettingsPageInner() {
                   setAutoMailEnabled(checked);
                   setRequireApproval(!checked);
                 }}
+                disabled={false}
+              />
+            </div>
+          </div>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 16,
+            marginBottom: 20,
+            paddingBottom: 16,
+            borderBottom: `1px solid ${COLORS.border}`,
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
+                Fast-file contest letter (recommended)
+              </h4>
+              <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted }}>
+                {fastContestSubmission
+                  ? 'On: we mail your contest letter 3 days after we detect the ticket. Most mail-in wins come from being on file early — you can still reply with evidence in those 3 days.'
+                  : 'Off: we wait as long as possible so you can keep adding evidence. We still auto-mail by Day 17 from the ticket date so you don’t miss the 21-day deadline.'}
+              </p>
+            </div>
+            <div style={{ flexShrink: 0, paddingTop: 2 }}>
+              <Toggle
+                checked={fastContestSubmission}
+                onChange={setFastContestSubmission}
                 disabled={false}
               />
             </div>
