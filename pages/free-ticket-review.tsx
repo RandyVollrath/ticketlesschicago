@@ -75,6 +75,13 @@ interface StatusResponse {
   plate?: string;
   state?: string;
   analysis?: Analysis | null;
+  queue?: {
+    position: number;
+    ahead: number;
+    etaSeconds: number;
+    workerLive: boolean;
+    heartbeatAgeMs: number | null;
+  };
 }
 
 export default function FreeTicketReview() {
@@ -281,7 +288,12 @@ export default function FreeTicketReview() {
         )}
 
         {reviewId && status && status.status !== 'done' && status.status !== 'error' && (
-          <ProgressView status={status.status} emailUsed={emailUsed} reviewId={reviewId} />
+          <ProgressView
+            status={status.status}
+            emailUsed={emailUsed}
+            reviewId={reviewId}
+            queue={status.queue}
+          />
         )}
 
         {status && status.status === 'error' && (
@@ -332,20 +344,42 @@ function Field(props: {
   );
 }
 
-function ProgressView({ status, emailUsed, reviewId }: { status: string; emailUsed: boolean; reviewId: string }) {
-  const label = status === 'processing'
-    ? 'Pulling your tickets from the City of Chicago portal…'
-    : 'Waiting in line — the city portal allows one lookup at a time…';
+function ProgressView({
+  status, emailUsed, reviewId, queue,
+}: {
+  status: string;
+  emailUsed: boolean;
+  reviewId: string;
+  queue?: StatusResponse['queue'];
+}) {
+  const workerOffline = queue && !queue.workerLive;
+  const label = workerOffline
+    ? 'Our processing system is briefly offline'
+    : status === 'processing'
+      ? 'Pulling your tickets from the City of Chicago portal…'
+      : queue && queue.ahead > 0
+        ? `In line — ${queue.ahead} review${queue.ahead === 1 ? '' : 's'} ahead of you`
+        : 'Queued — starting the city portal lookup shortly';
+  const eta = queue
+    ? queue.etaSeconds < 90
+      ? `about ${Math.round(queue.etaSeconds)} seconds`
+      : `about ${Math.ceil(queue.etaSeconds / 60)} minute${Math.ceil(queue.etaSeconds / 60) === 1 ? '' : 's'}`
+    : null;
   return (
     <section style={{ maxWidth: 720, margin: '0 auto', padding: '24px' }}>
       <div style={{
-        background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: 12, padding: 24,
-        textAlign: 'center'
+        background: workerOffline ? '#FFFBEB' : '#F0F9FF',
+        border: `1px solid ${workerOffline ? '#FDE68A' : '#BAE6FD'}`,
+        borderRadius: 12, padding: 24,
+        textAlign: 'center',
       }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#0c4a6e' }}>{label}</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: workerOffline ? '#78350F' : '#0c4a6e' }}>{label}</div>
         <div style={{ marginTop: 10, fontSize: 13, color: COLORS.slate }}>
-          The city's portal is slow on purpose, and at busy times there may be other reviews ahead of you.
-          Most reviews finish within a couple of minutes.
+          {workerOffline
+            ? 'Your review is safely queued. We\'ll email you the results as soon as the system is back — you don\'t have to wait on this page.'
+            : eta
+              ? <>Estimated wait: <strong style={{ color: COLORS.deepHarbor }}>{eta}</strong>. The city portal allows roughly one lookup at a time.</>
+              : 'The city portal allows roughly one lookup at a time.'}
         </div>
         <div style={{ marginTop: 18, height: 4, background: '#BAE6FD', borderRadius: 4, overflow: 'hidden' }}>
           <div style={{

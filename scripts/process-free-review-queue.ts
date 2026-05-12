@@ -211,9 +211,34 @@ async function processOne(row: { id: string; plate: string; state: string; last_
   await maybeSendResultsEmail(row.id, row.email, row.plate, analysis.totalTickets, worthContesting);
 }
 
+async function writeHeartbeat() {
+  try {
+    const [pending, processing] = await Promise.all([
+      supabase.from('free_review_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('free_review_requests').select('id', { count: 'exact', head: true }).eq('status', 'processing'),
+    ]);
+    await supabase
+      .from('free_review_worker_heartbeat')
+      .upsert(
+        {
+          worker_id: WORKER_ID,
+          last_seen_at: new Date().toISOString(),
+          pending_count: pending.count ?? 0,
+          processing_count: processing.count ?? 0,
+          worker_version: '2026-05-12',
+        },
+        { onConflict: 'worker_id' },
+      );
+  } catch {
+    /* heartbeat is advisory — never block the loop */
+  }
+}
+
 async function main() {
   console.log(`[free-review-worker] starting as ${WORKER_ID} (LOOP=${LOOP})`);
+  await writeHeartbeat();
   do {
+    await writeHeartbeat();
     const row = await claimOne();
     if (!row) {
       if (!LOOP) {

@@ -126,13 +126,45 @@ async function handleStatus(req: NextApiRequest, res: NextApiResponse) {
     return res.status(404).json({ error: 'Review not found.' });
   }
 
-  // Trim what we send back: only return analysis when status='done'
+  // Trim what we send back: only return analysis when status='done'.
+  // For in-progress rows, also include queue position + worker liveness so
+  // the page can show an honest ETA instead of just spinning.
   if (data.status !== 'done') {
+    const [queue, hb] = await Promise.all([
+      supabaseAdmin
+        .from('free_review_requests')
+        .select('id, status, created_at')
+        .in('status', ['pending', 'processing'])
+        .order('created_at', { ascending: true }),
+      supabaseAdmin
+        .from('free_review_worker_heartbeat')
+        .select('worker_id, last_seen_at')
+        .order('last_seen_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    const rows = queue.data || [];
+    const position = Math.max(1, rows.findIndex(r => r.id === data.id) + 1);
+    const ahead = Math.max(0, position - 1);
+    // ~25 seconds per lookup including queue overhead — what we see in
+    // practice on the CHI PAY portal. Used only for display.
+    const etaSeconds = Math.max(15, ahead * 25 + 20);
+    const heartbeatAgeMs = hb.data?.last_seen_at
+      ? Date.now() - new Date(hb.data.last_seen_at).getTime()
+      : null;
+    const workerLive = heartbeatAgeMs != null && heartbeatAgeMs < 2 * 60 * 1000;
     return res.status(200).json({
       id: data.id,
       status: data.status,
       created_at: data.created_at,
       error_message: data.error_message,
+      queue: {
+        position,
+        ahead,
+        etaSeconds,
+        workerLive,
+        heartbeatAgeMs,
+      },
     });
   }
 
