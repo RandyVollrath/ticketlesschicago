@@ -24,6 +24,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin as typedSupabase } from '../../../lib/supabase';
 import { createConsentRequest } from '../../../lib/renewal-consent';
 import { isAutoRenewalGloballyEnabled } from '../../../lib/auto-renewal-gate';
+import { estimateCityStickerCents, estimatePlateStickerCents } from '../../../lib/sticker-fees';
 
 const supabaseAdmin = typedSupabase as any;
 const ADMIN_EMAIL = 'randyvollrath@gmail.com';
@@ -31,10 +32,6 @@ const ADMIN_EMAIL = 'randyvollrath@gmail.com';
 const WINDOW_MIN_DAYS = 30;
 const WINDOW_MAX_DAYS = 45;
 const DUPLICATE_LOOKBACK_DAYS = 60;
-
-// Default city sticker fee — passenger plate, which is most common. The
-// automation re-verifies the actual fee on the EzBuy cart before submitting.
-const DEFAULT_CITY_STICKER_CENTS = 9900;
 
 // Service fee per renewal. Configurable via env, defaults to 0.
 function serviceFeeCents(): number {
@@ -63,6 +60,7 @@ interface CandidateRow {
   vin: string | null;
   city_sticker_expiry: string | null;
   license_plate_expiry: string | null;
+  license_plate_type: string | null;
   license_plate_renewal_cost: number | null;
   il_pin_encrypted: string | null;
   il_registration_id_encrypted: string | null;
@@ -146,7 +144,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { data: rows, error } = await supabaseAdmin
     .from('user_profiles')
     .select(
-      'user_id, email, first_name, last_name, license_plate, license_state, vin, city_sticker_expiry, license_plate_expiry, license_plate_renewal_cost, il_pin_encrypted, il_registration_id_encrypted, il_credentials_invalid_at, emissions_completed, emissions_date',
+      'user_id, email, first_name, last_name, license_plate, license_state, vin, city_sticker_expiry, license_plate_expiry, license_plate_type, license_plate_renewal_cost, il_pin_encrypted, il_registration_id_encrypted, il_credentials_invalid_at, emissions_completed, emissions_date',
     )
     .eq('auto_renewal_authorized', true);
 
@@ -171,7 +169,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } else if (await hasRecentConsent(row.user_id, 'city_sticker')) {
         skipped.push({ user_id: row.user_id, reason: 'city: recent consent exists' });
       } else {
-        const govCents = DEFAULT_CITY_STICKER_CENTS;
+        const govCents = estimateCityStickerCents(row.license_plate_type);
         const consent = await createConsentRequest({
           userId: row.user_id,
           renewalType: 'city_sticker',
@@ -206,8 +204,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } else if (await hasRecentConsent(row.user_id, 'license_plate')) {
         skipped.push({ user_id: row.user_id, reason: 'plate: recent consent exists' });
       } else {
-        const govDollars = row.license_plate_renewal_cost ?? 151;
-        const govCents = Math.round(govDollars * 100);
+        const govCents = estimatePlateStickerCents(row.license_plate_renewal_cost, row.license_plate_type);
         const consent = await createConsentRequest({
           userId: row.user_id,
           renewalType: 'license_plate',
