@@ -785,7 +785,7 @@ function PipelineDetailPanel({ selectedTicket, ticketDetail, detailLoading, onCl
                         {isMailed ? 'Letter Mailed' : isPastDue ? `OVERDUE by ${Math.abs(days!)} days` : days != null ? `${days} days until legal deadline` : 'No violation date -- deadline unknown'}
                       </div>
                       <PipelineDetailRow label="Legal Deadline (Day 21)" value={selectedTicket.mail_by_deadline ? new Date(selectedTicket.mail_by_deadline).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'} color={isPastDue ? C.red : isUrgent ? C.yellow : undefined} />
-                      <PipelineDetailRow label="Auto-Send (Day 17)" value={selectedTicket.auto_send_deadline ? new Date(selectedTicket.auto_send_deadline).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'} />
+                      <PipelineDetailRow label="Auto-Send" value={selectedTicket.auto_send_deadline ? new Date(selectedTicket.auto_send_deadline).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'} />
                       {selectedTicket.mailed_at && <PipelineDetailRow label="Actually Mailed" value={new Date(selectedTicket.mailed_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} color={C.green} />}
                       {selectedTicket.lob_expected_delivery && <PipelineDetailRow label="Expected Delivery" value={new Date(selectedTicket.lob_expected_delivery).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} color={C.accent} />}
                     </div>
