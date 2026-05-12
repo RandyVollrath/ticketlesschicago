@@ -92,6 +92,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       /meter\s+was\s+malfunction/i,
       /issued\s+in\s+error/i,
       /street\s+cleaning\s+did\s+not\s+actually\s+occur/i,
+      // Wave 3 user-attestation grounds — each is a codified defense
+      /rental.*vehicle|car.?share|fleet vehicle/i,
+      /funeral procession/i,
+      /police.*officer.*directed/i,
+      /less than 24 hours? before|temporary.*sign.*posted/i,
+      /signs?.*(too far apart|spacing|improperly.*spaced)/i,
+      /notice.*(late|wrong address)|never received.*notice/i,
+      /underlying.*violation.*has.*been.*corrected|compliance.*corrected/i,
     ];
     const hasStrongGround = contestGrounds?.some((g: string) =>
       strongGroundPatterns.some(re => re.test(g))
