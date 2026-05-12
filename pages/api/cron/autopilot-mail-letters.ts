@@ -1789,8 +1789,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return true;
       }
 
-      // Case 3: Auto-send — evidence deadline (Day 17) has passed
+      // Case 3: Auto-send — evidence deadline has passed.
       // Letters auto-mail once evidence_deadline + 1h buffer <= now.
+      // The deadline itself comes from lib/contest-deadlines.ts and depends on
+      // the user's fast_contest_submission preference (default: detection + 3d).
       // The 1-hour buffer prevents a race condition where the cron fires
       // at exactly the deadline time, mailing before the user's evidence
       // window has fully expired.
