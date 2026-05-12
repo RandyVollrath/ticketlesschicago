@@ -41,6 +41,8 @@ interface CrossTicketFinding {
 interface PerTicketAnalysis {
   ticketNumber: string;
   issueDate: string | null;
+  daysSinceIssue: number | null;
+  pastMailWindow: boolean;
   amount: number;
   violationDescription: string;
   violationName: string;
@@ -565,6 +567,20 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
         </div>
       </div>
       <div style={{ marginTop: 8, fontSize: 14, color: COLORS.graphite }}>{t.recommendationReason}</div>
+
+      {t.pastMailWindow && t.daysSinceIssue != null && (
+        <div style={{
+          marginTop: 10, padding: '10px 12px', borderRadius: 8,
+          background: '#FEF3C7', border: '1px solid #FDE68A',
+          fontSize: 13, color: '#78350F', lineHeight: 1.5,
+        }}>
+          <strong>🕒 This ticket happened {t.daysSinceIssue} days ago — before you found us.</strong>{' '}
+          The 21-day mail-contest deadline already passed, so this one is much harder to undo. But if you'd
+          been on Autopilot when it was issued, we'd have caught it within days of the city posting it,
+          filed the FOIA + contest letter inside the deadline, and run the {t.templateArgumentName ? `"${t.templateArgumentName}" ` : ''}
+          defense for you automatically. <strong>Any new ticket on your plate going forward gets that treatment.</strong>
+        </div>
+      )}
 
       {t.baseWinRate != null && (
         <div style={{ marginTop: 10, fontSize: 13, color: COLORS.slate }}>
