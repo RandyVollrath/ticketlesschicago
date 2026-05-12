@@ -135,14 +135,15 @@ async function main() {
     process.exit(1);
   }
 
-  // Audit log to existing audit_logs table if it exists; ignore if not.
+  // Audit log — schema: id, created_at, user_id, admin_user_id, action_type,
+  // entity_type, entity_id, action_details, status, error_message, ip, ua.
   await supabase.from('audit_logs').insert({
-    actor_email: admin,
-    actor_type: 'admin',
-    action: args.revoke ? 'auto_renewal_revoke' : 'auto_renewal_grant',
-    target_user_id: u.id,
-    target_email: args.email,
-    metadata: { reason: args.reason || null },
+    user_id: u.id,
+    action_type: args.revoke ? 'auto_renewal_revoke' : 'auto_renewal_grant',
+    entity_type: 'user_profile',
+    entity_id: u.id,
+    action_details: { admin_email: admin, target_email: args.email, reason: args.reason || null },
+    status: 'success',
   } as any).then(({ error }) => {
     if (error) console.warn(`(audit log insert skipped: ${error.message})`);
   });
