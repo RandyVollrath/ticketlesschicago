@@ -19,10 +19,14 @@ export interface DriftResult {
   window_days: number;
 }
 
-const WINDOW_DAYS = 14;
-const MIN_OVERNIGHT_EVENTS = 5;
+// Tuned for the "3 weeks at a new address consistently" definition of moved.
+// 21-day window gives time for a real move pattern to dominate; min 10
+// overnight events filters out sparse data; 70% majority + 15% home floor
+// distinguish a move from a stayover or commute.
+const WINDOW_DAYS = 21;
+const MIN_OVERNIGHT_EVENTS = 10;
 const NEW_SECTION_MAJORITY = 0.7;
-const HOME_SESSION_FLOOR = 0.2;
+const HOME_SESSION_FLOOR = 0.15;
 
 interface ParkingRow {
   latitude: number;
