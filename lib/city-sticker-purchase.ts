@@ -17,6 +17,7 @@ import { chromium, Browser, Page } from 'playwright';
 import { assertAutoRenewalAllowed } from './auto-renewal-gate';
 import type { ConsentRecord } from './renewal-consent';
 import { consumeConsent } from './renewal-consent';
+import { assertCircuitClosed, reportRenewalResult } from './renewal-failure-recovery';
 
 export interface CitySticerPurchaseInput {
   consent: ConsentRecord;
@@ -86,6 +87,13 @@ export async function purchaseCitySticker(input: CitySticerPurchaseInput): Promi
     await assertAutoRenewalAllowed(consent.user_id);
   } catch (e: any) {
     return { success: false, screenshotPaths: [], error: e?.message || 'gate failed', stoppedAt: 'gate' };
+  }
+
+  // Gate 1b: system-wide circuit breaker for city_sticker
+  try {
+    await assertCircuitClosed('city_sticker');
+  } catch (e: any) {
+    return { success: false, screenshotPaths: [], error: e?.message || 'circuit tripped', stoppedAt: 'gate' };
   }
 
   // Gate 2: consent must be granted and still active
@@ -242,6 +250,11 @@ export async function runCitySticerRenewal(input: CitySticerPurchaseInput): Prom
     });
   } catch (e) {
     console.error('[city-sticker-purchase] consumeConsent failed', e);
+  }
+  try {
+    await reportRenewalResult('city_sticker', result);
+  } catch (e) {
+    console.error('[city-sticker-purchase] reportRenewalResult failed', e);
   }
   return result;
 }

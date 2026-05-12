@@ -22,6 +22,7 @@ import type { ConsentRecord } from './renewal-consent';
 import { consumeConsent } from './renewal-consent';
 import { decryptCredential } from './credentials-vault';
 import { supabaseAdmin } from './supabase';
+import { assertCircuitClosed, reportRenewalResult } from './renewal-failure-recovery';
 
 const ENTRY_URL = 'https://apps.ilsos.gov/LicenseRenewal/';
 
@@ -126,6 +127,12 @@ export async function purchasePlateSticker(input: PlateStickerPurchaseInput): Pr
     await assertAutoRenewalAllowed(consent.user_id);
   } catch (e: any) {
     return { success: false, screenshotPaths: [], error: e?.message || 'gate failed', stoppedAt: 'gate' };
+  }
+
+  try {
+    await assertCircuitClosed('license_plate');
+  } catch (e: any) {
+    return { success: false, screenshotPaths: [], error: e?.message || 'circuit tripped', stoppedAt: 'gate' };
   }
 
   if (consent.status !== 'granted') {
@@ -248,6 +255,11 @@ export async function runPlateStickerRenewal(input: PlateStickerPurchaseInput): 
     });
   } catch (e) {
     console.error('[plate-sticker] consumeConsent failed', e);
+  }
+  try {
+    await reportRenewalResult('license_plate', result);
+  } catch (e) {
+    console.error('[plate-sticker] reportRenewalResult failed', e);
   }
   return result;
 }
