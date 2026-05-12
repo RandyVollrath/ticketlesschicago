@@ -54,12 +54,13 @@ const styles = StyleSheet.create({
     marginLeft: spacing.md,
   },
   title: {
+    fontFamily: typography.fontFamily.displayBold,
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   subtitle: {
+    fontFamily: typography.fontFamily.body,
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
   },
