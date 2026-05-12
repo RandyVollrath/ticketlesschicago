@@ -2,43 +2,44 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-// Brand Colors - Autopilot America (Gemini 3 Flash recommended)
+// Brand Colors - Autopilot America (matched to autopilotamerica.com web palette)
 export const colors = {
-  // Primary - Vibrant Electric Blue
-  primary: '#0066FF',
-  primaryDark: '#004DCC',
-  primaryLight: '#3388FF',
-  primaryTint: '#F0F6FF', // Light blue tint for secondary buttons
+  // Primary - Regulatory Blue (web: #2563EB / navy #0F172A)
+  primary: '#2563EB',
+  primaryDark: '#0F172A',
+  primaryLight: '#3B82F6',
+  primaryTint: '#EFF6FF', // Light blue tint for secondary buttons
 
-  // Secondary - Vibrant Yellow for tips/accents
+  // Secondary - retained yellow for tip backgrounds only (SettingsScreen)
+  // Not a brand color; do not extend to new surfaces.
   secondary: '#FFD60A',
   secondaryDark: '#E6C109',
-  secondaryLight: '#FFF9DB', // Soft yellow for tip backgrounds
+  secondaryLight: '#FFF9DB',
 
-  // Status Colors
-  success: '#34C759',
-  warning: '#FF9500',
-  error: '#FF3B30',
-  info: '#5AC8FA',
+  // Status Colors (web: emerald/orange/red)
+  success: '#10B981',
+  warning: '#F97316',
+  error: '#EF4444',
+  info: '#3B82F6',
 
-  // Severity Colors (for parking rules)
-  critical: '#FF3B30',
-  criticalBg: '#fff5f5',
-  warningBg: '#fff8e6',
-  infoBg: '#f0f8ff',
-  successBg: '#f0fff4',
+  // Severity Colors (for parking rules) — tinted versions of status colors
+  critical: '#EF4444',
+  criticalBg: '#FEE2E2',
+  warningBg: '#FEF3C7',
+  infoBg: '#DBEAFE',
+  successBg: '#D1FAE5',
 
-  // Neutrals - Cool Off-White background
+  // Neutrals - web off-white background
   white: '#FFFFFF',
-  background: '#F5F7FA',
+  background: '#F8FAFC',
   cardBg: '#FFFFFF',
-  border: '#E9ECEF',
-  divider: '#E9ECEF',
+  border: '#E2E8F0',
+  divider: '#E2E8F0',
 
-  // Text - Deep Charcoal and Muted Slate
-  textPrimary: '#1A1C1E',
-  textSecondary: '#6C727A',
-  textTertiary: '#ADB5BD',
+  // Text - web charcoal + slate
+  textPrimary: '#1E293B',
+  textSecondary: '#64748B',
+  textTertiary: '#94A3B8',
   textInverse: '#FFFFFF',
 
   // Overlays
