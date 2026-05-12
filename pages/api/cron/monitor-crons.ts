@@ -79,6 +79,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       issues.push('No users have email notifications enabled');
     }
 
+    // Home-address drift detector freshness: at least one signal row should
+    // have been inserted in the last 24h, even if it's INSUFFICIENT_DATA.
+    // Zero rows means the daily cron failed to run.
+    const { count: driftSignals24h } = await supabase
+      .from('home_address_drift_signals')
+      .select('*', { count: 'exact', head: true })
+      .gte('detected_at', yesterday);
+    if (!driftSignals24h || driftSignals24h === 0) {
+      issues.push('Home-address drift detector produced 0 signal rows in the last 24h (cron may not be firing)');
+    }
+
     const report = {
       timestamp: new Date().toISOString(),
       notifications_24h: notifCount || 0,
