@@ -6,6 +6,7 @@ import { triggerAutopilotMailRun } from '../../../lib/trigger-autopilot-mail';
 import { pushService } from '../../../lib/push-service';
 import { logMessageSent, logMessageError } from '../../../lib/message-audit-logger';
 import { isLetterMailable } from '../../../lib/contest-letter-validator';
+import { computeContestDeadlines } from '../../../lib/contest-deadlines';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -555,7 +556,7 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
 
   const { data: profileData } = await supabaseAdmin
     .from('user_profiles')
-    .select('first_name, last_name, mailing_address, mailing_city, mailing_state, mailing_zip')
+    .select('first_name, last_name, mailing_address, mailing_city, mailing_state, mailing_zip, fast_contest_submission')
     .eq('user_id', plate.user_id)
     .maybeSingle();
 
@@ -678,15 +679,20 @@ async function processPlate(plate: MonitoredPlate): Promise<{ newTickets: number
 
     const violationType = mapViolationType(ticket.violation_code, ticket.violation_description);
     const cameraViolation = isCameraViolation(violationType);
-    // Calculate deadlines based on ticket issue date (21-day contest window)
-    // Use Chicago timezone for calendar-day arithmetic to avoid UTC midnight edge cases
+    // Deadlines come from lib/contest-deadlines.ts (single source of truth).
+    // Default behavior: mail 3 days after detection (fast_contest_submission=true).
+    // Opt-out: Day-17-from-issue safety net (fast_contest_submission=false).
     const ticketDateRaw = new Date(ticket.issue_date);
     const chicagoTicketStr = ticketDateRaw.toLocaleDateString('en-US', { timeZone: 'America/Chicago' });
     const chicagoTicketDate = new Date(chicagoTicketStr);
-    const autoSendDeadline = new Date(chicagoTicketDate.getTime() + 17 * 24 * 60 * 60 * 1000); // Day 17 auto-send
-    const contestDeadline = new Date(chicagoTicketDate.getTime() + 21 * 24 * 60 * 60 * 1000); // Day 21 hard deadline
-    // evidence_deadline = Day 17 (auto-send date, unified across all code paths)
-    const evidenceDeadline = autoSendDeadline;
+    const deadlines = computeContestDeadlines(
+      ticket.issue_date,
+      new Date(),
+      profileData?.fast_contest_submission,
+    );
+    const autoSendDeadline = deadlines.autoSendDeadline;
+    const contestDeadline = deadlines.contestDeadline;
+    const evidenceDeadline = deadlines.evidenceDeadline;
 
     // Past-contest-window check — Chicago MCC 9-100-050 gives 21 calendar days
     // from violation date to contest by mail. Past that, the city has issued a
