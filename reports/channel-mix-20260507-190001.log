@@ -1,0 +1,28 @@
+=== channel-mix report run 20260507-190001 UTC ===
+host: randy-vollrath-System-Product-Name
+node: v22.22.0
+
+
+> ticketless-america@1.0.0 report:channel-mix
+> npx tsx scripts/report-contest-channel-mix.ts
+
+[dotenv@17.2.2] injecting env (94) from .env.local -- tip: 📡 auto-backup env with Radar: https://dotenvx.com/radar
+Contest channel mix since 2026-04-07
+
+Top-line:
+  Letters delivered (eContest succeeded + Lob mailed):  2
+    via City eContest portal (Correspondence):              0  0.0%
+    via Lob USPS mail (P.O. Box 88292):                     2  100.0%
+
+eContest attempt funnel:
+  Packets built (eContest attempted):                   0
+    succeeded online:                                       0  —
+    fell back to Lob (no Correspondence offered, etc.):     2  —
+  Lob runs that never tried eContest:                   0
+
+eContest success rate by violation type (where attempted):
+  violation_type                   attempts  online  fallback  success%
+  expired_plates                          0       0         1         —
+  street_cleaning                         0       0         1         —
+
+=== exit: 0 ===
