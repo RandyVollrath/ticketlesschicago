@@ -1923,32 +1923,39 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.groundTruthBannerBody} numberOfLines={2}>
             {lastParkingCheck.address}
           </Text>
+          {/* Layout — gemini-3.1-pro design review (May 2026): the
+              primary path (confirm) gets a filled CTA, the correction
+              path is an outlined secondary, and the rare false-positive
+              ("Not parked") drops to a small ghost link beneath. This
+              kills the "traffic-light" 3-equal-color UI that read as a
+              system alert instead of a user choice. minHeight 44pt on
+              every tappable to clear the iOS/Android touch-target floor. */}
           <View style={styles.groundTruthBannerActions}>
-            <TouchableOpacity
-              style={styles.groundTruthNegativeBtn}
-              onPress={markFalsePositiveParking}
-              accessibilityRole="button"
-              accessibilityLabel="Mark detection as false alarm — I am not parked"
-            >
-              <Text style={styles.groundTruthNegativeText}>Not parked</Text>
-            </TouchableOpacity>
             <TouchableOpacity
               style={styles.groundTruthCorrectionBtn}
               onPress={markWrongAddressFromBanner}
               accessibilityRole="button"
-              accessibilityLabel="The address is wrong — fix it"
+              accessibilityLabel="Fix address"
             >
-              <Text style={styles.groundTruthCorrectionText}>Wrong address</Text>
+              <Text style={styles.groundTruthCorrectionText}>Fix address</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.groundTruthPositiveBtn}
               onPress={confirmParkingHere}
               accessibilityRole="button"
-              accessibilityLabel="Confirm this parking detection"
+              accessibilityLabel="Confirm parking"
             >
-              <Text style={styles.groundTruthPositiveText}>Yes, parked here</Text>
+              <Text style={styles.groundTruthPositiveText}>Confirm</Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            style={styles.groundTruthGhostBtn}
+            onPress={markFalsePositiveParking}
+            accessibilityRole="button"
+            accessibilityLabel="Not parked"
+          >
+            <Text style={styles.groundTruthGhostText}>Not parked</Text>
+          </TouchableOpacity>
         </View>
       )}
       <ScrollView
@@ -3062,7 +3069,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   <TouchableOpacity
                     style={styles.altTypedDisclosure}
                     onPress={openMapForPinDrag}
-                    accessibilityLabel="Move the pin to your actual parking spot on the map"
+                    accessibilityLabel="Drop pin on map"
                     accessibilityRole="button"
                   >
                     <MaterialCommunityIcons name="map-marker-radius" size={16} color={colors.primary} />
@@ -3213,10 +3220,14 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.semibold,
     color: colors.white,
   },
+  // White background — green Confirm CTA was reading muddy on the prior
+  // light-blue tint (gemini-3.1-pro v2 review). Plain white gives the
+  // primary action a clean canvas and matches the rest of the app's
+  // surface color in light mode.
   groundTruthBanner: {
-    backgroundColor: '#EAF3FF',
+    backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#CFE4FF',
+    borderBottomColor: colors.border,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.base,
   },
@@ -3234,58 +3245,65 @@ const styles = StyleSheet.create({
   groundTruthBannerBody: {
     fontSize: typography.sizes.xs,
     color: colors.textSecondary,
-    marginTop: 2,
-    marginLeft: 26,
+    marginTop: spacing.xs,
   },
+  // Two-button row: outlined "Fix address" + filled "Confirm". Buttons
+  // share width via flex:1 so they never wrap or orphan on narrow phones.
+  // gap: spacing.sm gives a clear seam without crowding.
   groundTruthBannerActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
+    gap: spacing.sm,
     marginTop: spacing.sm,
-    marginLeft: 26,
   },
-  groundTruthNegativeBtn: {
-    backgroundColor: '#FFE7E7',
-    borderWidth: 1,
-    borderColor: '#FFCFCF',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: borderRadius.sm,
-  },
-  groundTruthNegativeText: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
-    color: colors.error,
-  },
-  // Amber middle button — separates "I'm not parked at all" (red) from
-  // "I'm parked but the address is wrong" (amber). Without this third
-  // option, low-confidence detects forced users to choose between two
-  // wrong answers.
+  // Secondary action — outlined, neutral. Carries no semantic alarm color
+  // because correcting an address is a routine path, not a warning state.
   groundTruthCorrectionBtn: {
-    backgroundColor: '#FFF4D6',
+    flex: 1,
+    minHeight: 44,
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#FFE3A3',
+    borderColor: colors.primary,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs + 2,
     borderRadius: borderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   groundTruthCorrectionText: {
-    fontSize: typography.sizes.xs,
+    fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
-    color: '#A86B00',
+    color: colors.primary,
   },
+  // Primary action — filled green CTA. The dominant visual answer when
+  // the detection is correct, which is the most common case.
   groundTruthPositiveBtn: {
-    backgroundColor: '#E9F9EE',
-    borderWidth: 1,
-    borderColor: '#CBEFD8',
+    flex: 1,
+    minHeight: 44,
+    backgroundColor: colors.success,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs + 2,
     borderRadius: borderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   groundTruthPositiveText: {
-    fontSize: typography.sizes.xs,
+    fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
-    color: colors.success,
+    color: colors.white,
+  },
+  // Tertiary action — ghost link beneath the main row. False-positive is
+  // rare (detection picked up a non-park event) so it doesn't deserve
+  // equal billing with confirm/correct. minHeight: 44 keeps it on the
+  // iOS/Android touch-target floor.
+  groundTruthGhostBtn: {
+    minHeight: 44,
+    alignSelf: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  groundTruthGhostText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
   },
   scrollView: {
     padding: spacing.lg,
