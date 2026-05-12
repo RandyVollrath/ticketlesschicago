@@ -137,6 +137,9 @@
     },
     "pages/api/cron/process-granted-renewals.ts": {
       "maxDuration": 300
+    },
+    "pages/api/cron/create-authorized-renewal-consents.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -319,6 +322,10 @@
     {
       "path": "/api/cron/process-granted-renewals",
       "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/cron/create-authorized-renewal-consents",
+      "schedule": "0 15 * * *"
     }
   ],
   "headers": [
