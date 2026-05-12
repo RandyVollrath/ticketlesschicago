@@ -157,7 +157,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         witnessBoost: hasWitnesses ? 8 : 0,
         documentationBoost: hasDocumentation ? 7 : 0,
         groundsBoost: numGrounds >= 3 ? 5 : 0,
-        strongGroundBoost: hasStrongGround ? 12 : 0,
+        stolenPlateBoost: stolenPlateGround && isCameraOrPlateCode ? 40 : 0,
+        strongGroundBoost: hasStrongGround && !stolenPlateGround ? 12 : 0,
         timeModifier: daysSinceTicket && daysSinceTicket <= 7 ? 3 : (daysSinceTicket && daysSinceTicket > 60 ? -5 : 0)
       },
       ordinanceInfo: ordinance ? {
