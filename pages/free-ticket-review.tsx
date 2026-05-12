@@ -437,7 +437,20 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
   const maybe = analysis.perTicket.filter(t => t.recommendation === 'maybe');
   const skip = analysis.perTicket.filter(t => t.recommendation === 'skip');
   const filable = worthIt.length + maybe.length;
-  const deadlineRiskCount = analysis.perTicket.filter(t => t.pastMailWindow).length;
+  // Count fightable late-hearing tickets only (22–45 day window). Hard-walled
+  // tickets are excluded because the "switch to in-person hearing" pitch
+  // doesn't apply to them.
+  const deadlineRiskCount = analysis.perTicket.filter(
+    t => t.pastMailWindow && t.recommendation !== 'skip',
+  ).length;
+  // Hard-walled tickets are skip-tier AND older than 45 days.
+  const hardWallCount = analysis.perTicket.filter(
+    t => t.recommendation === 'skip' && t.daysSinceIssue != null && t.daysSinceIssue > 45,
+  ).length;
+  // When the user has tickets but NONE are fightable (e.g. all hard-walled),
+  // we still want a conversion path — pitch ongoing protection for future
+  // tickets.
+  const showFutureOnlyHero = analysis.totalTickets > 0 && filable === 0;
 
   return (
     <section style={{ maxWidth: 880, margin: '0 auto', padding: '24px' }}>
@@ -461,6 +474,32 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
             maybeCount={maybe.length}
             deadlineRiskCount={deadlineRiskCount}
           />
+        )}
+
+        {showFutureOnlyHero && (
+          <div style={{
+            marginTop: 18, padding: 22, background: COLORS.deepHarbor, borderRadius: 14, color: '#fff',
+          }}>
+            <div style={{ fontSize: 13, color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              What we found
+            </div>
+            <div style={{ marginTop: 8, fontSize: 20, fontWeight: 800, lineHeight: 1.3 }}>
+              {analysis.totalTickets} ticket{analysis.totalTickets === 1 ? '' : 's'} totaling ${analysis.totalAmountDue.toFixed(2)} outstanding — none inside our contest window anymore.
+            </div>
+            <div style={{ marginTop: 6, fontSize: 16, color: '#CBD5E1', lineHeight: 1.5 }}>
+              {hardWallCount > 0 && (
+                <><strong style={{ color: '#fff' }}>{hardWallCount} {hardWallCount === 1 ? 'ticket is' : 'tickets are'} past day 45</strong>, where the city has typically entered late-fee escalations and the contest path becomes a motion-to-vacate rather than a standard hearing. </>
+              )}
+              Autopilot catches every <em>new</em> ticket on your plate within days, files the contest before the deadline, and tracks each one to a final decision — at our 59% mail-in win rate.
+            </div>
+            <a href="/get-started" style={{
+              display: 'inline-block', marginTop: 18, padding: '14px 22px', borderRadius: 10,
+              background: COLORS.signal, color: '#04221A', fontWeight: 800, fontSize: 16,
+              textDecoration: 'none',
+            }}>
+              Protect my plate going forward — $79/year →
+            </a>
+          </div>
         )}
 
         {analysis.totalTickets === 0 && (
@@ -719,9 +758,11 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
 
       {t.recommendation === 'skip' ? (
         <div style={{ marginTop: 10, fontSize: 14, color: COLORS.graphite, lineHeight: 1.55 }}>
-          {t.pastMailWindow && t.daysSinceIssue != null
-            ? <>Issued {t.daysSinceIssue} days ago — the 21-day mail-contest window has closed and the late-hearing path is narrowing.</>
-            : 'Standard template alone is unlikely to clear this one — pay or move on may be the higher-value choice.'}
+          {t.daysSinceIssue != null && t.daysSinceIssue > 45
+            ? <>Issued {t.daysSinceIssue} days ago — past our reliable contest window. By now the city has typically entered both late-fee escalations, and the path becomes a motion-to-vacate or collections-stage filing, which isn't part of the standard Autopilot plan. We can still cover any new ticket on your plate from today on.</>
+            : t.pastMailWindow && t.daysSinceIssue != null
+              ? <>Issued {t.daysSinceIssue} days ago — the contest path here is narrow enough that we'd recommend just paying.</>
+              : 'Standard template alone is unlikely to clear this one — pay or move on may be the higher-value choice.'}
         </div>
       ) : categoryLine ? (
         <div style={{ marginTop: 10, fontSize: 14, color: COLORS.graphite, lineHeight: 1.55 }}>
@@ -736,9 +777,9 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
           background: '#FEF3C7', border: '1px solid #FDE68A',
           fontSize: 13, color: '#78350F', lineHeight: 1.5,
         }}>
-          <strong>🕒 Issued {t.daysSinceIssue} days ago — before you found us.</strong>{' '}
-          On Autopilot, we would have caught this in time and filed the contest before the deadline.{' '}
-          <strong>Any new ticket on your plate from today on gets that treatment.</strong>
+          <strong>🕒 Past the 21-day mail deadline (issued {t.daysSinceIssue} days ago).</strong>{' '}
+          We can still file this for you on the late-hearing path. <strong>Heads up:</strong> at this age the city may have already entered a late fee, so the fine on file could be roughly double the original.{' '}
+          <strong>In-person and virtual hearings dismiss at ~75% in the 22–45 day window</strong> (Chicago FOIA, 2023–2025) — actually higher than the 59% mail-in baseline. We won't have time to wait on the city's records before filing, so we lead with the strongest defense available now and supplement if records arrive in time.
         </div>
       )}
 

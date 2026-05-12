@@ -212,14 +212,16 @@ export function detectBeyondTemplateArguments(
   }
 
   // ── 7. Past 21-day mail deadline — different legal path ─────────────
-  if (daysSince !== null && daysSince > 21 && daysSince <= 60) {
+  // Window matches the hard-wall in build-analysis.ts. Beyond day 45 the
+  // recommendation is hard-walled to 'skip' and this finding never runs.
+  if (daysSince !== null && daysSince > 21 && daysSince <= 45) {
     findings.push({
       id: 'past_mail_deadline',
       title: 'Past the 21-day mail deadline — request an in-person hearing',
       explanation:
         `This ticket is ${daysSince} days old, beyond the 21-day mail-contest window. You can still request an in-person or virtual hearing within a longer window, but a mailed contest will be rejected as untimely.`,
       uplift:
-        'In-person and virtual hearings carry comparable or higher dismissal rates than mail when the substantive defense is strong. The template assumes a mail contest; switching paths is itself a win.',
+        'In-person and virtual hearings carry comparable or higher dismissal rates than mail when the substantive defense is strong (Chicago FOIA 2023-2025: ~75% dismissal for 22–45 day late-hearing contests vs ~63% mail-in). The template assumes a mail contest; switching paths is itself a win.',
       estimatedUpliftPct: 0.08,
       strength: 'moderate',
     });
