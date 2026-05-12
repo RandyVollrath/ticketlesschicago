@@ -616,7 +616,62 @@ function TicketGroup({ title, tickets, accent }: { title: string; tickets: PerTi
   );
 }
 
+// Map each finding id to a category-level phrase. The free page never
+// names the specific strategy (e.g. "review the violation footage") — only
+// the family it belongs to ("image-evidence defense"). The exact strategy,
+// argument template, FOIA letter, and step list are part of the paid tier.
+// Keep this list in sync with the finding ids in
+// lib/contest-review/beyond-template-arguments.ts.
+const FINDING_CATEGORY: Record<string, string> = {
+  // Autopilot tier — pulled from city/FOIA data
+  autopilot_foia_request: 'a city-records request',
+  autopilot_address_resolved: 'a location-specific defense',
+  autopilot_officer_dismissal_rate: 'an officer-pattern signal',
+  autopilot_block_pattern: 'a block-pattern signal',
+  // Fact tier — portal-data anomalies
+  plate_mismatch: 'a plate-identification defense',
+  state_mismatch: 'a plate-identification defense',
+  non_resident_city_sticker: 'a non-resident exemption',
+  untimely_notice_penalty: 'a notice-defect defense',
+  camera_footage_review: 'an image-evidence defense',
+  speed_camera_zone_hours: 'an enforcement-zone defense',
+  deadline_imminent: 'urgent deadline risk',
+  past_mail_deadline: 'a hearing-path option',
+  hearing_scheduled: 'an active hearing window',
+  in_collections: 'a collections-stage path',
+  // Cure / evidence tier — user-supplied
+  cure_buy_city_sticker: 'a cure path',
+  cure_renew_registration: 'a cure path',
+  cure_replace_plates: 'a cure path',
+  evidence_disabled_placard: 'a documentary-evidence path',
+  evidence_permit_record: 'a documentary-evidence path',
+  evidence_hydrant_distance: 'a measurement-evidence path',
+  evidence_signage_photos: 'a signage-evidence path',
+  evidence_meter_receipt: 'a payment-record path',
+  evidence_geometry_photo: 'a geometry-evidence path',
+};
+
+function findingCategory(arg: BeyondTemplateArgument): string {
+  return FINDING_CATEGORY[arg.id] || 'a contest angle';
+}
+
+function aggregateCategories(args: BeyondTemplateArgument[]): string {
+  if (args.length === 0) return '';
+  const phrases = Array.from(new Set(args.map(findingCategory)));
+  if (phrases.length === 1) return phrases[0];
+  if (phrases.length === 2) return `${phrases[0]} and ${phrases[1]}`;
+  return `${phrases.slice(0, -1).join(', ')}, and ${phrases[phrases.length - 1]}`;
+}
+
+function verdictLabel(rec: 'contest' | 'maybe' | 'skip'): string {
+  if (rec === 'contest') return 'Strong contest candidate';
+  if (rec === 'maybe') return 'Worth a closer look';
+  return 'Probably past the window';
+}
+
 function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
+  const hasUserActions = t.beyondTemplate.some(a => a.kind === 'cure' || a.kind === 'evidence');
+  const categoryLine = aggregateCategories(t.beyondTemplate);
   return (
     <div style={{
       padding: 16, border: `1px solid ${COLORS.border}`, borderRadius: 12, marginBottom: 12,
@@ -631,9 +686,31 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
           #{t.ticketNumber} • {t.issueDate || 'date unknown'} • ${t.amount.toFixed(2)}
         </div>
       </div>
-      <div style={{ marginTop: 8, fontSize: 14, color: COLORS.graphite }}>{t.recommendationReason}</div>
 
-      {t.pastMailWindow && t.daysSinceIssue != null && (
+      <div style={{ marginTop: 10 }}>
+        <span style={{
+          display: 'inline-block', padding: '4px 10px', borderRadius: 999,
+          background: accent, color: t.recommendation === 'skip' ? '#fff' : '#04221A',
+          fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.6,
+        }}>
+          {verdictLabel(t.recommendation)}
+        </span>
+      </div>
+
+      {t.recommendation === 'skip' ? (
+        <div style={{ marginTop: 10, fontSize: 14, color: COLORS.graphite, lineHeight: 1.55 }}>
+          {t.pastMailWindow && t.daysSinceIssue != null
+            ? <>Issued {t.daysSinceIssue} days ago — the 21-day mail-contest window has closed and the late-hearing path is narrowing.</>
+            : 'Standard template alone is unlikely to clear this one — pay or move on may be the higher-value choice.'}
+        </div>
+      ) : categoryLine ? (
+        <div style={{ marginTop: 10, fontSize: 14, color: COLORS.graphite, lineHeight: 1.55 }}>
+          We found <strong style={{ color: COLORS.deepHarbor }}>{categoryLine}</strong> on this ticket.
+          {' '}The exact argument and evidence checklist are part of what Autopilot files for you.
+        </div>
+      ) : null}
+
+      {t.pastMailWindow && t.daysSinceIssue != null && t.recommendation !== 'skip' && (
         <div style={{
           marginTop: 10, padding: '10px 12px', borderRadius: 8,
           background: '#FEF3C7', border: '1px solid #FDE68A',
@@ -646,37 +723,19 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
       )}
 
       {t.baseWinRate != null && t.recommendation !== 'skip' && (
-        <div style={{ marginTop: 10, fontSize: 13, color: COLORS.slate }}>
+        <div style={{ marginTop: 10, fontSize: 12, color: COLORS.slate }}>
           Historical dismissal rate for this violation type: <strong style={{ color: COLORS.deepHarbor }}>{Math.round(t.baseWinRate * 100)}%</strong>{' '}
-          <span style={{ color: COLORS.slate }}>(Chicago FOIA dataset)</span>
+          <span style={{ color: COLORS.slate }}>(Chicago FOIA dataset — not a guarantee).</span>
         </div>
       )}
 
-      {t.beyondTemplate.length > 0 ? (
-        <>
-          {renderArgGroup(
-            'What Autopilot found on this ticket:',
-            // Hide the generic FOIA-on-behalf finding — it fires identically on
-            // every ticket. The hero callout already promises "we request the
-            // city's records." Per-ticket cards only show Autopilot findings
-            // that are specific to THIS ticket (resolved address, officer
-            // pattern, block pattern).
-            t.beyondTemplate.filter(a =>
-              a.kind === 'autopilot' && !a.id.startsWith('autopilot_foia_request'),
-            ),
-          )}
-          {renderArgGroup(
-            'Why this ticket is contestable:',
-            t.beyondTemplate.filter(a => (a.kind ?? 'fact') === 'fact'),
-          )}
-          {renderArgGroup(
-            'What you\'ll handle on your end:',
-            t.beyondTemplate.filter(a => a.kind === 'cure' || a.kind === 'evidence'),
-          )}
-        </>
-      ) : (
-        <div style={{ marginTop: 10, fontSize: 13, color: COLORS.slate }}>
-          No ticket-specific extras detected — Autopilot still uses our standard template and the citywide 59% mail-contest win rate applies.
+      {hasUserActions && t.recommendation !== 'skip' && (
+        <div style={{
+          marginTop: 12, padding: '10px 12px', borderRadius: 8,
+          border: `1px dashed ${COLORS.border}`, background: COLORS.concrete,
+          fontSize: 12, color: COLORS.slate, lineHeight: 1.5,
+        }}>
+          <strong style={{ color: COLORS.deepHarbor }}>Exact argument, evidence list, and contest letter unlocked when you start Autopilot.</strong>
         </div>
       )}
 
@@ -689,92 +748,10 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
             textAlign: 'center', textDecoration: 'none',
           }}
         >
-          Have Autopilot contest this ticket →
+          Have Autopilot file this →
         </a>
       )}
     </div>
   );
 }
 
-function strengthLabel(s: Strength): string {
-  if (s === 'strong') return 'Strong impact';
-  if (s === 'moderate') return 'Helpful';
-  return 'Minor';
-}
-
-function renderArgGroup(heading: string, args: BeyondTemplateArgument[]) {
-  if (args.length === 0) return null;
-  // For "cure" and "evidence" findings we deliberately hide the tactical
-  // recipe on the free page — titles reveal that a path exists; the exact
-  // step list is part of the paid experience. We collapse the whole group
-  // into a single locked-teaser block so the page does not become a
-  // free instruction manual.
-  const isUserActionGroup = args.every(a => a.kind === 'cure' || a.kind === 'evidence');
-  if (isUserActionGroup) {
-    return (
-      <div style={{ marginTop: 14 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.deepHarbor, marginBottom: 8 }}>
-          {heading}
-        </div>
-        <div style={{
-          padding: 14, border: `1px dashed ${COLORS.border}`, borderRadius: 10, background: COLORS.concrete,
-        }}>
-          <div style={{ fontSize: 13, color: COLORS.deepHarbor, lineHeight: 1.55 }}>
-            We found <strong>{args.length} thing{args.length === 1 ? '' : 's'}</strong> that would strengthen this contest beyond the standard letter — usually a single photo, receipt, or document you can produce after the fact.
-          </div>
-          <div style={{ marginTop: 8, fontSize: 12, color: COLORS.slate, lineHeight: 1.5 }}>
-            Autopilot sends you the exact checklist after signup. You upload — we write the letter, file the city's records request, and attach everything to the contest.
-          </div>
-        </div>
-      </div>
-    );
-  }
-  // If filtering removed everything (e.g. only the generic FOIA-on-behalf was
-  // here), don't render an empty section heading.
-  if (args.length === 0) return null;
-  return (
-    <div style={{ marginTop: 14 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.deepHarbor, marginBottom: 8 }}>
-        {heading}
-      </div>
-      {args.map(arg => {
-        const kind = arg.kind ?? 'fact';
-        const isAutopilot = kind === 'autopilot';
-        const palette = isAutopilot
-          ? { bg: '#EEF2FF', border: '#C7D2FE', accent: '#3730A3' } // indigo — distinctive Autopilot tier
-          : arg.strength === 'strong'
-            ? { bg: '#F0FDF4', border: '#A7F3D0', accent: '#065F46' }
-            : arg.strength === 'moderate'
-              ? { bg: '#FFFBEB', border: '#FDE68A', accent: '#78350F' }
-              : { bg: '#F1F5F9', border: '#CBD5E1', accent: '#334155' };
-        // Free-tier render: title + strength chip only. The body paragraphs
-        // (which include the FOIA letter recipe, URLs like chicago.gov/finance,
-        // exact hearing dates, etc.) are the EXACTLY-HOW that lives behind
-        // signup. The title is the WHAT, the strength is the WHY — that's the
-        // disclosure the free page is supposed to make.
-        return (
-          <div key={arg.id} style={{
-            padding: '10px 12px', border: `1px solid ${palette.border}`, borderRadius: 10, marginBottom: 6,
-            background: palette.bg, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
-          }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: palette.accent, flex: '1 1 auto' }}>
-              {isAutopilot && (
-                <span style={{
-                  display: 'inline-block', fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
-                  letterSpacing: 0.5, padding: '2px 6px', borderRadius: 4, marginRight: 8,
-                  background: palette.accent, color: '#fff',
-                }}>
-                  Autopilot
-                </span>
-              )}
-              {arg.title}
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: palette.accent, textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>
-              {strengthLabel(arg.strength)}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
