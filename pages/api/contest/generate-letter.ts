@@ -217,6 +217,14 @@ function deriveStructuredFacts(args: {
     facts.withinTimeLimit = true;
     facts.timeWasNotExpired = true;
   }
+  // Street cleaning: "Vehicle was moved before the restricted period began"
+  if (has(/vehicle.*was.*moved.*before|moved.*before.*(restricted|cleaning|sweeper)|moved.*before.*the.*restricted/i)) {
+    facts.vehicleWasMoved = true;
+  }
+  // Cleaning didn't actually occur (used by street_cleaning kit)
+  if (has(/street.*cleaning.*did.*not.*actually.*occur|sweeper.*didn.t.*come|no.*cleaning.*occurred/i)) {
+    facts.cleaningDidNotOccur = true;
+  }
 
   // ── Identification / plate grounds ──────────────────────────────────────
   if (has(/plate.*visible|plate.*was.*clear|plate.*not.*obscured/i)) {
