@@ -45,6 +45,13 @@ export default function TicketContester({ userId }: TicketContesterProps) {
 
   const [contestGrounds, setContestGrounds] = useState<string[]>([]);
   const [additionalContext, setAdditionalContext] = useState('');
+
+  // Stolen-plate self-report — only collected for camera / missing-plate tickets.
+  // § 9-102-050(c) is a codified affirmative defense that dismisses the
+  // overwhelming majority of camera contests when the plate was stolen.
+  const [plateStolen, setPlateStolen] = useState(false);
+  const [plateStolenIncidentDate, setPlateStolenIncidentDate] = useState('');
+  const [plateStolenReportNumber, setPlateStolenReportNumber] = useState('');
   const [contestLetter, setContestLetter] = useState('');
   const [evidenceChecklist, setEvidenceChecklist] = useState<any[]>([]);
   const [winProbability, setWinProbability] = useState<any>(null);
@@ -66,16 +73,32 @@ export default function TicketContester({ userId }: TicketContesterProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
-  const availableGrounds = [
-    'No visible or legible signage posted',
-    'Signs were obscured by trees, snow, or other objects',
-    'Street cleaning did not actually occur',
-    'Vehicle was moved before street cleaning began',
-    'Valid permit was displayed',
-    'Emergency situation prevented moving vehicle',
-    'Incorrect violation code or description',
-    'Ticket issued in error (wrong vehicle/plate)'
-  ];
+  // Codified-list framing — wording matches Chicago Municipal Code § 9-100-060
+  // affirmative defenses and the labels CPD hearing officers look for.
+  const violationCode = extractedData?.violationCode || '';
+  const isCameraTicket = violationCode === '9-102-010' || violationCode === '9-102-020' || violationCode === '9-101-020';
+  const isMissingPlate = violationCode === '9-80-040';
+
+  const availableGrounds = (isCameraTicket || isMissingPlate)
+    ? [
+        'My plate was stolen, lost, or used without my permission',
+        'The facts alleged in the violation notice are inconsistent (wrong plate, state, or vehicle)',
+        'I was not the owner or lessee of the cited vehicle at the time',
+        'The vehicle was sold or transferred before the violation date',
+        'Emergency circumstances required me to proceed',
+      ]
+    : [
+        'Signs were missing or obscured',
+        'The facts alleged in the violation notice are inconsistent',
+        'Affirmative compliance — I have proof of renewal / sticker / permit',
+        'Street cleaning did not actually occur',
+        'Vehicle was moved before the restricted period began',
+        'Valid permit was displayed',
+        'Emergency situation prevented moving vehicle',
+        'Ticket issued in error (wrong vehicle/plate)',
+      ];
+
+  const stolenPlateSelected = contestGrounds.includes('My plate was stolen, lost, or used without my permission');
 
   // Track page view on mount
   useEffect(() => {
@@ -318,7 +341,12 @@ export default function TicketContester({ userId }: TicketContesterProps) {
         body: JSON.stringify({
           contestId,
           contestGrounds,
-          additionalContext
+          additionalContext,
+          ...(stolenPlateSelected ? {
+            plateStolen: true,
+            ...(plateStolenIncidentDate ? { plateStolenIncidentDate } : {}),
+            ...(plateStolenReportNumber ? { plateStolenReportNumber: plateStolenReportNumber.trim() } : {}),
+          } : {}),
         })
       });
 
@@ -721,6 +749,75 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                   </ul>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Stolen-plate follow-up — only shown when the user checked the
+              stolen-plate ground above. Captures incident date + RD number so
+              the letter can lead with § 9-102-050(c). RD number is optional;
+              the defense applies even without it. */}
+          {stolenPlateSelected && (isCameraTicket || isMissingPlate) && (
+            <div style={{
+              marginBottom: '16px',
+              padding: '16px',
+              border: '2px solid #2563eb',
+              borderRadius: '8px',
+              backgroundColor: '#eff6ff'
+            }}>
+              <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#111827', margin: '0 0 8px 0' }}>
+                Stolen / lost plate — strongest possible defense
+              </h4>
+              <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 12px 0', lineHeight: '1.5' }}>
+                Chicago Municipal Code § 9-102-050(c) exempts owners from camera citations issued while their plate was stolen or used without permission. Hearing officers dismiss the overwhelming majority of these contests when the plate was reported stolen before the violation date.
+              </p>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
+                  When was the plate stolen / lost?
+                </label>
+                <input
+                  type="date"
+                  value={plateStolenIncidentDate}
+                  onChange={(e) => setPlateStolenIncidentDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: '8px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
+                  Police report RD number (optional but helpful)
+                </label>
+                <input
+                  type="text"
+                  value={plateStolenReportNumber}
+                  onChange={(e) => setPlateStolenReportNumber(e.target.value)}
+                  placeholder="e.g. JB123456"
+                  maxLength={40}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: '8px 0 0 0', lineHeight: '1.4' }}>
+                No report filed yet? File one online in ~10 minutes at{' '}
+                <a
+                  href="https://home.chicagopolice.org/online-reports/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#2563eb', textDecoration: 'underline' }}
+                >
+                  home.chicagopolice.org/online-reports
+                </a>
+                . You'll get the RD number immediately — add it here when you have it.
+              </p>
             </div>
           )}
 

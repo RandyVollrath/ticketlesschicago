@@ -54,6 +54,13 @@ const generateLetterSchema = z.object({
   contestId: z.string().uuid('Invalid contest ID format'),
   contestGrounds: z.array(z.string().max(100)).max(10).optional(),
   additionalContext: z.string().max(5000).optional(),
+  // Stolen-plate facts the user can self-report at letter time. Only honored
+  // when violation is red_light / speed_camera / missing_plate. We write
+  // these onto detected_tickets so the existing § 9-102-050(c) defense block
+  // picks them up. RD-number is optional; the defense applies even without.
+  plateStolen: z.boolean().optional(),
+  plateStolenIncidentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').optional(),
+  plateStolenReportNumber: z.string().max(40).optional(),
 });
 
 /**
@@ -331,7 +338,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Validation failed', details: errors });
     }
 
-    const { contestId, contestGrounds, additionalContext } = parseResult.data;
+    const {
+      contestId,
+      contestGrounds,
+      additionalContext,
+      plateStolen: plateStolenInput,
+      plateStolenIncidentDate: plateStolenIncidentDateInput,
+      plateStolenReportNumber: plateStolenReportNumberInput,
+    } = parseResult.data;
 
     // Get contest record
     const { data: contest, error: fetchError } = await supabase
@@ -1098,6 +1112,36 @@ INSTRUCTIONS FOR USING THIS EVIDENCE:
           detectedTicketData = data;
         }
       } catch (e) { /* non-fatal */ }
+    }
+
+    // User self-reported their plate was stolen via the contest form. Persist
+    // to detected_tickets so the existing stolen-plate defense block (below)
+    // and any downstream FOIA/audit logic see the same facts. We only honor
+    // self-report if no police-report extraction has already flipped the flag,
+    // to avoid clobbering a higher-confidence value from a forwarded report.
+    if (plateStolenInput === true && detectedTicketData?.id) {
+      const update: Record<string, any> = {};
+      if (!detectedTicketData.plate_stolen) update.plate_stolen = true;
+      if (plateStolenIncidentDateInput && !detectedTicketData.plate_stolen_incident_date) {
+        update.plate_stolen_incident_date = plateStolenIncidentDateInput;
+      }
+      if (plateStolenReportNumberInput && !detectedTicketData.plate_stolen_report_number) {
+        update.plate_stolen_report_number = plateStolenReportNumberInput.trim();
+        update.plate_stolen_report_agency = 'Chicago Police Department';
+      }
+      if (Object.keys(update).length > 0) {
+        try {
+          await supabase
+            .from('detected_tickets')
+            .update(update)
+            .eq('id', detectedTicketData.id);
+          // Mirror onto the in-memory object so the defense block fires this run
+          Object.assign(detectedTicketData, update);
+          console.log(`  Stolen-plate self-report persisted: ${Object.keys(update).join(', ')}`);
+        } catch (e) {
+          console.log('  Stolen-plate self-report persist skipped:', (e as any)?.message);
+        }
+      }
     }
 
     // =====================================================================
