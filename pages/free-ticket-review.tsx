@@ -483,7 +483,7 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
                 For $79/year Autopilot checks your plate against the city portal twice a week, sends you street-cleaning,
                 snow-ban, and renewal alerts before tickets happen, and automatically files a mail-in contest letter for
                 every ticket that does land — with the FOIA requests, evidence packet, and citation tracking handled
-                end-to-end. Our 2023–2025 mail-in win rate is 57%.
+                end-to-end. Our 2023–2025 mail-in win rate is 59%.
               </div>
               <a href="/get-started" style={{
                 display: 'inline-block', marginTop: 16, padding: '12px 20px', borderRadius: 10,
@@ -546,7 +546,7 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
             </a>
             <div style={{ marginTop: 14, fontSize: 12, color: '#94A3B8', lineHeight: 1.5 }}>
               Win rates shown per ticket type are historical dismissal rates from our Chicago FOIA dataset — your
-              specific outcome is not guaranteed. Autopilot's actual 2023–2025 mail-in win rate is 57%.
+              specific outcome is not guaranteed. Autopilot's actual 2023–2025 mail-in win rate is 59%.
             </div>
           </div>
         )}
@@ -673,7 +673,7 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
         </>
       ) : (
         <div style={{ marginTop: 10, fontSize: 13, color: COLORS.slate }}>
-          No ticket-specific extras detected — Autopilot still uses our standard template and the citywide 57% mail-contest win rate applies.
+          No ticket-specific extras detected — Autopilot still uses our standard template and the citywide 59% mail-contest win rate applies.
         </div>
       )}
 
