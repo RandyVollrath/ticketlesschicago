@@ -20,6 +20,17 @@ import type { ClassifiedViolation } from './violation-classifier';
 export type ArgumentStrength = 'strong' | 'moderate' | 'weak';
 
 /**
+ * Mail-contest deadline per MCC § 9-100-050:
+ *   - Automated camera tickets (red-light, speed): 21 days
+ *   - Everything else (parking, equipment, sticker): 25 days
+ * Returns the day count after which the mail-contest window has closed.
+ */
+export function mailContestDeadlineDays(violationCode: string | null): number {
+  if (violationCode === '9-102-010' || violationCode === '9-102-020') return 21;
+  return 25;
+}
+
+/**
  * Whether the finding is something we already know is true (portal-data
  * driven) or something the user can do/produce after the fact to strengthen
  * the contest. Both feed the same UI, but the recommender treats them
@@ -197,31 +208,35 @@ export function detectBeyondTemplateArguments(
   }
 
   // ── 6. Contest deadline urgency (within 7 days of cliff) ────────────
+  // Camera tickets get 21 days; parking tickets get 25. Fire this finding
+  // in the last 7 days before the type-specific deadline.
   const daysSince = daysSinceIssue(ticket.issue_date);
-  if (daysSince !== null && daysSince >= 14 && daysSince <= 20) {
+  const mailDeadline = mailContestDeadlineDays(classified.violationCode);
+  if (daysSince !== null && daysSince >= mailDeadline - 7 && daysSince <= mailDeadline - 1) {
+    const daysLeft = mailDeadline - daysSince;
     findings.push({
       id: 'deadline_imminent',
-      title: `Contest deadline closes in ${21 - daysSince} day${21 - daysSince === 1 ? '' : 's'}`,
+      title: `Contest deadline closes in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`,
       explanation:
-        `Chicago Municipal Code § 9-100-050 gives you 21 calendar days from the issue date to contest by mail. This ticket was issued ${daysSince} days ago, so the window closes soon. After that, the city issues a determination of liability and a mailed contest is no longer a valid remedy.`,
+        `Chicago Municipal Code § 9-100-050 gives you ${mailDeadline} calendar days from the issue date to contest this kind of ticket by mail. This ticket was issued ${daysSince} days ago, so the window closes soon. After that, the city issues a determination of liability and a mailed contest is no longer a valid remedy.`,
       uplift:
-        'Filing before the deadline preserves the 59% mail-in dismissal rate. Missing the deadline drops you into a much harder "late hearing for good cause" path.',
+        'Filing before the deadline preserves the 59% mail-in dismissal rate. Missing the deadline drops you into the in-person/virtual hearing path, which still wins (Chicago FOIA 2023–2025: ~75% in the 22–45 day window) but has less prep time.',
       estimatedUpliftPct: 0.10,
       strength: 'moderate',
     });
   }
 
-  // ── 7. Past 21-day mail deadline — different legal path ─────────────
+  // ── 7. Past the mail-contest deadline — different legal path ────────
   // Window matches the hard-wall in build-analysis.ts. Beyond day 45 the
   // recommendation is hard-walled to 'skip' and this finding never runs.
-  if (daysSince !== null && daysSince > 21 && daysSince <= 45) {
+  if (daysSince !== null && daysSince > mailDeadline && daysSince <= 45) {
     findings.push({
       id: 'past_mail_deadline',
-      title: 'Past the 21-day mail deadline — request an in-person hearing',
+      title: `Past the ${mailDeadline}-day mail deadline — request an in-person hearing`,
       explanation:
-        `This ticket is ${daysSince} days old, beyond the 21-day mail-contest window. You can still request an in-person or virtual hearing within a longer window, but a mailed contest will be rejected as untimely.`,
+        `This ticket is ${daysSince} days old, beyond the ${mailDeadline}-day mail-contest window for this violation type. You can still request an in-person or virtual hearing within a longer window, but a mailed contest will be rejected as untimely.`,
       uplift:
-        'In-person and virtual hearings carry comparable or higher dismissal rates than mail when the substantive defense is strong (Chicago FOIA 2023-2025: ~75% dismissal for 22–45 day late-hearing contests vs ~63% mail-in). The template assumes a mail contest; switching paths is itself a win.',
+        'In-person and virtual hearings actually dismiss at higher rates than mail when the substantive defense is strong (Chicago FOIA 2023–2025: ~75% dismissal for 22–45 day late-hearing contests vs 59% citywide mail-in baseline). The template assumes a mail contest; switching paths is itself a win.',
       estimatedUpliftPct: 0.08,
       strength: 'moderate',
     });

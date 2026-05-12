@@ -15,6 +15,7 @@ import {
   detectCureAndEvidencePaths,
   detectCrossTicketPatterns,
   buildAutopilotFindings,
+  mailContestDeadlineDays,
   AutopilotEnrichment,
   BeyondTemplateArgument,
   CrossTicketFinding,
@@ -28,8 +29,9 @@ export interface PerTicketAnalysis {
   /** Days between issue date and today. null when issueDate can't be parsed. */
   daysSinceIssue: number | null;
   /**
-   * True when the ticket is past the 21-day mail-contest window (§ 9-100-050).
-   * UI uses this to surface a "this is what we WOULD have done for you" message.
+   * True when the ticket is past the mail-contest window for its type
+   * (§ 9-100-050: 21 days for automated camera, 25 days for parking).
+   * UI uses this to surface the late-hearing-path pitch.
    */
   pastMailWindow: boolean;
   amount: number;
@@ -59,7 +61,6 @@ export interface FreeReviewAnalysis {
   } | null;
 }
 
-const CHICAGO_MAIL_CONTEST_WINDOW_DAYS = 21;
 
 export function buildAnalysis(
   lookup: LookupResult,
@@ -94,7 +95,7 @@ export function buildAnalysis(
       ticketNumber: t.ticket_number,
       issueDate: t.issue_date || null,
       daysSinceIssue: daysSince,
-      pastMailWindow: daysSince !== null && daysSince > CHICAGO_MAIL_CONTEST_WINDOW_DAYS,
+      pastMailWindow: daysSince !== null && daysSince > mailContestDeadlineDays(classified.violationCode),
       amount: t.current_amount_due ?? t.original_amount ?? 0,
       violationDescription: t.violation_description || '',
       violationName: classified.violationName,
@@ -291,4 +292,3 @@ function daysSinceIssue(issueDate: string | null): number | null {
   return Math.floor((Date.now() - d.getTime()) / (24 * 60 * 60 * 1000));
 }
 
-export { CHICAGO_MAIL_CONTEST_WINDOW_DAYS };

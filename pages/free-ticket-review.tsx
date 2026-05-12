@@ -209,8 +209,8 @@ export default function FreeTicketReview() {
           </h1>
           <p style={{ fontSize: 18, color: COLORS.slate, marginTop: 16, lineHeight: 1.5 }}>
             Tell us your Chicago plate. We pull every parking, red-light, and speed-camera ticket the city has on file
-            for it, then go through each one ticket-by-ticket and flag the arguments that are <strong style={{ color: COLORS.deepHarbor }}>specific to your situation</strong>{' '}
-            — defenses above and beyond our standard template that could push the win rate higher.
+            and tell you, ticket-by-ticket, whether it's a <strong style={{ color: COLORS.deepHarbor }}>strong contest candidate</strong>,
+            worth a closer look, or past our reliable contest window.
           </p>
           <p style={{ fontSize: 14, color: COLORS.slate, marginTop: 8 }}>
             No account, no payment. Takes about a minute.
@@ -437,11 +437,14 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
   const maybe = analysis.perTicket.filter(t => t.recommendation === 'maybe');
   const skip = analysis.perTicket.filter(t => t.recommendation === 'skip');
   const filable = worthIt.length + maybe.length;
-  // Count fightable late-hearing tickets only (22–45 day window). Hard-walled
-  // tickets are excluded because the "switch to in-person hearing" pitch
-  // doesn't apply to them.
+  // Count fightable late-hearing tickets only (past the type-specific mail
+  // deadline but within the day-45 hard wall). Re-derived at render time so
+  // stored rows from the old worker (which used flat 21-day threshold) come
+  // out right for parking tickets.
   const deadlineRiskCount = analysis.perTicket.filter(
-    t => t.pastMailWindow && t.recommendation !== 'skip',
+    t => t.recommendation !== 'skip'
+      && t.daysSinceIssue != null
+      && t.daysSinceIssue > mailDeadlineDays(t.violationCode),
   ).length;
   // Hard-walled tickets are skip-tier AND older than 45 days.
   const hardWallCount = analysis.perTicket.filter(
@@ -519,10 +522,11 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
                 Want Autopilot to keep it that way — and contest anything new?
               </div>
               <div style={{ marginTop: 10, fontSize: 14, color: '#CBD5E1', lineHeight: 1.6 }}>
-                For $79/year Autopilot checks your plate against the city portal twice a week, sends you street-cleaning,
-                snow-ban, and renewal alerts before tickets happen, and automatically files a mail-in contest letter for
-                every ticket that does land — with the FOIA requests, evidence packet, and citation tracking handled
-                end-to-end. Our 2023–2025 mail-in win rate is 59%.
+                For $79/year Autopilot checks your plate against the city portal every Monday and Thursday, sends you
+                street-cleaning, snow-ban, and renewal alerts before tickets happen, and automatically files a contest
+                for every ticket that does land — mail-in if we catch it inside the deadline, late-hearing if it slips
+                past. FOIA requests, evidence packet, and tracking handled end-to-end. Our 2023–2025 mail-in win rate
+                is 59%.
               </div>
               <a href="/get-started" style={{
                 display: 'inline-block', marginTop: 16, padding: '12px 20px', borderRadius: 10,
@@ -630,7 +634,7 @@ function HeroCallout({
       <div style={{ marginTop: 6, fontSize: 16, color: '#CBD5E1', lineHeight: 1.5 }}>
         Autopilot found <strong style={{ color: '#fff' }}>{verdict}</strong> on your plate.
         {deadlineRiskCount > 0 && (
-          <> <span style={{ color: '#FCD34D' }}>{deadlineRiskCount} {deadlineRiskCount === 1 ? 'ticket is' : 'tickets are'} past the 21-day mail deadline</span> — switching to the in-person/virtual hearing path is the right move.</>
+          <> <span style={{ color: '#FCD34D' }}>{deadlineRiskCount} {deadlineRiskCount === 1 ? 'ticket is' : 'tickets are'} past the mail-contest deadline</span> — we switch those to the in-person/virtual hearing path, which actually wins more often.</>
         )}
       </div>
       <a href="/get-started" style={{
@@ -712,6 +716,16 @@ function verdictLabel(rec: 'contest' | 'maybe' | 'skip'): string {
   return 'Probably past the window';
 }
 
+/**
+ * Mail-contest deadline per MCC § 9-100-050: 21 days for automated camera
+ * tickets, 25 days for parking. Mirror of the helper in
+ * lib/contest-review/beyond-template-arguments.ts — keep in sync.
+ */
+function mailDeadlineDays(violationCode: string | null): number {
+  if (violationCode === '9-102-010' || violationCode === '9-102-020') return 21;
+  return 25;
+}
+
 // Cross-ticket findings need the same category-only treatment as per-ticket
 // findings. The original titles/explanations leak the joint strategy
 // ("pattern of issuance worth challenging together, bundle with an
@@ -771,17 +785,26 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
         </div>
       ) : null}
 
-      {t.pastMailWindow && t.daysSinceIssue != null && t.recommendation !== 'skip' && (
-        <div style={{
-          marginTop: 10, padding: '10px 12px', borderRadius: 8,
-          background: '#FEF3C7', border: '1px solid #FDE68A',
-          fontSize: 13, color: '#78350F', lineHeight: 1.5,
-        }}>
-          <strong>🕒 Past the 21-day mail deadline (issued {t.daysSinceIssue} days ago).</strong>{' '}
-          We can still file this for you on the late-hearing path. <strong>Heads up:</strong> at this age the city may have already entered a late fee, so the fine on file could be roughly double the original.{' '}
-          <strong>In-person and virtual hearings dismiss at ~75% in the 22–45 day window</strong> (Chicago FOIA, 2023–2025) — actually higher than the 59% mail-in baseline. We won't have time to wait on the city's records before filing, so we lead with the strongest defense available now and supplement if records arrive in time.
-        </div>
-      )}
+      {(() => {
+        // Re-derive past-mail-window at render time using the type-specific
+        // deadline (21 for camera, 25 for parking). This corrects stored rows
+        // from the old worker that used a flat 21-day threshold for all tickets.
+        if (t.daysSinceIssue == null || t.recommendation === 'skip') return null;
+        const deadline = mailDeadlineDays(t.violationCode);
+        if (t.daysSinceIssue <= deadline) return null;
+        return (
+          <div style={{
+            marginTop: 10, padding: '10px 12px', borderRadius: 8,
+            background: '#FEF3C7', border: '1px solid #FDE68A',
+            fontSize: 13, color: '#78350F', lineHeight: 1.5,
+          }}>
+            <strong>🕒 Past the {deadline}-day mail deadline (issued {t.daysSinceIssue} days ago).</strong>{' '}
+            We can still file this on the late-hearing path. <strong>Heads up:</strong> at this age the city may have already entered a late fee, so the fine on file could be roughly double the original.{' '}
+            <strong>In-person and virtual hearings dismiss at ~75% in the 22–45 day window</strong> (Chicago FOIA, 2023–2025) — actually higher than the 59% mail-in baseline.{' '}
+            We process the queue Monday and Thursday, so your contest goes out in the next batch — meaning we lead with the strongest defense available right now and supplement if city records come back in time.
+          </div>
+        );
+      })()}
 
       {t.baseWinRate != null && t.recommendation !== 'skip' && (
         <div style={{ marginTop: 10, fontSize: 12, color: COLORS.slate }}>
