@@ -1151,6 +1151,48 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     markCorrectionEngaged();
   }, [markCorrectionEngaged]);
 
+  // "Wrong address" tap on the ground-truth banner. Records the user's No-tap
+  // immediately (so we capture the signal even if they bail on the modal) and
+  // opens the correction sheet where they can pick an alternate, type a new
+  // address, run autocomplete, or drop a pin on the map. The subsequent
+  // applyStreetCorrection call (from any of those paths) overwrites the row
+  // with corrected_address; if the user cancels, the No-tap stands alone.
+  const markWrongAddressFromBanner = useCallback(async () => {
+    if (!lastParkingCheck) return;
+    try {
+      await ApiClient.authPost('/api/mobile/parking-feedback', {
+        confirmed_parking: true,
+        confirmed_block: false,
+        feedback_source: 'user_hero_wrong_address_open',
+      }, { showErrorAlert: false });
+    } catch (feedbackErr) {
+      log.warn('Failed to persist wrong-address tap (non-fatal)', feedbackErr);
+    }
+    setShowGroundTruthBanner(false);
+    openWrongStreetModal();
+  }, [lastParkingCheck, openWrongStreetModal]);
+
+  // Inside the correction modal: closes the modal and opens the embedded
+  // restrictions map so the user can drag the pin to their actual spot. The
+  // map's WebView posts back a pin_corrected message handled by
+  // handleMapMessage; confirming the dropped pin routes through
+  // applyStreetCorrection('pin_drag', coords) which records corrected_address
+  // and corrected lat/lng as ground truth.
+  const openMapForPinDrag = useCallback(async () => {
+    if (!lastParkingCheck) return;
+    try {
+      await ApiClient.authPost('/api/mobile/parking-feedback', {
+        confirmed_parking: true,
+        confirmed_block: false,
+        feedback_source: 'user_wrong_street_open_map',
+      }, { showErrorAlert: false });
+    } catch (feedbackErr) {
+      log.warn('Failed to persist open-map tap (non-fatal)', feedbackErr);
+    }
+    setShowWrongStreetModal(false);
+    setShowParkingMap(true);
+  }, [lastParkingCheck]);
+
   // Submit a user-corrected address. Records ground-truth so we can train on
   // the correction, updates the local parking display, and persists the new
   // address so it survives an app restart.
@@ -1886,9 +1928,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               style={styles.groundTruthNegativeBtn}
               onPress={markFalsePositiveParking}
               accessibilityRole="button"
-              accessibilityLabel="Mark detection as false alarm"
+              accessibilityLabel="Mark detection as false alarm — I am not parked"
             >
-              <Text style={styles.groundTruthNegativeText}>False alarm</Text>
+              <Text style={styles.groundTruthNegativeText}>Not parked</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.groundTruthCorrectionBtn}
+              onPress={markWrongAddressFromBanner}
+              accessibilityRole="button"
+              accessibilityLabel="The address is wrong — fix it"
+            >
+              <Text style={styles.groundTruthCorrectionText}>Wrong address</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.groundTruthPositiveBtn}
@@ -1896,7 +1946,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               accessibilityRole="button"
               accessibilityLabel="Confirm this parking detection"
             >
-              <Text style={styles.groundTruthPositiveText}>Parked correctly</Text>
+              <Text style={styles.groundTruthPositiveText}>Yes, parked here</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -3003,6 +3053,22 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     </>
                   )}
 
+                  {/* Pin-drop fallback — for spots that aren't on Google or
+                      where the user can't name the street. Closes the modal,
+                      opens the embedded restrictions map; dragging the pin
+                      then routes through applyStreetCorrection('pin_drag').
+                      Records the open as ground truth so we know how often
+                      users reach for this path. */}
+                  <TouchableOpacity
+                    style={styles.altTypedDisclosure}
+                    onPress={openMapForPinDrag}
+                    accessibilityLabel="Move the pin to your actual parking spot on the map"
+                    accessibilityRole="button"
+                  >
+                    <MaterialCommunityIcons name="map-marker-radius" size={16} color={colors.primary} />
+                    <Text style={styles.altTypedDisclosureText}>Or drop a pin on the map</Text>
+                  </TouchableOpacity>
+
                   <TouchableOpacity
                     style={styles.sheetDismiss}
                     onPress={dismissWrongStreetModal}
@@ -3173,7 +3239,8 @@ const styles = StyleSheet.create({
   },
   groundTruthBannerActions: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    flexWrap: 'wrap',
+    gap: spacing.xs,
     marginTop: spacing.sm,
     marginLeft: 26,
   },
@@ -3181,7 +3248,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFE7E7',
     borderWidth: 1,
     borderColor: '#FFCFCF',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs + 2,
     borderRadius: borderRadius.sm,
   },
@@ -3190,11 +3257,28 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.semibold,
     color: colors.error,
   },
+  // Amber middle button — separates "I'm not parked at all" (red) from
+  // "I'm parked but the address is wrong" (amber). Without this third
+  // option, low-confidence detects forced users to choose between two
+  // wrong answers.
+  groundTruthCorrectionBtn: {
+    backgroundColor: '#FFF4D6',
+    borderWidth: 1,
+    borderColor: '#FFE3A3',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.sm,
+  },
+  groundTruthCorrectionText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
+    color: '#A86B00',
+  },
   groundTruthPositiveBtn: {
     backgroundColor: '#E9F9EE',
     borderWidth: 1,
     borderColor: '#CBEFD8',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs + 2,
     borderRadius: borderRadius.sm,
   },
