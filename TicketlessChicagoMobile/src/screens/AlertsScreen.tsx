@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
   },
   webView: {
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
   },
   unauthTitle: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     marginTop: spacing.md,
     marginBottom: spacing.sm,
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
   signInButtonText: {
     color: colors.white,
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 
   // Error state
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     marginTop: spacing.md,
     marginBottom: spacing.sm,
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: colors.white,
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 });
 

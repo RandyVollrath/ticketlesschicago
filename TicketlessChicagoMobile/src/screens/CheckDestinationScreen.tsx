@@ -1240,7 +1240,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   scrollView: {
@@ -1260,7 +1260,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
     marginBottom: 4,
   },
@@ -1303,7 +1303,7 @@ const styles = StyleSheet.create({
   checkButtonText: {
     color: colors.textInverse,
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
   },
   currentLocationButton: {
     flexDirection: 'row',
@@ -1319,7 +1319,7 @@ const styles = StyleSheet.create({
   currentLocationButtonText: {
     color: colors.primary,
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   savedLocationsWrap: {
     marginTop: spacing.base,
@@ -1331,7 +1331,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   savedLocationChip: {
     flexDirection: 'row',
@@ -1346,7 +1346,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     fontSize: typography.sizes.xs,
     color: colors.primary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   addLocationChip: {
     borderWidth: 1,
@@ -1395,12 +1395,12 @@ const styles = StyleSheet.create({
   },
   summaryTitle: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
   },
   summaryDetail: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.warning,
     marginTop: 2,
   },
@@ -1425,7 +1425,7 @@ const styles = StyleSheet.create({
   },
   restrictionTitle: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
   },
   restrictionMessage: {
     fontSize: typography.sizes.sm,
@@ -1464,13 +1464,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.sizes.sm,
     color: colors.primary,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   whenBannerReset: {
     fontSize: typography.sizes.xs,
     color: colors.primary,
     textDecorationLine: 'underline',
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
 
   // Cleaning date chips (range mode)
@@ -1491,7 +1491,7 @@ const styles = StyleSheet.create({
   },
   cleaningDateChipText: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.warning,
   },
 
@@ -1510,7 +1510,7 @@ const styles = StyleSheet.create({
   },
   tnpItemTitle: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   tnpItemDetail: {
@@ -1553,7 +1553,7 @@ const styles = StyleSheet.create({
   },
   snowForecastTitle: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textTertiary,
   },
   snowForecastMessage: {
@@ -1581,7 +1581,7 @@ const styles = StyleSheet.create({
   },
   mapHeaderText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   mapContainer: {
@@ -1620,7 +1620,7 @@ const styles = StyleSheet.create({
   },
   mapExpandText: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
   },
   fullscreenMapContainer: {
@@ -1645,7 +1645,7 @@ const styles = StyleSheet.create({
   fullscreenMapTitle: {
     flex: 1,
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   fullscreenCloseButton: {
@@ -1673,7 +1673,7 @@ const styles = StyleSheet.create({
   directionsText: {
     color: colors.primary,
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   resultActionsRow: {
     flexDirection: 'row',
@@ -1693,7 +1693,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
   },
   modalSubtitle: {
@@ -1731,10 +1731,10 @@ const styles = StyleSheet.create({
   },
   modalCancelText: {
     color: colors.textSecondary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   modalSaveText: {
     color: colors.white,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 });

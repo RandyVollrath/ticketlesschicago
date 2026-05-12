@@ -49,6 +49,7 @@ import TimeSlider from './TimeSlider';
 import LayerToggles from './LayerToggles';
 import Legend from './Legend';
 import SegmentPopup from './SegmentPopup';
+import { typography } from '../../theme';
 
 // =============================================================================
 // Types
@@ -307,7 +308,7 @@ const styles = StyleSheet.create({
   },
   emergencyText: {
     color: '#fff',
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     textAlign: 'center',
   },
   timeIndicator: {
@@ -322,7 +323,7 @@ const styles = StyleSheet.create({
   timeIndicatorText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   layerToggles: {
     position: 'absolute',

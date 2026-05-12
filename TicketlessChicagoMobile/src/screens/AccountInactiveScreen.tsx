@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.sm,
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
   },
   valuePropTitle: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     marginBottom: 2,
   },
@@ -493,22 +493,22 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.textSecondary,
   },
   toggleTextActive: {
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
   },
   toggleSavings: {
     fontSize: 11,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#10B981',
     marginTop: 2,
   },
   priceText: {
     fontSize: typography.sizes.xxl || 32,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.xs,
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textInverse,
   },
   existingAccountHint: {
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
   },
   subscriptionDisclosure: {
@@ -588,7 +588,7 @@ const styles = StyleSheet.create({
   },
   redeemButtonText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
   },
   referralToggle: {

@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.textSecondary,
   },
 
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
   },
   segmentText: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textSecondary,
   },
   segmentTextActive: {
@@ -438,13 +438,13 @@ const styles = StyleSheet.create({
   },
   pillText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
   },
   rangeArrow: {
     fontSize: typography.sizes.md,
     color: colors.textTertiary,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
   },
   pastHint: {
     flexDirection: 'row',
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   timeRowLabel: {
     fontSize: typography.sizes.xs,
     color: colors.textSecondary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   timePill: {
     backgroundColor: colors.background,
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
   },
   timePillText: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   timeRowDash: {
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
   },
   sheetSubtitle: {
@@ -551,19 +551,19 @@ const styles = StyleSheet.create({
   },
   dateChipDow: {
     fontSize: 10,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textSecondary,
     letterSpacing: 0.5,
   },
   dateChipDay: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
     marginTop: 2,
   },
   dateChipMonth: {
     fontSize: 10,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.textSecondary,
     marginTop: 2,
     textTransform: 'uppercase',
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
   },
   hourChipText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   hourChipTextSelected: {

@@ -1403,7 +1403,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
   },
   headerSubtitle: {
@@ -1413,7 +1413,7 @@ const styles = StyleSheet.create({
   },
   saveStatusText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.textTertiary,
   },
 
@@ -1441,12 +1441,12 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.textTertiary,
   },
   activeTabText: {
     color: colors.primary,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 
   // Scroll
@@ -1467,7 +1467,7 @@ const styles = StyleSheet.create({
   },
   centeredTitle: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     marginTop: spacing.md,
     marginBottom: spacing.sm,
@@ -1492,7 +1492,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#fff',
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   // Cards
   card: {
@@ -1512,7 +1512,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#0F172A',
   },
   cardBody: {
@@ -1545,7 +1545,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bodyBold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -1566,7 +1566,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bodyBold,
     color: '#0F172A',
     marginTop: 4,
   },
@@ -1588,7 +1588,7 @@ const styles = StyleSheet.create({
   },
   ticketType: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
     color: '#0F172A',
   },
   ticketMeta: {
@@ -1598,7 +1598,7 @@ const styles = StyleSheet.create({
   },
   ticketAmount: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#0F172A',
   },
   statusBadge: {
@@ -1609,7 +1609,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     textTransform: 'uppercase',
   },
 
@@ -1634,7 +1634,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#64748B',
     textTransform: 'uppercase',
     marginBottom: 6,
@@ -1682,12 +1682,12 @@ const styles = StyleSheet.create({
   plateStateText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bodyBold,
   },
   plateInput: {
     flex: 1,
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -1714,7 +1714,7 @@ const styles = StyleSheet.create({
   },
   toggleTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#0F172A',
     marginBottom: 2,
   },
@@ -1744,11 +1744,11 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     color: '#64748B',
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   chipTextActive: {
     color: colors.primary,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 
   // Checkbox rows
@@ -1766,7 +1766,7 @@ const styles = StyleSheet.create({
   },
   checkboxLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
     color: '#0F172A',
   },
   checkboxItemRow: {
@@ -1803,7 +1803,7 @@ const styles = StyleSheet.create({
   },
   winRate: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 
   // Warning

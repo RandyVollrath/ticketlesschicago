@@ -919,11 +919,11 @@ const cameraCardStyles = StyleSheet.create({
   address: {
     fontSize: typography.sizes.sm,
     color: colors.textPrimary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   hero: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     marginTop: 2,
   },
   rightCol: {
@@ -965,12 +965,12 @@ const cameraCardStyles = StyleSheet.create({
   pillValue: {
     fontSize: typography.sizes.sm,
     color: colors.textPrimary,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   stopText: {
     fontSize: typography.sizes.sm,
     color: colors.textPrimary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     marginTop: spacing.sm,
   },
   timelineText: {
@@ -1652,7 +1652,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
   },
   viewToggleRow: {
@@ -1675,7 +1675,7 @@ const styles = StyleSheet.create({
   viewToggleText: {
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   viewToggleTextActive: {
     color: colors.white,
@@ -1701,7 +1701,7 @@ const styles = StyleSheet.create({
   cameraSubTabText: {
     fontSize: typography.sizes.xs,
     color: colors.textSecondary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   cameraSubTabTextActive: {
     color: colors.white,
@@ -1728,7 +1728,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
     marginTop: spacing.xs,
   },
@@ -1754,7 +1754,7 @@ const styles = StyleSheet.create({
   },
   sectionHeaderText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -1809,7 +1809,7 @@ const styles = StyleSheet.create({
   timelineDateWrap: {},
   timelineTime: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   timelineDate: {
@@ -1845,7 +1845,7 @@ const styles = StyleSheet.create({
   timelineClearText: {
     fontSize: typography.sizes.sm,
     color: colors.success,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     marginLeft: spacing.sm,
   },
 
@@ -1870,7 +1870,7 @@ const styles = StyleSheet.create({
   },
   departureStatus: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     marginTop: 2,
   },
   departureExplainer: {
@@ -1915,7 +1915,7 @@ const styles = StyleSheet.create({
   },
   historyActionText: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.primary,
   },
 
@@ -1933,7 +1933,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     marginTop: spacing.md,
     marginBottom: spacing.sm,

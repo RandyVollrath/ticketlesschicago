@@ -19,6 +19,7 @@ import {
   LAYER_COLORS,
 } from '../../services/parking-map/types';
 import { formatRestrictionDescription } from '../../services/parking-map/compute';
+import { typography } from '../../theme';
 
 // =============================================================================
 // Types
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
   },
   streetName: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#111827',
   },
   blockRange: {
@@ -254,14 +255,14 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   section: {
     marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#374151',
     marginBottom: 6,
   },
@@ -300,7 +301,7 @@ const styles = StyleSheet.create({
   nextChangeText: {
     fontSize: 13,
     color: '#374151',
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   confidenceNote: {
     fontSize: 12,
@@ -317,7 +318,7 @@ const styles = StyleSheet.create({
   reminderButtonText: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 });
 

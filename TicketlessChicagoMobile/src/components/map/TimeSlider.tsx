@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { typography } from '../../theme';
 import {
   View,
   Text,
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
   },
   timeValue: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#111827',
   },
   simulated: {
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
   resetText: {
     color: '#3b82f6',
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   liveIndicator: {
     flexDirection: 'row',
@@ -183,7 +184,7 @@ const styles = StyleSheet.create({
   liveText: {
     fontSize: 12,
     color: '#22c55e',
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
   },
 });
 

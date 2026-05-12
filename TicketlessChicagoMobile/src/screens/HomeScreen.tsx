@@ -3124,7 +3124,7 @@ const styles = StyleSheet.create({
   offlineBannerText: {
     color: colors.textPrimary,
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     flex: 1,
   },
 
@@ -3146,7 +3146,7 @@ const styles = StyleSheet.create({
   },
   batteryBannerTitle: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   batteryBannerBody: {
@@ -3168,7 +3168,7 @@ const styles = StyleSheet.create({
   },
   batteryBannerBtnText: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.white,
   },
   batteryBannerBtnSecondary: {
@@ -3180,7 +3180,7 @@ const styles = StyleSheet.create({
   },
   batteryBannerBtnSecondaryText: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.warning,
   },
 
@@ -3202,7 +3202,7 @@ const styles = StyleSheet.create({
   },
   permissionBannerTitle: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   permissionBannerBody: {
@@ -3222,7 +3222,7 @@ const styles = StyleSheet.create({
   },
   permissionBannerBtnText: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.white,
   },
   // White background — green Confirm CTA was reading muddy on the prior
@@ -3243,7 +3243,7 @@ const styles = StyleSheet.create({
   },
   groundTruthBannerTitle: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     flex: 1,
   },
@@ -3275,7 +3275,7 @@ const styles = StyleSheet.create({
   },
   groundTruthCorrectionText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
   },
   // Primary action — filled green CTA. The dominant visual answer when
@@ -3291,7 +3291,7 @@ const styles = StyleSheet.create({
   },
   groundTruthPositiveText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.white,
   },
   // Tertiary action — ghost link beneath the main row. False-positive is
@@ -3328,7 +3328,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xxxl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
   },
   debugToggle: {
@@ -3351,7 +3351,7 @@ const styles = StyleSheet.create({
   },
   debugTitle: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: '#00ff88',
   },
   debugClear: {
@@ -3372,7 +3372,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     color: '#fff',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
   },
   debugLongValue: {
     maxWidth: '62%',
@@ -3431,7 +3431,7 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     marginBottom: 4,
   },
   heroSubtitle: {
@@ -3510,7 +3510,7 @@ const styles = StyleSheet.create({
   heroRevenueText: {
     marginLeft: spacing.xs,
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semiBold as any,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#FFD700',
     flex: 1,
   },
@@ -3522,7 +3522,7 @@ const styles = StyleSheet.create({
   heroRiskLabel: {
     marginLeft: spacing.xs,
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold as any,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.white,
     letterSpacing: 0.5,
   },
@@ -3556,7 +3556,7 @@ const styles = StyleSheet.create({
   heroActionText: {
     color: colors.white,
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     marginLeft: spacing.xs,
   },
   heroTimestamp: {
@@ -3588,7 +3588,7 @@ const styles = StyleSheet.create({
   heroVerifyPromptText: {
     color: '#FFD700',
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   heroFeedbackButton: {
     flexDirection: 'row',
@@ -3602,7 +3602,7 @@ const styles = StyleSheet.create({
   heroFeedbackText: {
     color: colors.white,
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     marginLeft: spacing.xs,
   },
   staleInfo: {
@@ -3635,7 +3635,7 @@ const styles = StyleSheet.create({
   },
   heroTimerText: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     opacity: 0.85,
   },
   drivingBadge: {
@@ -3651,7 +3651,7 @@ const styles = StyleSheet.create({
   drivingBadgeText: {
     fontSize: typography.sizes.xs,
     color: colors.white,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   anchorBadge: {
     flexDirection: 'row',
@@ -3666,7 +3666,7 @@ const styles = StyleSheet.create({
   anchorBadgeText: {
     fontSize: typography.sizes.xs,
     color: colors.white,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 
   // ──── Quick Start Tips ────
@@ -3688,7 +3688,7 @@ const styles = StyleSheet.create({
   quickStartTitle: {
     flex: 1,
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   quickStartItem: {
@@ -3710,7 +3710,7 @@ const styles = StyleSheet.create({
   },
   quickStartDismissText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
   },
 
@@ -3736,7 +3736,7 @@ const styles = StyleSheet.create({
   checkingProgressText: {
     fontSize: typography.sizes.sm,
     color: colors.primary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
 
   // Accuracy
@@ -3796,7 +3796,7 @@ const styles = StyleSheet.create({
   },
   destinationTitle: {
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   destinationSubtitle: {
@@ -3833,13 +3833,13 @@ const styles = StyleSheet.create({
   },
   protectionHeaderTitle: {
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   protectionHeaderSubtitle: {
     fontSize: typography.sizes.sm,
     color: colors.success,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     marginTop: 1,
   },
   protectionList: {
@@ -3866,7 +3866,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.sizes.sm,
     color: colors.textPrimary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   drivingAlertsCard: {
     backgroundColor: '#111827',
@@ -3901,7 +3901,7 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
   },
   sheetBody: {
@@ -3923,7 +3923,7 @@ const styles = StyleSheet.create({
   },
   sheetActionText: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
   },
   sheetDismiss: {
@@ -3933,7 +3933,7 @@ const styles = StyleSheet.create({
   sheetDismissText: {
     fontSize: typography.sizes.md,
     color: colors.textTertiary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
 
   // ──── Zone Hours Report ────
@@ -3950,7 +3950,7 @@ const styles = StyleSheet.create({
   heroZoneReportText: {
     fontSize: typography.sizes.xs,
     color: 'rgba(255,255,255,0.6)',
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     textDecorationLine: 'underline',
   },
   zoneReportContainer: {
@@ -3983,13 +3983,13 @@ const styles = StyleSheet.create({
   },
   zoneReportCurrentValue: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.warning,
     flex: 1,
   },
   zoneReportFieldLabel: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.textSecondary,
     marginBottom: 4,
     marginTop: spacing.xs,
@@ -4020,7 +4020,7 @@ const styles = StyleSheet.create({
   zoneReportPhotoText: {
     fontSize: typography.sizes.sm,
     color: colors.primary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   zoneReportPhotoPreview: {
     position: 'relative',
@@ -4054,7 +4054,7 @@ const styles = StyleSheet.create({
   },
   zoneReportSubmitText: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.white,
   },
   altSection: {
@@ -4063,7 +4063,7 @@ const styles = StyleSheet.create({
   },
   altSectionLabel: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
@@ -4081,7 +4081,7 @@ const styles = StyleSheet.create({
   },
   altButtonText: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
     flex: 1,
   },
@@ -4098,7 +4098,7 @@ const styles = StyleSheet.create({
   altTypedDisclosureText: {
     fontSize: typography.sizes.sm,
     color: colors.primary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     textDecorationLine: 'underline',
   },
   // Address autocomplete suggestion list (under the typed input)
@@ -4122,7 +4122,7 @@ const styles = StyleSheet.create({
   suggestMain: {
     fontSize: typography.sizes.sm,
     color: colors.textPrimary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   suggestSecondary: {
     fontSize: typography.sizes.xs,
@@ -4169,7 +4169,7 @@ const styles = StyleSheet.create({
   parkingMapHeaderText: {
     flex: 1,
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   parkingMapDirectionsBtn: {
@@ -4183,7 +4183,7 @@ const styles = StyleSheet.create({
   },
   parkingMapDirectionsText: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
   },
   parkingMapContainer: {
@@ -4235,7 +4235,7 @@ const styles = StyleSheet.create({
   },
   pinCorrectionTitle: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     marginBottom: 2,
   },
@@ -4262,7 +4262,7 @@ const styles = StyleSheet.create({
   pinCorrectionCancelText: {
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   pinCorrectionConfirmBtn: {
     flexDirection: 'row',
@@ -4275,7 +4275,7 @@ const styles = StyleSheet.create({
   },
   pinCorrectionConfirmText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.white,
   },
   // Cross-pollination prompt
@@ -4299,7 +4299,7 @@ const styles = StyleSheet.create({
   },
   crossPollTitle: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#4C1D95',
     marginBottom: 2,
   },
@@ -4319,7 +4319,7 @@ const styles = StyleSheet.create({
   },
   crossPollCtaText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold as any,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#5856D6',
     marginRight: 2,
   },

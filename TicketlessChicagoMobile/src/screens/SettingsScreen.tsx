@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
   },
   connectedName: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     marginBottom: 2,
   },
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
   removeButtonText: {
     color: colors.error,
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 
   // ─── Pair section ───
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
   pairButtonText: {
     color: colors.white,
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
   },
   scanningRow: {
     flexDirection: 'row',
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
   },
   devicesTitle: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   },
   deviceName: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.textPrimary,
     marginBottom: 2,
   },
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
   },
   selectText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
     marginLeft: spacing.sm,
   },
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   },
   stepNum: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.primary,
   },
   stepText: {
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
   },
   tipLabel: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.secondaryDark,
     marginBottom: spacing.xs,
     textTransform: 'uppercase',
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
   debugButtonText: {
     color: colors.white,
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 });
 

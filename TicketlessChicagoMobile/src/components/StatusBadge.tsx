@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 });
 

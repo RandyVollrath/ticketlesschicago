@@ -130,14 +130,14 @@ const styles = StyleSheet.create({
   },
   badge: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     letterSpacing: typography.letterSpacing.wider,
     textTransform: 'uppercase',
   },
   title: {
     color: colors.textPrimary,
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     marginBottom: 4,
   },
   body: {
@@ -155,6 +155,6 @@ const styles = StyleSheet.create({
   footerText: {
     color: colors.primary,
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 });

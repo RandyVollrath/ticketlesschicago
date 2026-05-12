@@ -16,6 +16,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { LAYER_COLORS } from '../../services/parking-map/types';
+import { typography } from '../../theme';
 
 // =============================================================================
 // Types
@@ -333,7 +334,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#111827',
   },
   closeButton: {
@@ -342,7 +343,7 @@ const styles = StyleSheet.create({
   },
   closeText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
     color: '#3b82f6',
   },
   content: {
@@ -353,7 +354,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#6b7280',
     marginBottom: 12,
     textTransform: 'uppercase',
@@ -429,7 +430,7 @@ const styles = StyleSheet.create({
   },
   vehicleLabelActive: {
     color: '#3b82f6',
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   placardNote: {
     fontSize: 12,
@@ -459,7 +460,7 @@ const styles = StyleSheet.create({
   addPermitText: {
     fontSize: 14,
     color: '#3b82f6',
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   disclaimer: {
     backgroundColor: '#fef3c7',
