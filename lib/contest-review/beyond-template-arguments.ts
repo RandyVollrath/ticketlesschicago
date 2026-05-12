@@ -530,11 +530,11 @@ export function buildAutopilotFindings(
     // logic for tickets that have no other defense signal.
     out.push({
       id: 'autopilot_foia_request',
-      title: 'Autopilot will FOIA the City for the cited address and the officer\'s notes',
+      title: 'We\'ll request the city\'s records so they have to prove the ticket',
       explanation:
-        'When you sign up, Autopilot emails a formal Freedom of Information Act request (Illinois FOIA, 5 ILCS 140) to the Chicago Department of Finance asking for the exact location recorded by the issuing officer, the officer\'s field notes, any photographs taken at the time of citation, and the handheld-device data. The city has 5 business days to respond. Whatever they produce — or fail to produce — becomes part of your contest record.',
+        'Once you start Autopilot, we file a formal records request with the Chicago Department of Finance for the exact location, the officer\'s field notes, and any photos taken at the time of citation. The city has five business days to answer. Most drivers never make this request — it takes knowing what to ask for, where to send it, how to track the deadline, and how to use the response in the contest.',
       uplift:
-        'A missing or unresponsive FOIA answer is itself a codified defense ground (§ 9-100-060(a)(4)). When the city DOES produce records, the materials often contain inconsistencies. Users cannot send these FOIAs themselves without legal-form expertise and follow-up handling.',
+        'If the city can\'t produce the required records, that can become part of your defense. When they do produce them, the materials often contain inconsistencies that strengthen the contest.',
       estimatedUpliftPct: 0.08,
       strength: 'moderate',
       kind: 'autopilot',
