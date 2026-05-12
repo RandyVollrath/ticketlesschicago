@@ -87,9 +87,18 @@ export default function TicketContester({ userId }: TicketContesterProps) {
     violationCode === '9-80-040' ||
     /missing.*plate|no.*plate.*display|plate.*not.*display/.test(violationDesc);
 
-  // Single source of truth for the stolen-plate option label so the
-  // "is it checked?" check and the UI text can't drift apart.
+  // Single source of truth for ground labels that downstream code matches
+  // against literally — keep the "is it checked?" check and the visible
+  // option label from drifting apart on a future edit.
   const STOLEN_PLATE_LABEL = 'My plate was stolen, lost, or used without my permission';
+  const RENTAL_FLEET_LABEL = 'This was a rental / car-share / fleet vehicle when cited';
+  const FUNERAL_LABEL = 'Vehicle was in a registered funeral procession';
+  const POLICE_DIRECTED_LABEL = 'A police officer directed me to disobey the signal';
+  const TEMP_SIGN_LABEL = 'Temporary "No Parking" sign was posted less than 24 hours before';
+  const SIGN_SPACING_LABEL = 'Signs were too far apart or improperly spaced';
+  const IMPROPER_SERVICE_LABEL = 'The violation notice arrived late or at the wrong address';
+  const DISABILITY_LABEL = 'A disability or medical condition prevented compliance';
+  const COMPLIANCE_CORRECTED_LABEL = 'The underlying violation has been corrected since the ticket';
 
   const availableGrounds = (isCameraTicket || isMissingPlate)
     ? [
@@ -97,15 +106,25 @@ export default function TicketContester({ userId }: TicketContesterProps) {
         'The facts alleged in the violation notice are inconsistent (wrong plate, state, or vehicle)',
         'I was not the owner or lessee of the cited vehicle at the time',
         'The vehicle was sold or transferred before the violation date',
+        RENTAL_FLEET_LABEL,
+        POLICE_DIRECTED_LABEL,
+        FUNERAL_LABEL,
+        IMPROPER_SERVICE_LABEL,
         'Emergency circumstances required me to proceed',
       ]
     : [
         'Signs were missing or obscured',
+        SIGN_SPACING_LABEL,
+        TEMP_SIGN_LABEL,
         'The facts alleged in the violation notice are inconsistent',
         'Affirmative compliance — I have proof of renewal / sticker / permit',
+        COMPLIANCE_CORRECTED_LABEL,
         'Street cleaning did not actually occur',
         'Vehicle was moved before the restricted period began',
         'Valid permit was displayed',
+        RENTAL_FLEET_LABEL,
+        DISABILITY_LABEL,
+        IMPROPER_SERVICE_LABEL,
         'Emergency situation prevented moving vehicle',
         'Ticket issued in error (wrong vehicle/plate)',
       ];

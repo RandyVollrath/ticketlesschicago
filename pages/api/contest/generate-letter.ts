@@ -236,8 +236,40 @@ function deriveStructuredFacts(args: {
   if (has(/temporary.*obstruction|temporarily.*obscured/i)) {
     facts.hadTemporaryObstruction = true;
   }
-  if (has(/issue.*corrected|already.*fixed|in compliance now|since.*come.*into compliance/i)) {
+  if (has(/issue.*corrected|already.*fixed|in compliance now|since.*come.*into compliance|underlying.*violation.*has.*been.*corrected/i)) {
     facts.issueHasBeenCorrected = true;
+  }
+
+  // ── Wave 3 user-attestation defenses ────────────────────────────────────
+  // Rental / car-share / fleet vehicle
+  if (has(/rental.*vehicle|car.?share|zipcar|hertz|enterprise|turo|fleet vehicle|company car/i)) {
+    facts.wasRentalOrFleet = true;
+    facts.wasNotOwner = true;
+  }
+  // Funeral procession
+  if (has(/funeral procession|funeral.*proc/i)) {
+    facts.wasInFuneralProcession = true;
+  }
+  // Police-directed disobedience (camera)
+  if (has(/police.*officer.*directed|officer.*directed.*me|directed.*by.*(an? )?officer/i)) {
+    facts.wasPoliceDirected = true;
+  }
+  // Temporary "No Parking" sign posted <24h before
+  if (has(/temporary.*sign.*less.*than.*24|less than 24 hours? before|sign.*posted.*less.*than.*24|temp.*sign.*not.*24/i)) {
+    facts.tempSignUnder24Hours = true;
+  }
+  // Sign spacing violation
+  if (has(/sign.*too far apart|sign.*spacing|signs.*improperly.*spaced|signs.*were.*too.*far/i)) {
+    facts.signSpacingViolation = true;
+  }
+  // Improper service of notice
+  if (has(/notice.*late|notice.*wrong address|notice.*arrived.*late|wrong.*address|never received.*notice/i)) {
+    facts.improperServiceOfNotice = true;
+  }
+  // Disability / medical accommodation
+  if (has(/disability|medical condition|medical.*emergency|medical.*reason|hospital|cannot.*walk|wheelchair/i)) {
+    facts.hadDisability = true;
+    facts.hadMedicalEmergency = true;
   }
 
   return facts;
@@ -2148,6 +2180,97 @@ LEGAL BASIS: Chicago Municipal Code § 9-102-050(c) is a codified statutory exem
 
 INSTRUCTIONS: This is the LEAD argument — do not bury it. Two sentences are enough. State (1) the plate was stolen on or before the violation date${stolenPlateDefense.reportNumber ? ' and reference the RD number' : ''}, and (2) cite § 9-102-050(c) and request dismissal on that codified ground. Do NOT also argue yellow timing, vehicle ID, etc. — the stolen-plate defense alone is dispositive.
 ` : ''}
+${(() => {
+  // === ADDITIONAL CODIFIED DEFENSES (USER-ATTESTATION) ===
+  // Each fires only when the user selected the matching ground. Each
+  // states the codified basis + the user's attestation in 2-3 sentences,
+  // and asks for evidence the user should attach. These are SUPPORTING
+  // arguments — the LEAD cascade above has already picked the lead.
+  const grounds = (contestGrounds || []).join(' | ').toLowerCase();
+  const blocks: string[] = [];
+
+  // Rental / car-share / fleet — § 9-100-060(a)(1) "not the owner or lessee"
+  if (/rental.*vehicle|car.?share|zipcar|hertz|enterprise|turo|fleet vehicle|company car/i.test(grounds)) {
+    blocks.push(`=== RENTAL / CAR-SHARE / FLEET DEFENSE — SUPPORTING ARGUMENT (§ 9-100-060(a)(1)) ===
+The user attests the cited vehicle was a rental, car-share, or fleet vehicle at the time of the violation — not personally owned.
+
+LEGAL BASIS: Under § 9-100-060(a)(1), the respondent is not liable when they were not the owner or lessee at the time. Car-share and rental fleets are initially cited to the corporate fleet owner; the corporate owner names the renter only after they execute a transfer-of-liability release. Without that release executed by the user, liability remains with the fleet operator.
+
+INSTRUCTIONS: In one short paragraph: state the vehicle was rented or shared at the time, name the operator (Zipcar / Hertz / Turo / etc.), state the rental agreement period covers the violation date, and cite § 9-100-060(a)(1). Tell the user to attach the rental agreement / car-share trip receipt as evidence.`);
+  }
+
+  // Funeral procession — 625 ILCS 5/11-1426
+  if (/funeral procession|funeral.*proc/i.test(grounds)) {
+    blocks.push(`=== FUNERAL PROCESSION DEFENSE — SUPPORTING ARGUMENT (625 ILCS 5/11-1426) ===
+The user attests the cited vehicle was part of a registered funeral procession at the time of the violation.
+
+LEGAL BASIS: Illinois Vehicle Code 625 ILCS 5/11-1426 exempts vehicles in a funeral procession from certain traffic-signal and parking restrictions when accompanied by an authorized escort and displaying the funeral identification (purple flag or headlight pattern).
+
+INSTRUCTIONS: In one short paragraph: state the vehicle was part of a funeral procession on the cited date, name the funeral director or funeral home, cite 625 ILCS 5/11-1426. Tell the user to attach the funeral director's written confirmation as evidence.`);
+  }
+
+  // Police-directed disobedience (camera) — § 9-102-050
+  if (/police.*officer.*directed|officer.*directed.*me|directed.*by.*(an? )?officer/i.test(grounds)) {
+    blocks.push(`=== POLICE-DIRECTED DISOBEDIENCE DEFENSE — SUPPORTING ARGUMENT (§ 9-102-050) ===
+The user attests a police officer directed them to disobey the traffic signal at the time of the alleged camera violation.
+
+LEGAL BASIS: Chicago Municipal Code § 9-102-050 and Illinois Vehicle Code 625 ILCS 5/11-208.6(e) exempt drivers from automated-enforcement citations when an officer manually directed traffic in a manner inconsistent with the signal (e.g., outage, accident scene, special event).
+
+INSTRUCTIONS: In one short paragraph: state the officer-directed circumstance, identify the officer / unit / location if known, cite § 9-102-050. Tell the user to attach any photo / dashcam / officer notes if available, and request that the City produce its outage / manual-direction log for the intersection on that date.`);
+  }
+
+  // 24-hour temporary sign requirement — § 9-68-040
+  if (/temporary.*sign.*less.*than.*24|less than 24 hours? before|sign.*posted.*less.*than.*24|temp.*sign.*not.*24/i.test(grounds)) {
+    blocks.push(`=== 24-HOUR TEMPORARY SIGN DEFENSE — SUPPORTING ARGUMENT (§ 9-68-040) ===
+The user attests the "No Parking" sign for the temporary restriction at this location was posted less than 24 hours before the citation.
+
+LEGAL BASIS: Chicago Municipal Code § 9-68-040 requires that temporary "No Parking" signs (construction, special events, film permits) be posted at least 24 hours in advance of enforcement. Signs posted less than 24 hours before enforcement render the citation void.
+
+INSTRUCTIONS: In one short paragraph: state the user parked when no sign was posted, state when the sign appeared (if known), cite § 9-68-040. Tell the user to attach a timestamped photo showing the parked vehicle before the sign appeared, if available. Request that the City produce the temporary-restriction permit and the contractor's sign-posting log for this block, including the date and time the signs were posted.`);
+  }
+
+  // Sign spacing — CDOT Bureau of Sign Management standards
+  if (/sign.*too far apart|sign.*spacing|signs.*improperly.*spaced|signs.*were.*too.*far/i.test(grounds)) {
+    blocks.push(`=== SIGN SPACING DEFENSE — SUPPORTING ARGUMENT ===
+The user attests the street-cleaning / parking-restriction signs at this block are spaced too far apart for a motorist to reasonably perceive the restriction.
+
+LEGAL BASIS: CDOT Bureau of Sign Management standards (and § 9-64 enforcement practice) require that parking-restriction signs be spaced at intervals that give a motorist reasonable notice of the restriction — typically every ~125 feet on residential blocks. Signs spaced beyond that interval fail to provide constructive notice and the citation is unenforceable.
+
+INSTRUCTIONS: In one short paragraph: state the user parked between signs at a distance where the restriction was not reasonably visible, attach photos showing the sign-to-sign distance with a measurement reference (the parked vehicle itself, or a Street View pull). Cite the sign-spacing requirement and § 9-100-060(a)(7) (violation did not in fact occur as charged because the restriction was not reasonably noticed).`);
+  }
+
+  // Improper service of notice — § 9-100-070
+  if (/notice.*late|notice.*wrong address|notice.*arrived.*late|wrong.*address|never received.*notice/i.test(grounds)) {
+    blocks.push(`=== IMPROPER SERVICE OF NOTICE — SUPPORTING ARGUMENT (§ 9-100-070) ===
+The user attests the violation notice was not properly served — it arrived late, at the wrong address, or after the response deadline.
+
+LEGAL BASIS: Chicago Municipal Code § 9-100-070 requires that violation notices be properly served by mail to the address on file with the IL Secretary of State. Notice that doesn't reach the respondent in time to file a timely contest is procedurally deficient.
+
+INSTRUCTIONS: In one short paragraph: state the date the notice was received vs. the date of the violation, state the address it was mailed to vs. the user's correct registered address, cite § 9-100-070 and any postmark evidence. Tell the user to attach the envelope with the postmark and a screenshot of the IL SOS registration showing the correct address.`);
+  }
+
+  // Disability / medical condition
+  if (/disability|medical condition|medical.*reason|wheelchair|cannot.*walk/i.test(grounds)) {
+    blocks.push(`=== DISABILITY / MEDICAL DEFENSE — SUPPORTING ARGUMENT ===
+The user attests a disability or medical condition prevented timely compliance with the parking restriction.
+
+LEGAL BASIS: Under the ADA and § 9-64-180 disability-parking provisions, hearing officers may reduce or dismiss citations when the respondent's compliance was prevented by a documented disability or medical emergency.
+
+INSTRUCTIONS: In one short paragraph: state the nature of the condition (in general terms — do not require disclosure of specific diagnosis), state how it prevented compliance, and attach any disability placard, doctor's note, or hospital discharge document the user has. This is a discretionary defense — the hearing officer weighs it as mitigating circumstance rather than a per se dismissal.`);
+  }
+
+  // Compliance corrected (user-attested) — already handled by the dedicated
+  // block above when receipts are on file; this catches the user-only path.
+  if (/underlying.*violation.*has.*been.*corrected|compliance.*corrected/i.test(grounds) && !cityStickerReceipt && !registrationReceipt) {
+    blocks.push(`=== COMPLIANCE CORRECTED — SUPPORTING ARGUMENT (§ 9-100-060(a)(8), user-attested) ===
+The user attests the underlying compliance issue (broken equipment, missing sticker, expired registration, etc.) has been corrected since the citation was issued.
+
+INSTRUCTIONS: In one short paragraph: state what was corrected and when, cite § 9-100-060(a)(8) — "the compliance violation cited in the notice has been corrected prior to the date of the hearing." Tell the user to attach proof of the correction (receipt, inspection report, repair invoice) if they have it.`);
+  }
+
+  return blocks.join('\n\n');
+})()}
+
 ${(violationType === 'red_light' || violationType === 'speed_camera' ||
   contest.violation_code === '9-102-010' || contest.violation_code === '9-102-020' ||
   /red\s*light|speed\s*camera|automated\s+(traffic|enforcement)/i.test(contest.violation_description || '')) ? `
