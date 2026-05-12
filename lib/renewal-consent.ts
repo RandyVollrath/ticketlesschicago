@@ -3,7 +3,11 @@
 // page to grant/decline, and by the automation runner to consume.
 
 import { randomBytes } from 'crypto';
-import { supabaseAdmin } from './supabase';
+import { supabaseAdmin as typedSupabase } from './supabase';
+
+// renewal_purchase_consents is a new table not yet in the generated types.
+// Cast at the supabase reference so all queries below skip the typegen.
+const supabaseAdmin = typedSupabase as any;
 
 export type RenewalType = 'city_sticker' | 'license_plate';
 export type ConsentStatus = 'pending' | 'granted' | 'declined' | 'expired' | 'consumed' | 'failed';
