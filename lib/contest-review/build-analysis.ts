@@ -172,12 +172,17 @@ function recommendForTicket(
     };
   }
 
-  // Past the 21-day mail window AND past 60 days → skip the mail path
-  // unless there's a strong portal-fact or Autopilot defense.
-  if (daysSince !== null && daysSince > 60 && !hasStrongFact && !hasStrongAutopilot) {
+  // HARD WALL at day 46. Per MCC § 9-100-050 the post-determination
+  // 25-day late-payment window closes around day 46 (camera tickets:
+  // day 21 + 25 = 46) or day 50 (parking: day 25 + 25 = 50). We pick
+  // the earlier date so we never accept a ticket where the second
+  // late-fee escalation has already attached. Beyond day 45 the contest
+  // path is motion-to-vacate / collections-stage, not the standard
+  // hearing path we file.
+  if (daysSince !== null && daysSince > 45) {
     return {
       recommendation: 'skip',
-      reason: `Filed ${daysSince} days ago — the mail-contest window closed at day 21 and the late-hearing window is closing too. Without a strong defense (we didn't detect one), contesting is unlikely to succeed.`,
+      reason: `Filed ${daysSince} days ago — past our reliable contest window. At this age the post-determination late-payment window has typically closed, and the path here is a motion to vacate or a collections-stage filing, which isn't part of the standard Autopilot plan.`,
     };
   }
 
