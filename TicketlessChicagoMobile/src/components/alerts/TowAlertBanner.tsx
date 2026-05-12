@@ -14,6 +14,7 @@ import {
   Animated,
 } from 'react-native';
 import { TowAlert } from '../../services/alerts/TowAlertService';
+import { typography } from '../../theme';
 
 // =============================================================================
 // Types
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
   closeText: {
     color: '#fff',
     fontSize: 20,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     lineHeight: 22,
   },
   content: {
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
   message: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -210,7 +211,7 @@ const styles = StyleSheet.create({
   countdownText: {
     color: '#fff',
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bodyBold,
     fontVariant: ['tabular-nums'],
   },
   countdownUrgentText: {
@@ -225,12 +226,12 @@ const styles = StyleSheet.create({
   countdownExpiredText: {
     color: '#dc2626',
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bodyBold,
   },
   urgentLabel: {
     color: '#fff',
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     marginTop: 2,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
   cost: {
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 13,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   buttons: {
     flexDirection: 'column',
@@ -261,7 +262,7 @@ const styles = StyleSheet.create({
   relocateText: {
     color: '#111827',
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   snoozeButton: {
     paddingVertical: 8,

@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     fontSize: typography.sizes.xxxl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.primary,
     marginBottom: spacing.xs,
   },
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
   },
   formTitle: {
     fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.xs,
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
   appleButtonText: {
     color: '#FFFFFF',
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   googleButton: {
     backgroundColor: colors.white,
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
   googleButtonText: {
     color: colors.textPrimary,
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   emailToggleButton: {
     flexDirection: 'row',
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   emailToggleText: {
     color: colors.textSecondary,
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.white,
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   benefitsContainer: {
     marginTop: spacing.xl,
@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
     marginBottom: spacing.md,
   },
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   emailHighlight: {
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
   },
   successInstructions: {
@@ -606,7 +606,7 @@ const styles = StyleSheet.create({
   resendText: {
     color: colors.primary,
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   changeEmailButton: {
     paddingVertical: spacing.md,

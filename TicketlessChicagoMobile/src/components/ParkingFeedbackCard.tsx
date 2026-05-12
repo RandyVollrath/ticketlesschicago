@@ -11,6 +11,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ParkingFeedbackService, ParkingFeedback } from '../services/ParkingFeedbackService';
+import { typography } from '../theme';
 
 interface Props {
   onDismiss: () => void;
@@ -168,7 +169,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#8888aa',
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -179,7 +180,7 @@ const styles = StyleSheet.create({
   question: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
     marginBottom: 12,
   },
   subtext: {
@@ -221,7 +222,7 @@ const styles = StyleSheet.create({
   btnText: {
     color: '#ffffff',
     fontSize: 15,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   thanks: {
     color: '#88aa88',

@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { typography } from '../../theme';
 import {
   View,
   Text,
@@ -318,7 +319,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#111827',
   },
   closeButton: {
@@ -328,7 +329,7 @@ const styles = StyleSheet.create({
   },
   closeText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
     color: '#3b82f6',
   },
   filters: {
@@ -347,7 +348,7 @@ const styles = StyleSheet.create({
   },
   filterText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
     color: '#6b7280',
   },
   filterTextActive: {
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: '#fff',
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   emptyContainer: {
     flex: 1,
@@ -402,7 +403,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
     color: '#374151',
     textAlign: 'center',
   },
@@ -432,7 +433,7 @@ const styles = StyleSheet.create({
   },
   cardAddress: {
     fontSize: 15,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
     color: '#111827',
   },
   cardDistance: {
@@ -444,7 +445,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#059669',
     marginTop: 4,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   garageInfo: {
     marginTop: 4,
@@ -452,7 +453,7 @@ const styles = StyleSheet.create({
   garageName: {
     fontSize: 13,
     color: '#374151',
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   garageRate: {
     fontSize: 12,
@@ -460,7 +461,7 @@ const styles = StyleSheet.create({
   },
   garageAvailability: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
     marginTop: 2,
   },
   availabilityGood: {
@@ -487,7 +488,7 @@ const styles = StyleSheet.create({
   scoreText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: typography.fontFamily.bodyBold,
   },
   navigateIcon: {
     fontSize: 20,

@@ -13,6 +13,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { ParkingRestrictionLayer } from '../../services/parking-map/types';
+import { typography } from '../../theme';
 
 // =============================================================================
 // Types
@@ -117,7 +118,7 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: typography.fontFamily.bodyMedium,
     color: '#374151',
     flex: 1,
   },
@@ -168,7 +169,7 @@ const styles = StyleSheet.create({
   checkmark: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 });
 

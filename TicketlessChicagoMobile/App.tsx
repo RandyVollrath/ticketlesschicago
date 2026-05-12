@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -30,6 +30,26 @@ const log = Logger.createLogger('App');
 
 // Setup global error handling
 setupGlobalErrorHandler();
+
+// Apply Inter as the default font family for every Text / TextInput in the
+// app so the brand typography from autopilotamerica.com flows everywhere
+// without per-screen migration. Custom styles (including the fontFamily
+// vector-icons sets on its glyph Text) take precedence because they come
+// second in the style array.
+(() => {
+  const defaultStyle = { fontFamily: typography.fontFamily.body };
+  for (const Component of [Text, TextInput] as any[]) {
+    const original = Component.render;
+    if (typeof original !== 'function') continue;
+    Component.render = function patchedRender(...args: any[]) {
+      const origin = original.apply(this, args);
+      if (!origin) return origin;
+      return React.cloneElement(origin, {
+        style: [defaultStyle, origin.props?.style],
+      });
+    };
+  }
+})();
 
 // Type definitions
 export type RootStackParamList = {

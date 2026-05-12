@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     marginLeft: spacing.sm,
   },
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
     marginTop: spacing.sm,
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   skipButtonText: {
     fontSize: typography.sizes.base,
     color: colors.textSecondary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   saveButton: {
     flex: 1,
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: typography.sizes.base,
     color: '#fff',
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 });
 

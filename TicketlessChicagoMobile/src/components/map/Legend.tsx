@@ -19,6 +19,7 @@ import {
   UIManager,
 } from 'react-native';
 import { LAYER_COLORS } from '../../services/parking-map/types';
+import { typography } from '../../theme';
 
 // Enable LayoutAnimation on Android
 if (
@@ -245,7 +246,7 @@ const styles = StyleSheet.create({
   },
   collapsedLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.bodySemibold,
     color: '#6b7280',
     marginRight: 6,
   },

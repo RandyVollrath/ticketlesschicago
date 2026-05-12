@@ -1761,7 +1761,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
     marginBottom: 2,
   },
@@ -1777,7 +1777,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -1803,7 +1803,7 @@ const styles = StyleSheet.create({
   },
   accountName: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   accountEmail: {
@@ -1830,7 +1830,7 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.textPrimary,
   },
   settingSubtitle: {
@@ -1854,7 +1854,7 @@ const styles = StyleSheet.create({
   rightText: {
     fontSize: typography.sizes.sm,
     color: colors.success,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     marginRight: spacing.xs,
   },
   dangerText: {
@@ -1893,7 +1893,7 @@ const styles = StyleSheet.create({
   permitZoneSaveBtnText: {
     color: '#fff',
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   permitZoneCancelBtn: {
     paddingHorizontal: spacing.sm,
@@ -1914,7 +1914,7 @@ const styles = StyleSheet.create({
   },
   callAlertTypesTitle: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
@@ -1961,7 +1961,7 @@ const styles = StyleSheet.create({
   },
   hoursBeforeChipTextActive: {
     color: colors.primary,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 
   // Volume slider
@@ -2008,12 +2008,12 @@ const styles = StyleSheet.create({
   notificationHealthTitle: {
     flex: 1,
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   notificationHealthRate: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   notificationHealthRateGood: {
     color: colors.success,
@@ -2048,7 +2048,7 @@ const styles = StyleSheet.create({
   notificationHealthActionText: {
     color: colors.white,
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   notificationHistoryEmptyText: {
     flex: 1,
@@ -2068,12 +2068,12 @@ const styles = StyleSheet.create({
   notificationHistoryTitle: {
     flex: 1,
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   notificationHistoryStatus: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     textTransform: 'uppercase',
   },
   notificationHistoryStatusSent: {
@@ -2097,7 +2097,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: borderRadius.full,
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     overflow: 'hidden',
   },
   notificationHistoryUrgencyCritical: {
@@ -2144,7 +2144,7 @@ const styles = StyleSheet.create({
   },
   feedbackText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.success,
   },
 
@@ -2182,7 +2182,7 @@ const styles = StyleSheet.create({
   debugButtonText: {
     color: colors.white,
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 });
 

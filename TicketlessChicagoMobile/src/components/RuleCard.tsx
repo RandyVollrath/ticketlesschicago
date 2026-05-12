@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   activeBadge: {
     paddingHorizontal: spacing.xs,
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   },
   activeBadgeText: {
     fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.white,
   },
   message: {

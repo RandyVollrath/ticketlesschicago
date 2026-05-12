@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.md,
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
   },
   bold: {
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
   },
   reasonsContainer: {
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   },
   reasonTitle: {
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     marginBottom: 4,
   },
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   },
   acceptButtonText: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textInverse,
   },
   declineButton: {

@@ -502,7 +502,7 @@ const MapScreenContent: React.FC = () => {
                 accessibilityLabel={showProtectionStatus ? 'Collapse protection status' : 'Expand protection status'}
                 accessibilityRole="button"
               >
-                <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>Protection Status</Text>
+                <Text style={{ fontSize: 16, fontFamily: typography.fontFamily.bodySemibold, color: colors.textPrimary }}>Protection Status</Text>
                 <MaterialCommunityIcons
                   name={showProtectionStatus ? 'chevron-up' : 'chevron-down'}
                   size={22}
@@ -672,7 +672,7 @@ const styles = StyleSheet.create({
   offlineBannerText: {
     color: colors.textPrimary,
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   content: {
     flex: 1,
@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
     marginBottom: spacing.lg,
   },
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
   },
   addressText: {
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.textPrimary,
     lineHeight: typography.sizes.base * 1.4,
   },
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
   allClearText: {
     fontSize: typography.sizes.base,
     color: colors.success,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     flex: 1,
   },
   protectionList: {
@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
   },
   protectionLabel: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
     color: colors.textPrimary,
   },
   protectionStatus: {
@@ -792,7 +792,7 @@ const styles = StyleSheet.create({
   protectionCheck: {
     fontSize: typography.sizes.md,
     color: colors.success,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
   },
   emptyState: {
     alignItems: 'center',
@@ -804,7 +804,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
     textAlign: 'center',
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
   },
   permissionTitle: {
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
   },
   mapCardTitle: {
     fontSize: 16,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   mapExpandHint: {
@@ -870,7 +870,7 @@ const styles = StyleSheet.create({
   mapExpandText: {
     fontSize: typography.sizes.xs,
     color: colors.textTertiary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   mapContainer: {
     height: 250,
@@ -922,7 +922,7 @@ const styles = StyleSheet.create({
   },
   fullscreenCloseLabel: {
     fontSize: 14,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.white,
   },
   fullscreenWebView: {

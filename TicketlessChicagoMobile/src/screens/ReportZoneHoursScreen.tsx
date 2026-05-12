@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
   },
   scrollView: {
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: typography.sizes.sm,
     color: colors.textPrimary,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.bodyMedium,
   },
   infoSubtext: {
     fontSize: typography.sizes.xs,
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   cameraButtonText: {
     color: colors.primary,
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
   photoContainer: {
     marginBottom: spacing.sm,
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: colors.textInverse,
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
   },
   successContainer: {
     flex: 1,
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
+    fontFamily: typography.fontFamily.bodyBold,
     color: colors.textPrimary,
     marginTop: spacing.md,
   },
@@ -365,6 +365,6 @@ const styles = StyleSheet.create({
   doneButtonText: {
     color: colors.textInverse,
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    fontFamily: typography.fontFamily.bodySemibold,
   },
 });
