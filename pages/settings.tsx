@@ -1162,6 +1162,17 @@ function SettingsPageInner() {
   const [receiptCount, setReceiptCount] = useState<number | null>(null); // null = not loaded yet
   const [receiptBannerDismissed, setReceiptBannerDismissed] = useState(false);
 
+  // IL SOS renewal credentials (opt-in, for auto plate sticker renewal)
+  const [ilRegIdInput, setIlRegIdInput] = useState('');
+  const [ilPinInput, setIlPinInput] = useState('');
+  const [ilCredsStatus, setIlCredsStatus] = useState<{
+    has_credentials: boolean;
+    updated_at: string | null;
+    invalid_at: string | null;
+  } | null>(null);
+  const [ilCredsSaveState, setIlCredsSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [ilCredsError, setIlCredsError] = useState<string | null>(null);
+
   // Guided Setup Wizard
   const [guidedSetupStep, setGuidedSetupStep] = useState(0);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
@@ -1539,6 +1550,14 @@ function SettingsPageInner() {
         }
       }
 
+      // IL renewal credentials status (boolean only — plaintext never crosses the wire)
+      try {
+        const ilResp = await fetch('/api/profile/il-credentials', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (ilResp.ok) setIlCredsStatus(await ilResp.json());
+      } catch (_) { /* non-fatal */ }
+
       setLoading(false);
       setTimeout(() => { initialLoadRef.current = false; }, 100);
     } catch (err) {
@@ -1552,6 +1571,42 @@ function SettingsPageInner() {
       setLoading(false);
     }
   };
+
+  const saveIlCredentials = useCallback(async () => {
+    setIlCredsError(null);
+    setIlCredsSaveState('saving');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setIlCredsError('Sign in required.');
+        setIlCredsSaveState('error');
+        return;
+      }
+      const resp = await fetch('/api/profile/il-credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ registrationId: ilRegIdInput.trim(), pin: ilPinInput.trim() }),
+      });
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        setIlCredsError(body?.error || 'Save failed.');
+        setIlCredsSaveState('error');
+        return;
+      }
+      // Re-fetch status. Clear inputs so PIN never lingers in component state.
+      const statusResp = await fetch('/api/profile/il-credentials', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (statusResp.ok) setIlCredsStatus(await statusResp.json());
+      setIlRegIdInput('');
+      setIlPinInput('');
+      setIlCredsSaveState('saved');
+      setTimeout(() => setIlCredsSaveState('idle'), 2500);
+    } catch (e: any) {
+      setIlCredsError(e?.message || 'Save failed.');
+      setIlCredsSaveState('error');
+    }
+  }, [ilRegIdInput, ilPinInput]);
 
   // autoSave reads from formStateRef — zero deps, never recreated on keystroke
   const autoSave = useCallback(async () => {
@@ -3130,6 +3185,89 @@ function SettingsPageInner() {
           </div>
         </CollapsibleCard>
 
+
+        {/* IL Plate Sticker Auto-Renewal */}
+        <CollapsibleCard
+          title="Auto-renew IL plate sticker"
+          summary={
+            ilCredsStatus?.has_credentials
+              ? ilCredsStatus.invalid_at
+                ? 'Last attempt rejected — please re-enter PIN'
+                : `Credentials on file${ilCredsStatus.updated_at ? ` (updated ${new Date(ilCredsStatus.updated_at).toLocaleDateString()})` : ''}`
+              : 'Optional — add Reg ID + PIN and we handle yearly renewal'
+          }
+        >
+          <p style={{ margin: '0 0 12px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
+            Add your Illinois Registration ID and PIN once and we'll renew your plate sticker for you each year. Find both on your IL Vehicle Registration Card or the renewal notice the state mails you.
+          </p>
+          {ilCredsStatus?.invalid_at && (
+            <div style={{
+              padding: '10px 12px',
+              borderRadius: 8,
+              backgroundColor: '#FEF3C7',
+              border: '1px solid #FDE68A',
+              fontSize: 13,
+              color: '#92400E',
+              marginBottom: 12,
+            }}>
+              The state rejected your saved credentials on the last renewal attempt. This usually means your plate was replaced — please re-enter the Registration ID and PIN from your latest registration card.
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={FORM_STYLES.label}>Registration ID</label>
+              <input
+                type="text"
+                value={ilRegIdInput}
+                onChange={(e) => setIlRegIdInput(e.target.value)}
+                placeholder="11 digits"
+                inputMode="numeric"
+                autoComplete="off"
+                style={{ ...FORM_STYLES.input, fontFamily: 'monospace' }}
+              />
+            </div>
+            <div>
+              <label style={FORM_STYLES.label}>PIN</label>
+              <input
+                type="password"
+                value={ilPinInput}
+                onChange={(e) => setIlPinInput(e.target.value)}
+                placeholder="from registration card"
+                autoComplete="off"
+                style={{ ...FORM_STYLES.input, fontFamily: 'monospace' }}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={saveIlCredentials}
+              disabled={!ilRegIdInput.trim() || !ilPinInput.trim() || ilCredsSaveState === 'saving'}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 6,
+                border: 'none',
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: !ilRegIdInput.trim() || !ilPinInput.trim() || ilCredsSaveState === 'saving' ? 'not-allowed' : 'pointer',
+                backgroundColor: COLORS.accent,
+                color: '#fff',
+                opacity: !ilRegIdInput.trim() || !ilPinInput.trim() ? 0.5 : 1,
+              }}
+            >
+              {ilCredsSaveState === 'saving' ? 'Saving…' : ilCredsStatus?.has_credentials ? 'Update credentials' : 'Save credentials'}
+            </button>
+            {ilCredsSaveState === 'saved' && (
+              <span style={{ fontSize: 13, color: COLORS.accent }}>Saved — encrypted at rest.</span>
+            )}
+            {ilCredsError && (
+              <span style={{ fontSize: 13, color: COLORS.danger }}>{ilCredsError}</span>
+            )}
+          </div>
+          <p style={{ margin: '12px 0 0', fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>
+            Stored encrypted. We use them only to renew your plate sticker on your behalf and never share with anyone. Your PIN stays the same year over year unless your plate gets replaced.
+          </p>
+        </CollapsibleCard>
 
         {/* Soft nudge banner — only shown when user has zero receipts on file */}
         {receiptCount === 0 && !receiptBannerDismissed && (

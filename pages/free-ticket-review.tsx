@@ -512,9 +512,13 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
             <h3 style={{ fontSize: 16, fontWeight: 700, color: COLORS.deepHarbor, margin: '0 0 10px' }}>Patterns across your tickets</h3>
             {analysis.crossTicket.map(f => (
               <div key={f.id} style={{ padding: 14, background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, marginBottom: 10 }}>
-                <div style={{ fontWeight: 700, color: '#78350F', fontSize: 15 }}>{f.title}</div>
-                <div style={{ marginTop: 6, color: '#78350F', fontSize: 14, lineHeight: 1.5 }}>{f.explanation}</div>
-                <div style={{ marginTop: 6, fontSize: 12, color: COLORS.slate }}>Affects: {f.affectedTicketNumbers.join(', ')}</div>
+                <div style={{ fontWeight: 700, color: '#78350F', fontSize: 15 }}>
+                  {crossTicketCategoryHeadline(f)}
+                </div>
+                <div style={{ marginTop: 6, color: '#78350F', fontSize: 14, lineHeight: 1.5 }}>
+                  A repeat pattern strengthens each individual contest. Autopilot handles the joint filing — the specific argument lives in your paid contest packet.
+                </div>
+                <div style={{ marginTop: 6, fontSize: 12, color: COLORS.slate }}>Affects {f.affectedTicketNumbers.length} ticket{f.affectedTicketNumbers.length === 1 ? '' : 's'}.</div>
               </div>
             ))}
           </div>
@@ -530,7 +534,7 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
             color: '#fff',
           }}>
             <div style={{ fontSize: 18, fontWeight: 800 }}>
-              File {worthIt.length + maybe.length === 1 ? 'this contest' : `all ${worthIt.length + maybe.length} contests`} the right way.
+              Don't fight {worthIt.length + maybe.length === 1 ? 'this ticket' : `these ${worthIt.length + maybe.length} tickets`} alone.
             </div>
             <div style={{ marginTop: 10, fontSize: 14, color: '#CBD5E1', lineHeight: 1.6 }}>
               For $79/year Autopilot writes and mails the contest letter for every ticket on your plate, requests the
@@ -542,7 +546,7 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
               background: COLORS.signal, color: '#04221A', fontWeight: 800, fontSize: 15,
               textDecoration: 'none',
             }}>
-              File these for me — $79/year →
+              Fight {worthIt.length + maybe.length === 1 ? 'this ticket' : `these ${worthIt.length + maybe.length} tickets`} — $79/year →
             </a>
             <div style={{ marginTop: 14, fontSize: 12, color: '#94A3B8', lineHeight: 1.5 }}>
               Win rates shown per ticket type are historical dismissal rates from our Chicago FOIA dataset — your
@@ -595,7 +599,7 @@ function HeroCallout({
         background: COLORS.signal, color: '#04221A', fontWeight: 800, fontSize: 16,
         textDecoration: 'none',
       }}>
-        {filable === 1 ? 'File this contest for me' : `File these ${filable} contests for me`} — $79/year →
+        {filable === 1 ? 'Fight this ticket' : `Fight these ${filable} tickets`} — $79/year →
       </a>
       <div style={{ marginTop: 10, fontSize: 12, color: '#94A3B8' }}>
         We write the letters, request the city's records, attach the evidence you provide, and track every citation to a final decision.
@@ -667,6 +671,22 @@ function verdictLabel(rec: 'contest' | 'maybe' | 'skip'): string {
   if (rec === 'contest') return 'Strong contest candidate';
   if (rec === 'maybe') return 'Worth a closer look';
   return 'Probably past the window';
+}
+
+// Cross-ticket findings need the same category-only treatment as per-ticket
+// findings. The original titles/explanations leak the joint strategy
+// ("pattern of issuance worth challenging together, bundle with an
+// affidavit", "request the camera's calibration certificate and
+// maintenance records") which is the exactly-how the paywall protects.
+function crossTicketCategoryHeadline(f: CrossTicketFinding): string {
+  const n = f.affectedTicketNumbers.length;
+  if (f.id === 'pattern_camera_repeat') {
+    return `Pattern across ${n} camera ticket${n === 1 ? '' : 's'}`;
+  }
+  if (f.id.startsWith('pattern_')) {
+    return `Pattern across ${n} matching ticket${n === 1 ? '' : 's'}`;
+  }
+  return 'A pattern across your tickets';
 }
 
 function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
@@ -748,7 +768,7 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
             textAlign: 'center', textDecoration: 'none',
           }}
         >
-          Have Autopilot file this →
+          Have Autopilot fight this →
         </a>
       )}
     </div>
