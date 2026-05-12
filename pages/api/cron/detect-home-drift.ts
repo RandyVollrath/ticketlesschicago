@@ -39,6 +39,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const drifts: DriftEntry[] = [];
 
+  // Active-users counter is set after the filter below.
+  let skippedNoActivity = 0;
+
   try {
     const { data: users, error } = await supabase
       .from('user_profiles')
@@ -48,9 +51,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .neq('home_address_section', '');
     if (error) throw new Error(`user_profiles fetch: ${error.message}`);
 
+    // Pre-filter: only check users with at least one parking event in the
+    // window. No activity → no signal to detect, no DB clutter, no work.
+    const sinceIso = new Date(Date.now() - DRIFT_THRESHOLDS.WINDOW_DAYS * 86400_000).toISOString();
+    const { data: activityRows, error: activityErr } = await supabase
+      .from('parking_location_history')
+      .select('user_id')
+      .gte('parked_at', sinceIso);
+    if (activityErr) throw new Error(`activity prefilter: ${activityErr.message}`);
+    const activeUserSet = new Set((activityRows || []).map((r: any) => r.user_id));
+
+    const allUsers = users || [];
+    const activeUsers = allUsers.filter((u: any) => activeUserSet.has(u.user_id));
+    skippedNoActivity = allUsers.length - activeUsers.length;
+
     const nowIso = new Date().toISOString();
 
-    for (const u of users || []) {
+    for (const u of activeUsers) {
       const userId = (u as any).user_id as string;
       const homeAddressFull = (u as any).home_address_full as string | null;
       try {
@@ -79,6 +96,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const priorStatus = priorRows?.[0]?.status ?? null;
 
         const result = await computeDriftForUser(supabase, userId);
+
+        // Don't persist INSUFFICIENT_DATA rows. The user is active enough to
+        // pass the prefilter (≥1 parking event in window) but didn't have
+        // enough overnight buckets to actually assess. No signal worth storing.
+        if (result.status === 'INSUFFICIENT_DATA') {
+          summary[result.status]++;
+          continue;
+        }
 
         const { error: insertErr } = await supabase.from('home_address_drift_signals').insert({
           user_id: userId,
@@ -167,14 +192,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const elapsedMs = Date.now() - startedAt;
     console.log(
-      `detect-home-drift: checked ${users?.length ?? 0} users in ${elapsedMs}ms`,
+      `detect-home-drift: ${activeUsers.length}/${allUsers.length} active in ${elapsedMs}ms (skipped ${skippedNoActivity} no-activity)`,
       JSON.stringify(summary),
       drifts.length ? `drifts=${JSON.stringify(drifts.map((d) => ({ ...d, user_email: '<redacted>' })))}` : '',
       `email=${emailStatus}`
     );
 
     return res.status(200).json({
-      checked: users?.length ?? 0,
+      total_paid_users: users?.length ?? 0,
+      checked_active_users: (users?.length ?? 0) - skippedNoActivity,
+      skipped_no_activity: skippedNoActivity,
       elapsed_ms: elapsedMs,
       thresholds: DRIFT_THRESHOLDS,
       summary,
