@@ -205,7 +205,7 @@ export function detectBeyondTemplateArguments(
       explanation:
         `Chicago Municipal Code § 9-100-050 gives you 21 calendar days from the issue date to contest by mail. This ticket was issued ${daysSince} days ago, so the window closes soon. After that, the city issues a determination of liability and a mailed contest is no longer a valid remedy.`,
       uplift:
-        'Filing before the deadline preserves the 57% mail-in dismissal rate. Missing the deadline drops you into a much harder "late hearing for good cause" path.',
+        'Filing before the deadline preserves the 59% mail-in dismissal rate. Missing the deadline drops you into a much harder "late hearing for good cause" path.',
       estimatedUpliftPct: 0.10,
       strength: 'moderate',
     });
@@ -497,7 +497,7 @@ export interface AutopilotEnrichment {
   foundInFoia: boolean;
 }
 
-const CITYWIDE_MAIL_BASELINE = 0.57; // From CLAUDE.md memory: locked-in stat
+const CITYWIDE_MAIL_BASELINE = 0.59; // FOIA hearings, contest_method=Mail, 2023–2025 trailing, n=287,532. Per reference_marketing_numbers.md (2026-05-03 refresh).
 
 export function buildAutopilotFindings(
   enrichment: AutopilotEnrichment,
