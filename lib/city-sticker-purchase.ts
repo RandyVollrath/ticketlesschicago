@@ -185,10 +185,26 @@ export async function purchaseCitySticker(input: CitySticerPurchaseInput): Promi
     }
     await page.waitForTimeout(800);
 
-    // Click Search
+    // Click Search — but first verify it's enabled. EzBuy keeps the button
+    // disabled when client-side validation fails or the plate doesn't match
+    // a record on file. Trying to click a disabled button times out
+    // unhelpfully; treat disabled-after-fill as "vehicle not found" so the
+    // user gets a clear failure email instead of a Playwright stack trace.
     const searchBtn = await page.$('button:has-text("Search")');
     if (!searchBtn) {
       return { success: false, screenshotPaths: screenshots, error: 'Search button not found', stoppedAt: 'login' };
+    }
+    const isEnabled = await searchBtn.evaluate((btn) => !(btn as HTMLButtonElement).disabled && !btn.hasAttribute('disabled'));
+    if (!isEnabled) {
+      const shot = `/tmp/city-purchase-vehicle-not-found-${consent.id}.png`;
+      await page.screenshot({ path: shot, fullPage: true });
+      screenshots.push(shot);
+      return {
+        success: false,
+        screenshotPaths: screenshots,
+        error: 'EzBuy Search button is disabled — vehicle not in city records, owner name mismatch, or VIN/plate combination invalid. User should verify they have a current Chicago city sticker on file for this plate.',
+        stoppedAt: 'vehicle_search',
+      };
     }
     await searchBtn.click();
     await page.waitForTimeout(3000);
