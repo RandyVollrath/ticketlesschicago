@@ -2,22 +2,28 @@
 /**
  * Local end-to-end dry-run of the worker pipeline against the qa-bot.
  *
- *   1. Set qa-bot's user_profiles to authorized + minimal vehicle data
- *      + fake encrypted IL creds.
- *   2. Insert a granted consent (license_plate type) directly via the
- *      admin client (skips the user-facing authorize page round-trip).
- *   3. Invoke scripts/run-renewal-queue.ts logic via lib/run-granted-consents
- *      with AUTO_RENEWAL_GLOBALLY_ENABLED=true and RENEWAL_DRY_RUN=true.
- *   4. Print the outcome (expecting failure at invalid_credentials because
- *      IL SOS rejects fake PINs — that's the test of the detection path).
- *   5. Clean up: revert user_profiles + delete consent.
+ * Usage:
+ *   tsx scripts/e2e-worker-dryrun.ts                 # license_plate (default)
+ *   tsx scripts/e2e-worker-dryrun.ts --type city_sticker
  *
- * This proves: worker claim, gate, dry-run charge skip, stealth Playwright
- * against IL SOS, invalid-credentials detection, consent state machine,
- * circuit breaker exclusion. NO real money moves; NO real renewal happens.
+ * 1. Set qa-bot's user_profiles to authorized + minimal vehicle data
+ *    + fake encrypted IL creds.
+ * 2. Insert a granted consent of the chosen type directly via the
+ *    admin client (skips the user-facing authorize page round-trip).
+ * 3. Invoke worker logic via lib/run-granted-consents with
+ *    AUTO_RENEWAL_GLOBALLY_ENABLED=true and RENEWAL_DRY_RUN=true.
+ * 4. Print the outcome (expecting failure at invalid_credentials
+ *    [plate] or vehicle_search [city] because qa-bot's data is fake).
+ * 5. Clean up: revert user_profiles + delete consent.
+ *
+ * Proves: worker claim, gate, dry-run charge skip, stealth Playwright
+ * against IL SOS / EzBuy, failure-detection paths, consent state
+ * machine, circuit breaker exclusion. NO real money moves; NO real
+ * renewal happens.
  *
  * Required env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
- *               NEXT_PUBLIC_SUPABASE_ANON_KEY, CREDENTIALS_ENCRYPTION_KEY.
+ *               NEXT_PUBLIC_SUPABASE_ANON_KEY, CREDENTIALS_ENCRYPTION_KEY,
+ *               STRIPE_SECRET_KEY (module loads stripe lib at import).
  */
 
 import path from 'path';
@@ -74,20 +80,21 @@ async function restoreBot(snapshot: any) {
   await supabase.from('user_profiles').update(snapshot).eq('user_id', QA_BOT_ID);
 }
 
-async function createGrantedConsent(): Promise<string> {
+async function createGrantedConsent(type: 'city_sticker' | 'license_plate'): Promise<string> {
   const token = require('crypto').randomBytes(24).toString('base64url');
   const now = new Date().toISOString();
   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const gov = type === 'city_sticker' ? 9900 : 15100;
   const { data, error } = await supabase
     .from('renewal_purchase_consents')
     .insert({
       user_id: QA_BOT_ID,
-      renewal_type: 'license_plate',
+      renewal_type: type,
       license_plate: 'TESTABC',
       license_state: 'IL',
-      gov_amount_cents: 15100,
+      gov_amount_cents: gov,
       service_fee_cents: 0,
-      total_amount_cents: 15100,
+      total_amount_cents: gov,
       consent_token: token,
       status: 'granted',
       expires_at: expires,
@@ -106,6 +113,12 @@ async function deleteConsent(id: string) {
 }
 
 async function main() {
+  // Parse --type flag
+  const argv = process.argv;
+  const typeIdx = argv.indexOf('--type');
+  const type: 'city_sticker' | 'license_plate' = typeIdx >= 0 && argv[typeIdx + 1] === 'city_sticker' ? 'city_sticker' : 'license_plate';
+  console.log(`renewal_type: ${type}`);
+
   console.log('snapshotting qa-bot profile state...');
   const snapshot = await snapshotProfile(QA_BOT_ID);
   if (!snapshot) {
@@ -118,8 +131,8 @@ async function main() {
     console.log('configuring qa-bot for dry-run...');
     await configureBot();
 
-    console.log('creating a granted license_plate consent...');
-    consentId = await createGrantedConsent();
+    console.log(`creating a granted ${type} consent...`);
+    consentId = await createGrantedConsent(type);
     console.log(`  consent id: ${consentId}`);
 
     console.log('\nclaiming via worker logic...');
@@ -134,7 +147,7 @@ async function main() {
     }
     console.log(`  claimed: ${consent.id}`);
 
-    console.log('\nprocessing (dry-run; will hit real IL SOS with fake creds)...');
+    console.log(`\nprocessing (dry-run; will hit real ${type === 'city_sticker' ? 'EzBuy' : 'IL SOS'} with fake creds)...`);
     const start = Date.now();
     const outcome = await processConsent(consent);
     const elapsed = ((Date.now() - start) / 1000).toFixed(1);
