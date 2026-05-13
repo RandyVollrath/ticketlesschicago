@@ -3790,28 +3790,35 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Build a restriction-specific notification title for single-warning
-   * cases. Returning `null` falls back to the generic "Parked — Heads Up".
-   * Pattern-matches the rule message rather than rebuilding from rawData so
-   * "tomorrow" vs "today" stays consistent with the server-rendered body.
+   * Build a restriction-specific notification title for single-rule cases
+   * (both warning and critical tiers). Returning `null` falls back to the
+   * generic "Parked —" titles. Pattern-matches the rule message rather
+   * than rebuilding from rawData so "tomorrow" vs "today" / "ACTIVE" stays
+   * consistent with the server-rendered body.
    */
-  private distinctiveWarningTitle(rule: { type?: string; message?: string }): string | null {
+  private distinctiveRuleTitle(rule: { type?: string; message?: string; severity?: string }): string | null {
     const msg = String(rule.message || '');
+    const isCritical = rule.severity === 'critical';
     switch (rule.type) {
       case 'street_cleaning':
+        if (isCritical) return '🧹 Cleaning ACTIVE NOW — $60 ticket';
         if (/tomorrow/i.test(msg)) return '🧹 Cleaning tomorrow — move tonight';
         return '🧹 Cleaning today — move soon';
       case 'dot_permit':
+        if (isCritical) return '🚧 Full closure on this block — move or TOW';
         if (/active.*today|today/i.test(msg)) return '🚧 Block event active — check signs';
         return '🚧 Block event tomorrow — plan to move';
       case 'permit_zone':
+        if (isCritical) return '🅿️ Permit required NOW — $75 ticket';
         return '🅿️ Permit enforcement starts soon';
       case 'winter_ban':
+        if (isCritical) return '❄️ Winter ban ACTIVE — move or TOW';
         return '❄️ Winter ban starts tonight at 3 AM';
+      case 'snow_route':
+        if (isCritical) return '🌨️ 2-inch snow ban — move now or TOW';
+        return '🌨️ Snow ban risk on this street';
       case 'metered_parking':
         return '⏰ Meter time running out';
-      case 'snow_route':
-        return '🌨️ Snow ban risk on this street';
       default:
         return null;
     }
@@ -3877,19 +3884,25 @@ class BackgroundTaskServiceClass {
     // Determine urgency-aware title.
     //
     // Alert-fatigue guard: the All Clear notification ("✅ Parked — All
-    // Clear") fires often, and the prior warning title ("⚠️ Parked —
-    // Heads Up") shared the same "Parked —" prefix. On a glance, users
-    // trained to dismiss the All Clear template would tune the warning
-    // out too. When there's exactly one warning rule, lead the title
-    // with the restriction-specific verb so it breaks the pattern.
+    // Clear") fires often, and the prior generic warning/critical titles
+    // ("⚠️ Parked — Heads Up" / "⚠️ Parked — Restriction Active!") shared
+    // the same "Parked —" prefix. On a glance, users trained to dismiss
+    // the All Clear template would tune the alert out. When there's
+    // exactly one rule, lead the title with the restriction-specific verb
+    // so it breaks the pattern — applies to both critical and warning.
+    // Multi-rule and high-risk-block cases fall back to the generic
+    // "Parked —" titles (no single restriction-specific copy fits).
     const riskUrgency = rawData?.enforcementRisk?.urgency;
     let title: string;
-    if (hasCritical) {
+    const singleRuleTitle = result.rules.length === 1
+      ? this.distinctiveRuleTitle(result.rules[0])
+      : null;
+    if (singleRuleTitle) {
+      title = singleRuleTitle;
+    } else if (hasCritical) {
       title = '⚠️ Parked — Restriction Active!';
     } else if (riskUrgency === 'high') {
       title = '⚠️ Parked — Peak Enforcement Window';
-    } else if (result.rules.length === 1) {
-      title = this.distinctiveWarningTitle(result.rules[0]) || '⚠️ Parked — Heads Up';
     } else {
       title = '⚠️ Parked — Heads Up';
     }
