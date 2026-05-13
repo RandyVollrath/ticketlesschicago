@@ -1688,6 +1688,23 @@ export async function processHistoryFoiaResponse(
   const ticketCount = parsedResult?.tickets?.length || 0;
   const totalFines = parsedResult?.total_fines || 0;
 
+  // ── Classify the response as records vs denial vs clean-plate ──
+  // Mirrors the evidence-FOIA logic so admins can tell at a glance whether
+  // the city actually produced records or invoked an exemption.
+  const lowerBody = body.toLowerCase();
+  const hasDenialLanguage =
+    lowerBody.includes('withheld') ||
+    lowerBody.includes('exempt') ||
+    lowerBody.includes('5 ilcs 140/7') ||
+    lowerBody.includes('no responsive records') ||
+    lowerBody.includes('no records responsive') ||
+    lowerBody.includes('unable to locate');
+  const resolvedStatus = ticketCount > 0
+    ? 'fulfilled_with_records'
+    : hasDenialLanguage
+      ? 'fulfilled_denial'
+      : 'fulfilled'; // 0 tickets with no denial language = legitimately clean plate
+
   // Preserve extension metadata if this request previously received an extension
   const previousExtension = historyRequest.status === 'extension_requested'
     ? {
@@ -1699,7 +1716,7 @@ export async function processHistoryFoiaResponse(
     : undefined;
 
   const updatePayload: any = {
-    status: 'fulfilled',
+    status: resolvedStatus,
     response_received_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     response_data: {
