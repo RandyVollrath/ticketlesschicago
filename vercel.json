@@ -321,7 +321,7 @@
     },
     {
       "path": "/api/cron/process-granted-renewals",
-      "schedule": "30 * * * *"
+      "schedule": "15 */4 * * *"
     },
     {
       "path": "/api/cron/create-authorized-renewal-consents",
