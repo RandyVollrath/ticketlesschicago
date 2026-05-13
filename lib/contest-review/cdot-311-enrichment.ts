@@ -32,7 +32,20 @@ const ENDPOINT = 'https://data.cityofchicago.org/resource/v6vf-nfxy.json';
  * lane, etc. Stop/One-Way/Do-Not-Enter are road regulatory signs and aren't
  * relevant to parking contests.
  */
-const RELEVANT_SR_TYPES = ['Sign Repair Request - All Other Signs'] as const;
+const SIGN_REPAIR_SR_TYPES = ['Sign Repair Request - All Other Signs'] as const;
+
+/**
+ * Tree-related SR types whose presence near a sign-based ticket implies the
+ * sign may have been obstructed by foliage/debris at the time of citation.
+ * "Tree Trim Request (NO LONGER BEING ACCEPTED)" is the retired type but
+ * has historical records useful for old tickets. "Tree Debris" and "Tree
+ * Emergency" are the current types.
+ */
+const TREE_OBSTRUCTION_SR_TYPES = [
+  'Tree Trim Request (NO LONGER BEING ACCEPTED)',
+  'Tree Debris Clean-Up Request',
+  'Tree Emergency',
+] as const;
 
 /**
  * Window for considering a closed SR "recent enough" relative to the ticket.
@@ -73,6 +86,17 @@ export interface Cdot311Enrichment {
   anyRecentClosure: boolean;
 }
 
+/**
+ * Same shape as SignRepairSR — different SR type filter underneath.
+ */
+export type TreeObstructionSR = SignRepairSR;
+
+export interface TreeObstruction311Enrichment {
+  treeComplaints: TreeObstructionSR[];
+  anyOpenAtTicketTime: boolean;
+  anyRecentClosure: boolean;
+}
+
 interface SodaRow {
   sr_number: string;
   sr_type: string;
@@ -107,27 +131,24 @@ export function parseAddress(address: string): {
 }
 
 /**
- * Fetch and filter SRs from the live 311 dataset.
- * Returns null on network errors so the caller can degrade gracefully — the
- * sign-complaint finding is a bonus signal, not a required defense.
+ * Shared block-face SR query. Used by both sign-repair and tree-obstruction
+ * lookups — same dataset, same join logic, different sr_type filter.
+ * Returns null on network errors so callers can degrade gracefully.
  */
-export async function findRecentSignComplaints(args: {
+async function queryBlockSrs(args: {
   streetNumber: number;
   streetDirection: string;
   streetName: string;
-  ticketIsoDate: string; // yyyy-mm-dd
-}): Promise<Cdot311Enrichment | null> {
-  const { streetNumber, streetDirection, streetName, ticketIsoDate } = args;
-
+  ticketIsoDate: string;
+  srTypes: readonly string[];
+}): Promise<SignRepairSR[] | null> {
+  const { streetNumber, streetDirection, streetName, ticketIsoDate, srTypes } = args;
   const ticketDate = new Date(`${ticketIsoDate}T00:00:00Z`);
   if (Number.isNaN(ticketDate.getTime())) return null;
 
-  // Server-side filter: same street + direction + relevant sr_type +
-  // not-a-duplicate + filed on or before ticket date.
   const params = new URLSearchParams();
   params.set('$select', 'sr_number,sr_type,status,created_date,closed_date,street_number,street_direction,street_name,duplicate');
-  // SoQL `in()` for sr_type set + literal AND
-  const srTypeList = RELEVANT_SR_TYPES.map(t => `'${t.replace(/'/g, "''")}'`).join(', ');
+  const srTypeList = srTypes.map(t => `'${t.replace(/'/g, "''")}'`).join(', ');
   params.set(
     '$where',
     `street_name='${streetName.replace(/'/g, "''")}'
@@ -147,27 +168,19 @@ export async function findRecentSignComplaints(args: {
     return null;
   }
 
-  // Dedup by sr_number (SODA datasets sometimes return duplicates even with
-  // duplicate=false — see reference_dot_permits_dedup.md memory).
   const seen = new Set<string>();
   const recentCutoff = new Date(ticketDate.getTime() - RECENT_CLOSED_WINDOW_DAYS * 86400000);
-
-  const signComplaints: SignRepairSR[] = [];
-  let anyOpen = false;
-  let anyRecent = false;
+  const out: SignRepairSR[] = [];
 
   for (const r of rows) {
     if (seen.has(r.sr_number)) continue;
     seen.add(r.sr_number);
-
     const sn = parseInt(r.street_number, 10);
     if (!Number.isFinite(sn)) continue;
     if (Math.abs(sn - streetNumber) > BLOCK_RADIUS) continue;
-
     const created = (r.created_date || '').slice(0, 10);
     const closed = r.closed_date ? r.closed_date.slice(0, 10) : null;
     if (!created) continue;
-
     const closedDate = closed ? new Date(`${closed}T00:00:00Z`) : null;
     const openAtTicket = !closedDate || closedDate >= ticketDate;
     const daysClosedBefore =
@@ -176,13 +189,8 @@ export async function findRecentSignComplaints(args: {
         : null;
     const recentClosure =
       closedDate !== null && closedDate >= recentCutoff && closedDate < ticketDate;
-
     if (!openAtTicket && !recentClosure) continue;
-
-    if (openAtTicket) anyOpen = true;
-    if (recentClosure) anyRecent = true;
-
-    signComplaints.push({
+    out.push({
       srNumber: r.sr_number,
       srType: r.sr_type,
       status: r.status,
@@ -195,6 +203,40 @@ export async function findRecentSignComplaints(args: {
       daysClosedBeforeTicket: daysClosedBefore,
     });
   }
+  return out;
+}
 
+/**
+ * Find recent sign-repair 311 SRs on the cited block face.
+ * Returns null on network errors so the caller can degrade gracefully.
+ */
+export async function findRecentSignComplaints(args: {
+  streetNumber: number;
+  streetDirection: string;
+  streetName: string;
+  ticketIsoDate: string; // yyyy-mm-dd
+}): Promise<Cdot311Enrichment | null> {
+  const signComplaints = await queryBlockSrs({ ...args, srTypes: SIGN_REPAIR_SR_TYPES });
+  if (signComplaints === null) return null;
+  const anyOpen = signComplaints.some(s => s.openAtTicketTime);
+  const anyRecent = signComplaints.some(s => !s.openAtTicketTime);
   return { signComplaints, anyOpenAtTicketTime: anyOpen, anyRecentClosure: anyRecent };
+}
+
+/**
+ * Find tree-obstruction 311 SRs on the cited block face. Used to support a
+ * "sign was obstructed by tree foliage/debris" defense — only relevant for
+ * sign-based parking violations.
+ */
+export async function findTreeObstructionComplaints(args: {
+  streetNumber: number;
+  streetDirection: string;
+  streetName: string;
+  ticketIsoDate: string;
+}): Promise<TreeObstruction311Enrichment | null> {
+  const treeComplaints = await queryBlockSrs({ ...args, srTypes: TREE_OBSTRUCTION_SR_TYPES });
+  if (treeComplaints === null) return null;
+  const anyOpen = treeComplaints.some(s => s.openAtTicketTime);
+  const anyRecent = treeComplaints.some(s => !s.openAtTicketTime);
+  return { treeComplaints, anyOpenAtTicketTime: anyOpen, anyRecentClosure: anyRecent };
 }

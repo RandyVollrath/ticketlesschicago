@@ -28,7 +28,11 @@ import {
   getBlockStats,
 } from '../lib/contest-review/foia-enrichment';
 import { SIGN_PHOTO_CODES, type AutopilotEnrichment } from '../lib/contest-review/beyond-template-arguments';
-import { findRecentSignComplaints } from '../lib/contest-review/cdot-311-enrichment';
+import {
+  findRecentSignComplaints,
+  findTreeObstructionComplaints,
+} from '../lib/contest-review/cdot-311-enrichment';
+import { findActiveDotPermits } from '../lib/contest-review/dot-permits-enrichment';
 import { classifyPortalViolation } from '../lib/contest-review/violation-classifier';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
@@ -183,48 +187,90 @@ async function processOne(row: { id: string; plate: string; state: string; last_
       : null;
     const block = getBlockStats(foia);
 
-    // 311 sign-repair enrichment for sign-based parking violations.
-    // We hit the public Chicago Open Data 311 dataset to find documented
-    // sign-repair work orders on the cited block face. Quiet failure —
-    // network blip should never break the analysis.
+    // Chicago Open Data enrichments on the cited block face:
+    //   1. 311 sign-repair complaints     — sign-based violations only
+    //   2. 311 tree-obstruction complaints — sign-based violations only
+    //   3. DOT permits with closures/meter bagging — ALL violations
     //
-    // Match against the CLASSIFIED violation code (dashed format like
-    // "9-64-010"), not the raw FOIA code ("0964010B"). The classifier
-    // normalizes — SIGN_PHOTO_CODES uses the same dashed format.
+    // Quiet failure on each — a network blip on any individual feed
+    // should never break the analysis.
     let signOpen = 0;
     let signRecent = 0;
     let signTop: string | null = null;
+    let treeOpen = 0;
+    let treeRecent = 0;
+    let treeTop: string | null = null;
+    let dotCount = 0;
+    let dotTopNum: string | null = null;
+    let dotTopSummary: string | null = null;
+    let dotAnyClosure = false;
+    let dotAnyMeter = false;
+
     const classified = classifyPortalViolation(t.violation_description, t.ticket_type);
-    if (
-      classified.violationCode &&
-      SIGN_PHOTO_CODES[classified.violationCode] &&
-      foia.streetNum &&
-      foia.streetDir &&
-      foia.streetName &&
-      foia.issueDatetime
-    ) {
+    const isSignBased = classified.violationCode != null && SIGN_PHOTO_CODES[classified.violationCode] != null;
+    const haveAddress =
+      foia.streetNum && foia.streetDir && foia.streetName && foia.issueDatetime;
+
+    if (haveAddress) {
       const iso = foiaDateToIso(foia.issueDatetime);
-      const num = parseInt(foia.streetNum, 10);
+      const num = parseInt(foia.streetNum!, 10);
       if (iso && Number.isFinite(num)) {
+        const addrArgs = {
+          streetNumber: num,
+          streetDirection: foia.streetDir!,
+          streetName: foia.streetName!,
+          ticketIsoDate: iso,
+        };
+
+        // DOT permits — fire for ALL parking violations.
         try {
-          const cdot = await findRecentSignComplaints({
-            streetNumber: num,
-            streetDirection: foia.streetDir,
-            streetName: foia.streetName,
-            ticketIsoDate: iso,
-          });
-          if (cdot) {
-            signOpen = cdot.signComplaints.filter(s => s.openAtTicketTime).length;
-            signRecent = cdot.signComplaints.filter(s => !s.openAtTicketTime).length;
-            const top =
-              cdot.signComplaints.find(s => s.openAtTicketTime) || cdot.signComplaints[0];
-            signTop = top?.srNumber ?? null;
-            if (signOpen + signRecent > 0) {
-              console.log(`[${row.id}] ${t.ticket_number}: 311 sign-repair hits — ${signOpen} open, ${signRecent} recent closed @ ${num} ${foia.streetDir} ${foia.streetName}`);
+          const dot = await findActiveDotPermits(addrArgs);
+          if (dot) {
+            dotCount = dot.activePermits.length;
+            dotAnyClosure = dot.anyParkingClosure;
+            dotAnyMeter = dot.anyMeterBagging;
+            const topDot = dot.activePermits[0];
+            dotTopNum = topDot?.applicationNumber ?? null;
+            dotTopSummary = topDot?.summary ?? null;
+            if (dotCount > 0) {
+              console.log(`[${row.id}] ${t.ticket_number}: DOT permits active — ${dotCount} (closure=${dotAnyClosure}, meter=${dotAnyMeter}) @ ${num} ${foia.streetDir} ${foia.streetName}`);
             }
           }
         } catch (err: any) {
-          console.warn(`[${row.id}] ${t.ticket_number}: 311 lookup failed: ${err?.message || err}`);
+          console.warn(`[${row.id}] ${t.ticket_number}: DOT lookup failed: ${err?.message || err}`);
+        }
+
+        // 311 sign-repair + tree obstruction — sign-based violations only.
+        if (isSignBased) {
+          try {
+            const cdot = await findRecentSignComplaints(addrArgs);
+            if (cdot) {
+              signOpen = cdot.signComplaints.filter(s => s.openAtTicketTime).length;
+              signRecent = cdot.signComplaints.filter(s => !s.openAtTicketTime).length;
+              const top = cdot.signComplaints.find(s => s.openAtTicketTime) || cdot.signComplaints[0];
+              signTop = top?.srNumber ?? null;
+              if (signOpen + signRecent > 0) {
+                console.log(`[${row.id}] ${t.ticket_number}: 311 sign-repair hits — ${signOpen} open, ${signRecent} recent closed`);
+              }
+            }
+          } catch (err: any) {
+            console.warn(`[${row.id}] ${t.ticket_number}: 311 sign lookup failed: ${err?.message || err}`);
+          }
+
+          try {
+            const tree = await findTreeObstructionComplaints(addrArgs);
+            if (tree) {
+              treeOpen = tree.treeComplaints.filter(s => s.openAtTicketTime).length;
+              treeRecent = tree.treeComplaints.filter(s => !s.openAtTicketTime).length;
+              const top = tree.treeComplaints.find(s => s.openAtTicketTime) || tree.treeComplaints[0];
+              treeTop = top?.srNumber ?? null;
+              if (treeOpen + treeRecent > 0) {
+                console.log(`[${row.id}] ${t.ticket_number}: 311 tree hits — ${treeOpen} open, ${treeRecent} recent closed`);
+              }
+            }
+          } catch (err: any) {
+            console.warn(`[${row.id}] ${t.ticket_number}: 311 tree lookup failed: ${err?.message || err}`);
+          }
         }
       }
     }
@@ -244,6 +290,14 @@ async function processOne(row: { id: string; plate: string; state: string; last_
       signComplaintsOpenAtTicketTime: signOpen,
       signComplaintsRecentClosed: signRecent,
       signComplaintTopSrNumber: signTop,
+      treeComplaintsOpenAtTicketTime: treeOpen,
+      treeComplaintsRecentClosed: treeRecent,
+      treeComplaintTopSrNumber: treeTop,
+      dotPermitsActive: dotCount,
+      dotPermitTopNumber: dotTopNum,
+      dotPermitTopSummary: dotTopSummary,
+      dotPermitAnyParkingClosure: dotAnyClosure,
+      dotPermitAnyMeterBagging: dotAnyMeter,
     });
   }
 

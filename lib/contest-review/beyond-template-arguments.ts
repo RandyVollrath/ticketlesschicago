@@ -529,6 +529,25 @@ export interface AutopilotEnrichment {
   signComplaintsOpenAtTicketTime?: number;
   signComplaintsRecentClosed?: number;
   signComplaintTopSrNumber?: string | null;
+  /**
+   * Chicago 311 tree-obstruction complaints on the cited block face.
+   * Only fires for sign-based parking violations (foliage/debris from a
+   * tree-related SR may have obstructed the sign at citation time).
+   */
+  treeComplaintsOpenAtTicketTime?: number;
+  treeComplaintsRecentClosed?: number;
+  treeComplaintTopSrNumber?: string | null;
+  /**
+   * Chicago DOT permits active on the cited block at the time of the
+   * ticket that materially affected parking enforcement (full/partial/
+   * curb-lane closure or parking-meter bagging). Populated from the
+   * public pubx-yq2d permits dataset.
+   */
+  dotPermitsActive?: number;
+  dotPermitTopNumber?: string | null;
+  dotPermitTopSummary?: string | null;
+  dotPermitAnyParkingClosure?: boolean;
+  dotPermitAnyMeterBagging?: boolean;
 }
 
 const CITYWIDE_MAIL_BASELINE = 0.59; // FOIA hearings, contest_method=Mail, 2023–2025 trailing, n=287,532. Per reference_marketing_numbers.md (2026-05-03 refresh).
@@ -661,6 +680,64 @@ export function buildAutopilotFindings(
         'Recent sign-repair history on the cited block is supporting evidence that the signage was non-compliant at or near the time of the violation. It complements a "signs were not visible and legible" defense.',
       estimatedUpliftPct: 0.10,
       strength: 'moderate',
+      kind: 'autopilot',
+    });
+  }
+
+  // ── Chicago 311 tree-obstruction complaints on the cited block ────
+  // Same dataset, different SR types. Tree foliage/debris obscuring a
+  // parking sign is a § 9-64 "signs not visible and legible" defense.
+  // Only relevant for sign-based violations.
+  if (isSignBasedViolation && (enrichment.treeComplaintsOpenAtTicketTime ?? 0) > 0) {
+    const n = enrichment.treeComplaintsOpenAtTicketTime!;
+    out.push({
+      id: 'cdot_311_tree_open',
+      title: `City had ${n} open tree-trim/debris complaint${n === 1 ? '' : 's'} on this block when the ticket was issued`,
+      explanation:
+        `Pulled from Chicago's public 311 service-request dataset: ${n} tree-related work order${n === 1 ? '' : 's'} (trim request, debris cleanup, or tree emergency) were open on the same block face at the time this ticket was issued${enrichment.treeComplaintTopSrNumber ? ` (e.g. ${enrichment.treeComplaintTopSrNumber})` : ''}. Tree foliage or debris is a documented cause of obscured parking signs and supports a § 9-64 "signs not visible and legible" defense.`,
+      uplift:
+        'An open city tree-related work order on the cited block is evidence the sign may have been obstructed by foliage or debris at the time of the violation. Hearing officers treat the City\'s own 311 records as authoritative on conditions at the cited location.',
+      estimatedUpliftPct: 0.15,
+      strength: 'strong',
+      kind: 'autopilot',
+    });
+  } else if (isSignBasedViolation && (enrichment.treeComplaintsRecentClosed ?? 0) > 0) {
+    const n = enrichment.treeComplaintsRecentClosed!;
+    out.push({
+      id: 'cdot_311_tree_recent',
+      title: `${n} tree-trim/debris complaint${n === 1 ? '' : 's'} closed on this block within the year before your ticket`,
+      explanation:
+        `Pulled from Chicago's public 311 service-request dataset: ${n} tree-related work order${n === 1 ? '' : 's'} were filed and closed on the same block face within the 12 months before your ticket${enrichment.treeComplaintTopSrNumber ? ` (most recent: ${enrichment.treeComplaintTopSrNumber})` : ''}. Tree growth and debris are recurring causes of sign-obstruction on Chicago streets.`,
+      uplift:
+        'Recent tree-related 311 activity on the cited block is supporting evidence that foliage may have obstructed the sign around the time of citation.',
+      estimatedUpliftPct: 0.08,
+      strength: 'moderate',
+      kind: 'autopilot',
+    });
+  }
+
+  // ── DOT permits closing parking on the cited block at ticket time ─
+  // Strongest possible non-merits defense: the City itself permitted
+  // closure of the parking area where the ticket was issued. This fires
+  // for ANY parking violation, not just sign-based, because a closed
+  // street is a closed street.
+  if ((enrichment.dotPermitsActive ?? 0) > 0) {
+    const n = enrichment.dotPermitsActive!;
+    const closure = enrichment.dotPermitAnyParkingClosure;
+    const meter = enrichment.dotPermitAnyMeterBagging;
+    const conditions = [
+      closure ? 'street closure' : null,
+      meter ? 'parking-meter bagging' : null,
+    ].filter(Boolean).join(' and ');
+    out.push({
+      id: 'dot_permit_active',
+      title: `${n} active DOT permit${n === 1 ? '' : 's'} on this block at ticket time${conditions ? ` (${conditions})` : ''}`,
+      explanation:
+        `Pulled from Chicago's public DOT permits dataset: ${n} permit${n === 1 ? '' : 's'} were active on the cited block when this ticket was issued${enrichment.dotPermitTopSummary ? ` — ${enrichment.dotPermitTopSummary}` : ''}. When the City of Chicago itself permits the closure of a parking area, parking enforcement at that location should be suspended for the permit's duration.`,
+      uplift:
+        'A DOT permit that closed parking at the citation location is a dispositive defense — the City\'s own records show parking was not authorized at the time. Hearing officers regularly dismiss citations issued during permitted closures.',
+      estimatedUpliftPct: 0.30,
+      strength: 'strong',
       kind: 'autopilot',
     });
   }

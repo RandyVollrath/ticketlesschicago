@@ -677,6 +677,9 @@ const FINDING_CATEGORY: Record<string, string> = {
   autopilot_block_pattern: 'a block-pattern signal',
   cdot_311_sign_open: 'an open city sign-repair complaint on this block',
   cdot_311_sign_recent: 'a recent sign-repair history on this block',
+  cdot_311_tree_open: 'an open tree-trim or debris complaint on this block',
+  cdot_311_tree_recent: 'a recent tree-trim/debris history on this block',
+  dot_permit_active: 'an active DOT permit closing this block at ticket time',
   // Fact tier — portal-data anomalies
   plate_mismatch: 'a plate-identification defense',
   state_mismatch: 'a plate-identification defense',
