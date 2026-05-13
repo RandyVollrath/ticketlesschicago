@@ -90,6 +90,9 @@
     "pages/api/cron/send-foia-history-requests.ts": {
       "maxDuration": 300
     },
+    "pages/api/cron/foia-history-drip.ts": {
+      "maxDuration": 120
+    },
     "pages/api/cron/autopilot-open-data-monitor.ts": {
       "maxDuration": 120
     },
@@ -257,6 +260,10 @@
     {
       "path": "/api/cron/send-foia-history-requests",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/foia-history-drip",
+      "schedule": "0 14 * * *"
     },
     {
       "path": "/api/cron/autopilot-open-data-monitor",
