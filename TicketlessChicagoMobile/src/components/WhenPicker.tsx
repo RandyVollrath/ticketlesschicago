@@ -241,7 +241,7 @@ export function WhenPicker({ value, onChange, horizonDays = 30 }: Props) {
                 onPress={() => onChange({ ...value, rangeStartHour: undefined, rangeEndHour: undefined })}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Icon name="close-circle" size={16} color={colors.textTertiary} />
+                <Icon name="close-circle-outline" size={16} color={colors.textTertiary} />
               </TouchableOpacity>
             )}
           </View>

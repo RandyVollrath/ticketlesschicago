@@ -1088,7 +1088,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
 
         {isExpanded && item.rules.length === 0 && (
           <View style={styles.timelineClear}>
-            <MaterialCommunityIcons name="check-circle" size={16} color={colors.success} />
+            <MaterialCommunityIcons name="check-circle-outline" size={16} color={colors.success} />
             <Text style={styles.timelineClearText}>No parking restrictions found</Text>
           </View>
         )}
