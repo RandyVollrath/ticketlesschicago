@@ -11,6 +11,7 @@ import {
   classifyComplianceDocument,
   processComplianceDocument,
 } from '../../../lib/contest-outcome-tracker';
+import { integrateUserEvidence } from '../../../lib/evidence-processing';
 
 /**
  * Resend Incoming Email Webhook
@@ -882,20 +883,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         } else {
           console.log(`✅ Evidence saved: ${evidenceRecord.id}`);
 
-          // Update ticket to show evidence was received
-          await supabaseAdmin
-            .from('detected_tickets')
-            .update({
-              evidence_deadline: new Date().toISOString(), // immediately eligible for same-day mailing
-              evidence_received_at: new Date().toISOString(),
-              evidence_on_time: pendingTicket?.evidence_deadline
-                ? new Date().getTime() <= new Date(pendingTicket.evidence_deadline).getTime()
-                : null,
-              status: 'evidence_received',
-            })
-            .eq('id', pendingTicket.id);
+          // Integrate the evidence into the contest letter and promote both
+          // letter + ticket to mail-cron-recognized statuses. Without this,
+          // the letter would silently sit in `pending_evidence` forever
+          // because the mailing crons don't load that status.
+          let integration;
+          try {
+            integration = await integrateUserEvidence(supabaseAdmin, {
+              ticket: pendingTicket as any,
+              evidenceText: text,
+              attachments: uploadedAttachments,
+            });
+            console.log(
+              `📝 Letter integration: regenerated=${integration.letterRegenerated} ` +
+              `letterStatus=${integration.newLetterStatus} ticketStatus=${integration.newTicketStatus} ` +
+              `needsApproval=${integration.needsApproval}`,
+            );
+          } catch (integrationErr: any) {
+            // Don't let an integration failure swallow the evidence — fall
+            // back to the prior behavior (mark ticket received, trigger
+            // mail-letters) so the stuck-row monitor flags it tomorrow.
+            console.error('❌ integrateUserEvidence failed:', integrationErr?.message);
+            await supabaseAdmin
+              .from('detected_tickets')
+              .update({
+                evidence_received_at: new Date().toISOString(),
+                evidence_on_time: pendingTicket?.evidence_deadline
+                  ? new Date().getTime() <= new Date(pendingTicket.evidence_deadline).getTime()
+                  : null,
+                status: 'evidence_received',
+              })
+              .eq('id', pendingTicket.id);
+          }
 
-          // Trigger immediate mailing run so evidence-backed letters can be mailed today
+          // Trigger same-day mailing for auto-mail users (the helper put the
+          // letter into 'ready' status, which mail-letters loads).
           const triggerResult = await triggerAutopilotMailRun({
             ticketId: pendingTicket.id,
             reason: 'evidence_received_resend_webhook',
