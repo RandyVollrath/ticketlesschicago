@@ -236,19 +236,34 @@ export async function purchasePlateSticker(input: PlateStickerPurchaseInput): Pr
     }
 
     await Promise.all([page.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {}), page.click('#submitBtn').catch(() => {})]);
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(3500);
 
+    // IL SOS rejects in TWO ways and we need to catch both:
+    //   1. Some pages show an error string we can regex on
+    //   2. Many rejections silently re-render the entry page with no error
+    //      copy (verified by e2e dry-run 2026-05-12 — fake creds came back
+    //      to the entry form with no "invalid" anywhere on the page).
+    //      We detect that case by checking: are we still on /LicenseRenewal/
+    //      with the #regId and #pin fields still visible after submission?
+    //      That's a strong-enough signal to mark credentials invalid.
     const postLoginText = await page.evaluate(() => document.body?.innerText || '');
-    // IL SOS error copy varies: "Invalid", "does not match", "could not be found"...
-    if (/invalid|does not match|could not be found|not match our records/i.test(postLoginText)) {
+    const regIdStillPresent = (await page.$('#regId')) !== null;
+    const pinStillPresent = (await page.$('#pin')) !== null;
+    const stillOnEntry = regIdStillPresent && pinStillPresent;
+
+    const errorWords =
+      /invalid|does not match|could not be found|not match our records|unable to (locate|find)|no record|please verify/i;
+
+    if (errorWords.test(postLoginText) || stillOnEntry) {
       const shot = `/tmp/plate-invalid-creds-${consent.id}.png`;
       await page.screenshot({ path: shot, fullPage: true });
       screenshots.push(shot);
       await markCredentialsInvalid(consent.user_id, (consent as any).plate_id || null);
+      const detectMethod = errorWords.test(postLoginText) ? 'error-text' : 'still-on-entry-form';
       return {
         success: false,
         screenshotPaths: screenshots,
-        error: 'IL SOS rejected the saved Registration ID + PIN. User likely got new plates (state 10-year program or replace). Marked credentials invalid; user must re-enter via Settings.',
+        error: `IL SOS rejected the saved Registration ID + PIN (detected via ${detectMethod}). User likely got new plates (state 10-year program or replate). Marked credentials invalid; user must re-enter via Settings.`,
         stoppedAt: 'invalid_credentials',
         invalidCredentialsDetected: true,
       };
