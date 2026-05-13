@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   closeText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 20,
     fontFamily: typography.fontFamily.bodySemibold,
     lineHeight: 22,
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   message: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 16,
     fontFamily: typography.fontFamily.bodySemibold,
     textAlign: 'center',
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   countdownText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 24,
     fontFamily: typography.fontFamily.displayBold,
     fontVariant: ['tabular-nums'],
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
   },
   countdownExpired: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.bodyBold,
   },
   urgentLabel: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 11,
     fontFamily: typography.fontFamily.bodySemibold,
     marginTop: 2,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   relocateButton: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,

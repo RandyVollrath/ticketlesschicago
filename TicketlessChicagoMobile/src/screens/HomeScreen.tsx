@@ -3365,12 +3365,12 @@ const styles = StyleSheet.create({
   },
   debugLabel: {
     fontSize: typography.sizes.xs,
-    color: '#888',
+    color: colors.textTertiary,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   debugValue: {
     fontSize: typography.sizes.xs,
-    color: '#fff',
+    color: colors.white,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     fontFamily: typography.fontFamily.bodyBold,
   },
@@ -3380,7 +3380,7 @@ const styles = StyleSheet.create({
   },
   debugBgStatus: {
     fontSize: 9,
-    color: '#666',
+    color: colors.textSecondary,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     marginTop: spacing.xs,
     textAlign: 'center',
@@ -3393,7 +3393,7 @@ const styles = StyleSheet.create({
   },
   debugLogTitle: {
     fontSize: typography.sizes.xs,
-    color: '#888',
+    color: colors.textTertiary,
     marginBottom: 2,
   },
   debugLogEntry: {

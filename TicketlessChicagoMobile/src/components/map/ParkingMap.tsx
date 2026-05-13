@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   emergencyText: {
-    color: '#fff',
+    color: colors.white,
     fontFamily: typography.fontFamily.bodySemibold,
     textAlign: 'center',
   },
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   timeIndicatorText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 14,
     fontFamily: typography.fontFamily.bodyMedium,
   },
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
     bottom: 200,
     left: 16,
     right: 16,
-    backgroundColor: '#fef2f2',
+    backgroundColor: colors.criticalBg,
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,

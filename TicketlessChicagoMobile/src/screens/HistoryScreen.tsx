@@ -736,7 +736,7 @@ const formatRelativeTime = (timestamp: number): string => {
 
 const getSpeedSeverity = (delta: number | null): { color: string; label: string } => {
   if (delta == null || delta <= 0) return { color: colors.success, label: 'ok' };
-  if (delta <= 10) return { color: '#FF9500', label: 'warning' };
+  if (delta <= 10) return { color: colors.warning, label: 'warning' };
   return { color: colors.error, label: 'danger' };
 };
 
@@ -744,7 +744,7 @@ const getRedLightSeverity = (item: RedLightReceipt): { color: string; label: str
   if (item.fullStopDetected && item.fullStopDurationSec != null && item.fullStopDurationSec >= 1.0) {
     return { color: colors.success, label: 'ok' };
   }
-  if (item.fullStopDetected) return { color: '#FF9500', label: 'warning' };
+  if (item.fullStopDetected) return { color: colors.warning, label: 'warning' };
   return { color: colors.error, label: 'danger' };
 };
 

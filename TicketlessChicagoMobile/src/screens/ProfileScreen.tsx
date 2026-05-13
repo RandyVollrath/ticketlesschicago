@@ -133,7 +133,7 @@ const SettingRow: React.FC<SettingRowProps> = ({
       onValueChange={onValueChange}
       disabled={disabled}
       trackColor={{ false: colors.border, true: colors.primaryLight }}
-      thumbColor="#fff"
+      thumbColor={colors.white}
       accessibilityLabel={title}
       accessibilityRole="switch"
       accessibilityState={{ checked: value }}
@@ -1573,7 +1573,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                         value={pref.enabled}
                         onValueChange={(value) => updateCallAlertPref(config.key, { enabled: value })}
                         trackColor={{ false: colors.border, true: colors.primaryLight }}
-                        thumbColor="#fff"
+                        thumbColor={colors.white}
                         accessibilityLabel={`${config.label} call alerts`}
                         accessibilityRole="switch"
                         accessibilityState={{ checked: pref.enabled }}
@@ -1891,7 +1891,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
   },
   permitZoneSaveBtnText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: typography.sizes.sm,
     fontFamily: typography.fontFamily.bodySemibold,
   },
@@ -2101,7 +2101,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   notificationHistoryUrgencyCritical: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.criticalBg,
     color: '#B91C1C',
   },
   notificationHistoryUrgencyWarning: {

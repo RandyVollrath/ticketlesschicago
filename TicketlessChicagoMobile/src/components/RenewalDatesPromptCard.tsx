@@ -185,7 +185,7 @@ const RenewalDatesPromptCard: React.FC = () => {
           activeOpacity={0.7}
         >
           {saving ? (
-            <ActivityIndicator color="#fff" size="small" />
+            <ActivityIndicator color={colors.white} size="small" />
           ) : (
             <Text style={styles.saveButtonText}>Save</Text>
           )}
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     fontSize: typography.sizes.base,
-    color: '#fff',
+    color: colors.white,
     fontFamily: typography.fontFamily.bodySemibold,
   },
 });

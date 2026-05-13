@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   toggleOptionActive: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: typography.sizes.sm,
     color: colors.textPrimary,
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
   },
   referralAppliedHint: {
     fontSize: 11,

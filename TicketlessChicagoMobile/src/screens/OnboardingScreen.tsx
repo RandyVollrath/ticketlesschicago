@@ -78,7 +78,7 @@ const ANDROID_BT_SLIDE: OnboardingSlide = {
   description:
     'Just pair your car\'s Bluetooth and pick it in the app. ' +
     'After that, we detect every time you park — completely hands-free.',
-  backgroundColor: '#007AFF',
+  backgroundColor: colors.primary,
 };
 
 const SLIDES: OnboardingSlide[] =

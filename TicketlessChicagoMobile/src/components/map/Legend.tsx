@@ -189,7 +189,7 @@ export function Legend({ style, compact = false }: LegendProps) {
 const styles = StyleSheet.create({
   // --- Expanded ---
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingBottom: 10,
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
 
   // --- Collapsed pill ---
   collapsedPill: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingTop: 6,
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   // --- Compact (unchanged) ---
   containerCompact: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 6,
     padding: 6,
     shadowColor: '#000',
