@@ -333,6 +333,25 @@ async function sendLastChanceEmail(
   const daysRemaining = Math.max(0, 21 - daysElapsed);
   const violationDateFormatted = formatDate(ticket.violation_date);
 
+  // This function is called from two places:
+  //   1. Day 14 pre-deadline branch (slow-mode users): deadline is 3 days out
+  //   2. Evidence-deadline-passed branch: we're mailing today
+  // Detect which case by comparing evidence_deadline to now.
+  const isMailingToday = !!ticket.evidence_deadline &&
+    new Date(ticket.evidence_deadline).getTime() <= Date.now();
+  const heroTitle = isMailingToday
+    ? `Mailing your contest letter — Ticket #${ticket.ticket_number}`
+    : `LAST CHANCE: Ticket #${ticket.ticket_number}`;
+  const heroSubtitle = isMailingToday
+    ? `Your evidence deadline just passed. We're mailing the letter today.`
+    : `Your contest letter is being filed soon — last call for evidence.`;
+  const bodyLeadHtml = isMailingToday
+    ? `is being filed with the City of Chicago today. Chicago's legal contest deadline is in <strong>${daysRemaining} days</strong>.`
+    : `is approaching its evidence cutoff. We mail this letter on the date below, then file it with the City of Chicago. Chicago's legal contest deadline is in <strong>${daysRemaining} days</strong>.`;
+  const calloutHtml = isMailingToday
+    ? `We're mailing your contest letter today with whatever evidence we have. After it's sent we can't add anything to this filing.`
+    : `We'll mail your contest letter when the evidence window closes — reply with any photos, receipts, or details before then and we'll regenerate a stronger version.`;
+
   // Check if there's a letter already generated for this ticket
   const { data: letter } = await supabaseAdmin
     .from('contest_letters')
@@ -350,8 +369,8 @@ async function sendLastChanceEmail(
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: #DC2626; color: white; padding: 24px; border-radius: 12px 12px 0 0;">
-        <h1 style="margin: 0; font-size: 22px;">Mailing your contest letter — Ticket #${ticket.ticket_number}</h1>
-        <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">Your evidence deadline just passed. We're mailing the letter today.</p>
+        <h1 style="margin: 0; font-size: 22px;">${heroTitle}</h1>
+        <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">${heroSubtitle}</p>
       </div>
 
       <div style="background: white; border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
@@ -360,13 +379,12 @@ async function sendLastChanceEmail(
         <p style="margin: 0 0 20px; font-size: 15px; color: #4b5563;">
           Your ${ticket.violation_description || ticket.violation_type?.replace(/_/g, ' ')} ticket
           ${ticket.amount ? `($${ticket.amount.toFixed(2)})` : ''} from ${violationDateFormatted}
-          is being filed with the City of Chicago today.
-          Chicago's legal contest deadline is in <strong>${daysRemaining} days</strong>.
+          ${bodyLeadHtml}
         </p>
 
         <div style="background: #FEF2F2; border: 2px solid #DC2626; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
           <p style="margin: 0; font-size: 15px; color: #991B1B; font-weight: 600;">
-            We're mailing your contest letter today with whatever evidence we have. After it's sent we can't add anything to this filing.
+            ${calloutHtml}
           </p>
           <p style="margin: 12px 0 0; font-size: 13px; color: #991B1B;">
             A contested ticket &mdash; even without personal evidence &mdash; is better than an uncontested fine. Our automated evidence (weather, FOIA records, GPS data) may still support a strong case.
@@ -408,7 +426,9 @@ async function sendLastChanceEmail(
       body: JSON.stringify({
         from: 'Autopilot America <alerts@autopilotamerica.com>',
         to: [email],
-        subject: `Mailing today: contest letter for ticket #${ticket.ticket_number}`,
+        subject: isMailingToday
+          ? `Mailing today: contest letter for ticket #${ticket.ticket_number}`
+          : `LAST CHANCE: Contest letter for ticket #${ticket.ticket_number}`,
         html,
         replyTo: `evidence+${ticket.id}@autopilotamerica.com`,
       }),
