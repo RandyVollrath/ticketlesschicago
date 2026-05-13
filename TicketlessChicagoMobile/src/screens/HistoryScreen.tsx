@@ -735,17 +735,17 @@ const formatRelativeTime = (timestamp: number): string => {
 };
 
 const getSpeedSeverity = (delta: number | null): { color: string; label: string } => {
-  if (delta == null || delta <= 0) return { color: '#34C759', label: 'ok' };
+  if (delta == null || delta <= 0) return { color: colors.success, label: 'ok' };
   if (delta <= 10) return { color: '#FF9500', label: 'warning' };
-  return { color: '#FF3B30', label: 'danger' };
+  return { color: colors.error, label: 'danger' };
 };
 
 const getRedLightSeverity = (item: RedLightReceipt): { color: string; label: string } => {
   if (item.fullStopDetected && item.fullStopDurationSec != null && item.fullStopDurationSec >= 1.0) {
-    return { color: '#34C759', label: 'ok' };
+    return { color: colors.success, label: 'ok' };
   }
   if (item.fullStopDetected) return { color: '#FF9500', label: 'warning' };
-  return { color: '#FF3B30', label: 'danger' };
+  return { color: colors.error, label: 'danger' };
 };
 
 interface CameraEventCardProps {
@@ -775,7 +775,7 @@ const CameraEventCard: React.FC<CameraEventCardProps> = ({ event, isExpanded, on
       heroColor = colors.textSecondary;
     } else if (delta <= 0) {
       heroText = 'Under limit';
-      heroColor = '#34C759';
+      heroColor = colors.success;
     } else {
       heroText = `${delta} over`;
       heroColor = severity.color;
@@ -787,7 +787,7 @@ const CameraEventCard: React.FC<CameraEventCardProps> = ({ event, isExpanded, on
       heroColor = severity.color;
     } else {
       heroText = 'No stop';
-      heroColor = '#FF3B30';
+      heroColor = colors.error;
     }
   }
 
@@ -836,7 +836,7 @@ const CameraEventCard: React.FC<CameraEventCardProps> = ({ event, isExpanded, on
               const limitText = spd.expectedSpeedMph != null ? `${Math.round(spd.expectedSpeedMph)} mph` : 'N/A';
               const delta = spd.speedDeltaMph != null ? Math.round(spd.speedDeltaMph) : null;
               const deltaText = delta == null ? 'N/A' : delta > 0 ? `+${delta} mph` : `${delta} mph`;
-              const deltaColor = delta == null ? colors.textSecondary : delta > 0 ? severity.color : '#34C759';
+              const deltaColor = delta == null ? colors.textSecondary : delta > 0 ? severity.color : colors.success;
               return (
                 <View style={cameraCardStyles.pillRow}>
                   <View style={cameraCardStyles.pill}>

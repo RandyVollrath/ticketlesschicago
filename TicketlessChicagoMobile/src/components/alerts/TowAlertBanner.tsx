@@ -14,7 +14,7 @@ import {
   Animated,
 } from 'react-native';
 import { TowAlert } from '../../services/alerts/TowAlertService';
-import { typography } from '../../theme';
+import { typography, colors} from '../../theme';
 
 // =============================================================================
 // Types
@@ -38,9 +38,9 @@ export function TowAlertBanner({
   onSnooze,
 }: TowAlertBannerProps) {
   const backgroundColor = {
-    critical: '#dc2626', // Red
+    critical: colors.error, // Red
     warning: '#f59e0b', // Amber
-    info: '#3b82f6', // Blue
+    info: colors.primary, // Blue
   }[alert.severity];
 
   return (
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   countdownExpiredText: {
-    color: '#dc2626',
+    color: colors.error,
     fontSize: 18,
     fontFamily: typography.fontFamily.bodyBold,
   },
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   relocateText: {
-    color: '#111827',
+    color: colors.primaryDark,
     fontSize: 15,
     fontFamily: typography.fontFamily.bodySemibold,
   },

@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { typography } from '../../theme';
+import { typography, colors} from '../../theme';
 import {
   View,
   Text,
@@ -80,9 +80,9 @@ export function TimeSlider({
         maximumValue={maxHours}
         value={offsetHours}
         onValueChange={onOffsetChange}
-        minimumTrackTintColor="#3b82f6"
-        maximumTrackTintColor="#d1d5db"
-        thumbTintColor="#3b82f6"
+        minimumTrackTintColor={colors.primary}
+        maximumTrackTintColor={colors.border}
+        thumbTintColor={colors.primary}
         step={0.5}
       />
 
@@ -127,30 +127,30 @@ const styles = StyleSheet.create({
   },
   nowLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textSecondary,
   },
   maxLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textSecondary,
   },
   currentTime: {
     alignItems: 'center',
   },
   timeText: {
     fontSize: 12,
-    color: '#374151',
+    color: colors.textPrimary,
   },
   timeValue: {
     fontSize: 16,
     fontFamily: typography.fontFamily.bodySemibold,
-    color: '#111827',
+    color: colors.primaryDark,
   },
   simulated: {
-    color: '#3b82f6',
+    color: colors.primary,
   },
   offsetLabel: {
     fontSize: 11,
-    color: '#3b82f6',
+    color: colors.primary,
     marginTop: 2,
   },
   slider: {
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   resetText: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontSize: 14,
     fontFamily: typography.fontFamily.bodyMedium,
   },
@@ -178,12 +178,12 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#22c55e',
+    backgroundColor: colors.success,
     marginRight: 6,
   },
   liveText: {
     fontSize: 12,
-    color: '#22c55e',
+    color: colors.success,
     fontFamily: typography.fontFamily.bodyMedium,
   },
 });

@@ -95,10 +95,10 @@ const HOURS_BEFORE_OPTIONS = [
 
 const ALERT_TYPE_CONFIG: { key: CallAlertType; label: string; subtitle: string; icon: string; iconColor: string; showHoursBefore: boolean }[] = [
   { key: 'street_cleaning', label: 'Street Cleaning', subtitle: 'Call before sweeper arrives', icon: 'broom', iconColor: '#F59E0B', showHoursBefore: true },
-  { key: 'winter_ban', label: 'Winter Parking Ban', subtitle: 'Call before tow trucks come', icon: 'snowflake', iconColor: '#3B82F6', showHoursBefore: true },
+  { key: 'winter_ban', label: 'Winter Parking Ban', subtitle: 'Call before tow trucks come', icon: 'snowflake', iconColor: colors.primary, showHoursBefore: true },
   { key: 'permit_zone', label: 'Permit Zone', subtitle: 'Call when parked in a permit zone', icon: 'parking', iconColor: '#8B5CF6', showHoursBefore: false },
   { key: 'snow_route', label: 'Snow Route', subtitle: 'Call when parked on a snow route', icon: 'weather-snowy-heavy', iconColor: '#06B6D4', showHoursBefore: false },
-  { key: 'dot_permit', label: 'Block Closure / DOT Permit', subtitle: 'Call for construction, filming, events', icon: 'road-variant', iconColor: '#EF4444', showHoursBefore: true },
+  { key: 'dot_permit', label: 'Block Closure / DOT Permit', subtitle: 'Call for construction, filming, events', icon: 'road-variant', iconColor: colors.error, showHoursBefore: true },
 ];
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -1253,7 +1253,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Divider />
           <SettingRow
             icon="truck-check-outline"
-            iconColor="#10B981"
+            iconColor={colors.success}
             title="Sweeper Passed"
             subtitle="Know when the sweeper has passed so you can reclaim your spot"
             value={sweeperPassedAlerts}
@@ -1271,7 +1271,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Divider />
           <SettingRow
             icon="snowflake"
-            iconColor="#3B82F6"
+            iconColor={colors.primary}
             title="Winter Overnight Ban"
             subtitle="Dec 1 – Apr 1, 3am–7am on posted streets"
             value={winterOvernightAlerts}
@@ -1289,7 +1289,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Divider />
           <SettingRow
             icon="road-variant"
-            iconColor="#EF4444"
+            iconColor={colors.error}
             title="Temporary No-Parking"
             subtitle="Construction, film permits, and other restrictions"
             value={dotPermitAlerts}
@@ -1298,7 +1298,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Divider />
           <SettingRow
             icon="tow-truck"
-            iconColor="#DC2626"
+            iconColor={colors.error}
             title="Tow Alerts"
             subtitle="Get notified if your car is towed"
             value={towAlerts}

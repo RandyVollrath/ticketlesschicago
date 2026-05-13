@@ -1586,7 +1586,7 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     height: 520,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.background,
   },
   webView: {
     flex: 1,
@@ -1600,7 +1600,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.background,
   },
   mapHint: {
     fontSize: typography.sizes.xs,

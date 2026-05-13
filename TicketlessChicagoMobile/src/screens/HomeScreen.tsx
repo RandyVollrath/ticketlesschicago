@@ -3869,7 +3869,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.bodyMedium,
   },
   drivingAlertsCard: {
-    backgroundColor: '#111827',
+    backgroundColor: colors.primaryDark,
   },
 
   // ──── Bottom Sheet ────
@@ -4188,7 +4188,7 @@ const styles = StyleSheet.create({
   },
   parkingMapContainer: {
     height: 350,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.background,
   },
   parkingMapWebView: {
     flex: 1,
@@ -4202,7 +4202,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.background,
   },
   parkingMapLoadingText: {
     color: colors.textSecondary,
@@ -4220,7 +4220,7 @@ const styles = StyleSheet.create({
   // WebView container so the user sees it appear right where their attention
   // is when they drop the pin.
   pinCorrectionBanner: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: colors.primaryTint,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: '#BFDBFE',

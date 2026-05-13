@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { typography } from '../../theme';
+import { typography, colors} from '../../theme';
 import {
   View,
   Text,
@@ -122,7 +122,7 @@ export function RelocationSheet({
           {/* Content */}
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#3b82f6" />
+              <ActivityIndicator size="large" color={colors.primary} />
               <Text style={styles.loadingText}>Finding safe parking...</Text>
             </View>
           ) : error ? (
@@ -273,10 +273,10 @@ function SuggestionCard({ suggestion, onNavigate }: SuggestionCardProps) {
 // =============================================================================
 
 function getScoreColor(score: number): string {
-  if (score >= 80) return '#22c55e'; // Green
+  if (score >= 80) return colors.success; // Green
   if (score >= 60) return '#eab308'; // Yellow
   if (score >= 40) return '#f97316'; // Orange
-  return '#ef4444'; // Red
+  return colors.error; // Red
 }
 
 function formatTime(date: Date): string {
@@ -307,20 +307,20 @@ const styles = StyleSheet.create({
   header: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border,
     alignItems: 'center',
   },
   handle: {
     width: 36,
     height: 4,
-    backgroundColor: '#d1d5db',
+    backgroundColor: colors.border,
     borderRadius: 2,
     marginBottom: 12,
   },
   title: {
     fontSize: 18,
     fontFamily: typography.fontFamily.bodySemibold,
-    color: '#111827',
+    color: colors.primaryDark,
   },
   closeButton: {
     position: 'absolute',
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   closeText: {
     fontSize: 16,
     fontFamily: typography.fontFamily.bodyMedium,
-    color: '#3b82f6',
+    color: colors.primary,
   },
   filters: {
     flexDirection: 'row',
@@ -341,15 +341,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.background,
   },
   filterButtonActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
   },
   filterText: {
     fontSize: 14,
     fontFamily: typography.fontFamily.bodyMedium,
-    color: '#6b7280',
+    color: colors.textSecondary,
   },
   filterTextActive: {
     color: '#fff',
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 15,
-    color: '#6b7280',
+    color: colors.textSecondary,
   },
   errorContainer: {
     flex: 1,
@@ -377,14 +377,14 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 15,
-    color: '#ef4444',
+    color: colors.error,
     textAlign: 'center',
   },
   retryButton: {
     marginTop: 16,
     paddingVertical: 8,
     paddingHorizontal: 24,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     borderRadius: 8,
   },
   retryText: {
@@ -404,18 +404,18 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontFamily: typography.fontFamily.bodyMedium,
-    color: '#374151',
+    color: colors.textPrimary,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 8,
   },
   card: {
     flexDirection: 'row',
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
@@ -434,16 +434,16 @@ const styles = StyleSheet.create({
   cardAddress: {
     fontSize: 15,
     fontFamily: typography.fontFamily.bodyMedium,
-    color: '#111827',
+    color: colors.primaryDark,
   },
   cardDistance: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   cardSafeUntil: {
     fontSize: 13,
-    color: '#059669',
+    color: colors.success,
     marginTop: 4,
     fontFamily: typography.fontFamily.bodyMedium,
   },
@@ -452,12 +452,12 @@ const styles = StyleSheet.create({
   },
   garageName: {
     fontSize: 13,
-    color: '#374151',
+    color: colors.textPrimary,
     fontFamily: typography.fontFamily.bodyMedium,
   },
   garageRate: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textSecondary,
   },
   garageAvailability: {
     fontSize: 12,
@@ -465,13 +465,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   availabilityGood: {
-    color: '#059669',
+    color: colors.success,
   },
   availabilityLimited: {
     color: '#f59e0b',
   },
   availabilityFull: {
-    color: '#ef4444',
+    color: colors.error,
   },
   cardRight: {
     alignItems: 'center',
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
   },
   navigateIcon: {
     fontSize: 20,
-    color: '#9ca3af',
+    color: colors.textTertiary,
     marginTop: 4,
   },
 });
