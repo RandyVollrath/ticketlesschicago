@@ -3548,26 +3548,19 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             // vibration consistent with engine idling, block the longNoWalkingStop path.
             // Walking evidence and BT disconnect are unaffected — those are strong signals.
             //
-            // Scope: only apply this blocker near camera-tagged signalized intersections.
-            // That's where long red phases produce false-positive parking detections
-            // (the original failure mode at Fullerton/Damen, Lincoln/Belmont/Ashland).
-            // On residential side streets / parking-only blocks (no camera within 95m),
-            // high accel stddev is far more likely to be the user handling their phone
-            // post-park than an idling engine — and there's no red-light false-positive
-            // risk to protect against. Real-world data: stddev ≥ 0.030 while parked is
-            // common when the user is reading texts in the car (well above the 0.015
-            // "strong engine idle" threshold). Gating engine-idle on intersection
-            // proximity unblocks those parks without weakening any of the per-camera
-            // intersection guards above the line.
+            // The classifier itself now distinguishes engine idle (CONTINUOUS low-amplitude
+            // buzz — every sample above the noise floor) from phone handling (SPORADIC
+            // spikes with quiet stretches between). That lets us trust this blocker
+            // everywhere — at residential blocks AND signalized intersections — without
+            // it tripping on the user fidgeting with their phone post-park. See
+            // analyzeAccelForEngineIdle for the quiet-fraction discriminator.
             let accelAnalysis = self.analyzeAccelForEngineIdle(lastSeconds: 10)
             let engineIdleDetected = accelAnalysis.idleLikelihood >= 0.5
-            let nearIntersectionForGate = self.isNearSignalizedIntersection(self.locationManager.location)
-            let engineIdleBlocks = engineIdleDetected && nearIntersectionForGate
 
             if zeroDuration >= self.minZeroSpeedForAgreeSec &&
                coreMotionStableDuration >= self.coreMotionStabilitySec &&
                gpsSpeedOk &&
-               (hasWalkingEvidence || (longNoWalkingStop && !engineIdleBlocks) || hasCarDisconnectEvidence) {
+               (hasWalkingEvidence || (longNoWalkingStop && !engineIdleDetected) || hasCarDisconnectEvidence) {
               self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion non-automotive for \(String(format: "%.0f", coreMotionStableDuration))s + GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s")
               self.tripSummaryGatePassCount += 1
               self.decision("gps_coremotion_gate_passed", [
@@ -3584,9 +3577,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
                 "accelIdleLikelihood": accelAnalysis.idleLikelihood,
                 "accelStddev": accelAnalysis.stddev,
                 "accelSampleCount": accelAnalysis.sampleCount,
+                "accelQuietFraction": accelAnalysis.quietFraction,
                 "engineIdleDetected": engineIdleDetected,
-                "nearIntersectionForGate": nearIntersectionForGate,
-                "engineIdleBlocks": engineIdleBlocks,
               ])
               timer.invalidate()
               self.speedZeroTimer = nil
@@ -3605,8 +3597,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
               if !hasWalkingEvidence && !longNoWalkingStop && !hasCarDisconnectEvidence {
                 waitReasons.append("no walk/car-disconnect evidence and stop<\(String(format: "%.0f", self.minZeroSpeedNoWalkingSec))s")
               }
-              if longNoWalkingStop && engineIdleBlocks {
-                waitReasons.append("engine idle detected near intersection (accel stddev=\(String(format: "%.4f", accelAnalysis.stddev)), likelihood=\(String(format: "%.1f", accelAnalysis.idleLikelihood)))")
+              if longNoWalkingStop && engineIdleDetected {
+                waitReasons.append("engine idle detected (accel stddev=\(String(format: "%.4f", accelAnalysis.stddev)), quietFrac=\(String(format: "%.2f", accelAnalysis.quietFraction)), likelihood=\(String(format: "%.1f", accelAnalysis.idleLikelihood)))")
               }
               self.log("CoreMotion agrees (not automotive) but guards not met: \(waitReasons.joined(separator: ", "))")
               self.tripSummaryGateWaitCount += 1
@@ -3624,9 +3616,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
                 "accelIdleLikelihood": accelAnalysis.idleLikelihood,
                 "accelStddev": accelAnalysis.stddev,
                 "accelSampleCount": accelAnalysis.sampleCount,
+                "accelQuietFraction": accelAnalysis.quietFraction,
                 "engineIdleDetected": engineIdleDetected,
-                "nearIntersectionForGate": nearIntersectionForGate,
-                "engineIdleBlocks": engineIdleBlocks,
                 "reasons": waitReasons.joined(separator: "; "),
               ])
             }
@@ -6313,6 +6304,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
           "accelStddev": accelAnalysis.stddev,
           "accelIdleLikelihood": accelAnalysis.idleLikelihood,
           "accelSampleCount": accelAnalysis.sampleCount,
+          "accelQuietFraction": accelAnalysis.quietFraction,
           "nearIntersectionRisk": nearIntersectionRisk,
         ])
         lastStationaryTime = nil
@@ -6609,20 +6601,20 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   /// Engine idle produces continuous low-amplitude vibration (stddev 0.005-0.03g).
   /// A parked car with engine off has near-zero accelerometer variance (stddev < 0.002g).
   /// Uses CMDeviceMotion userAcceleration (gravity already removed).
-  private func analyzeAccelForEngineIdle(lastSeconds: TimeInterval = 10) -> (idleLikelihood: Double, stddev: Double, sampleCount: Int) {
+  private func analyzeAccelForEngineIdle(lastSeconds: TimeInterval = 10) -> (idleLikelihood: Double, stddev: Double, sampleCount: Int, quietFraction: Double) {
     accelBufferLock.lock()
     let buffer = self.accelBuffer
     accelBufferLock.unlock()
 
     guard buffer.count >= 20 else {
-      return (0.0, 0.0, 0)
+      return (0.0, 0.0, 0, 1.0)
     }
 
     let cutoff = buffer.last!.timestamp - lastSeconds
     let recent = buffer.filter { $0.timestamp >= cutoff }
 
     guard recent.count >= 20 else {
-      return (0.0, 0.0, recent.count)
+      return (0.0, 0.0, recent.count, 1.0)
     }
 
     // Compute magnitude of userAcceleration (gravity already removed by CMDeviceMotion)
@@ -6632,13 +6624,31 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     let variance = magnitudes.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(magnitudes.count)
     let stddev = sqrt(variance)
 
+    // Continuity discriminator: engine idle produces CONTINUOUS low-amplitude
+    // vibration — virtually every sample is above the noise floor. Phone
+    // handling is SPORADIC — long quiet stretches punctuated by big spikes.
+    // Both can produce identical stddev, so stddev alone can't tell them
+    // apart (real-world: stddev=0.058 while parked, from user reading texts).
+    //
+    // Count what fraction of samples sit in the quiet zone (< 0.002 g):
+    //   Engine idle: <10% quiet (continuous buzz fills the window)
+    //   Phone handling: 30-70% quiet (spikes separated by stillness)
+    let quietThreshold = 0.002
+    let quietCount = magnitudes.filter { $0 < quietThreshold }.count
+    let quietFraction = Double(quietCount) / Double(magnitudes.count)
+    let isSporadic = quietFraction > 0.20  // >20% quiet samples → spike pattern, not engine
+
     // Classification:
     // stddev < 0.002  → engine off (parked, very still)         → idleLikelihood = 0.0
     // stddev 0.002-0.005 → ambiguous (could be either)          → idleLikelihood = 0.3
     // stddev 0.005-0.015 → likely engine idle                   → idleLikelihood = 0.7
     // stddev > 0.015 → strong engine idle or road vibration     → idleLikelihood = 0.9
+    // BUT: at any stddev tier above the floor, if the pattern is sporadic
+    // (mostly quiet with spikes), it's phone handling, not engine. Clamp to 0.0.
     let idleLikelihood: Double
     if stddev < 0.002 {
+      idleLikelihood = 0.0
+    } else if isSporadic {
       idleLikelihood = 0.0
     } else if stddev < 0.005 {
       idleLikelihood = 0.3
@@ -6648,7 +6658,7 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
       idleLikelihood = 0.9
     }
 
-    return (idleLikelihood, stddev, recent.count)
+    return (idleLikelihood, stddev, recent.count, quietFraction)
   }
 
   private func isNearSignalizedIntersection(_ location: CLLocation?) -> Bool {
