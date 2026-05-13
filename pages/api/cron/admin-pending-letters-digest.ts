@@ -106,7 +106,12 @@ export default async function handler(
     const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     type StuckRow = {
-      kind: 'evidence_deadline_overdue' | 'evidence_received_unmailed' | 'mailing_stuck' | 'awaiting_consent_stale';
+      kind:
+        | 'evidence_deadline_overdue'
+        | 'evidence_received_unmailed'
+        | 'mailing_stuck'
+        | 'awaiting_consent_stale'
+        | 'evidence_not_integrated';
       letterId: string | null;
       ticketId: string;
       ticketNumber: string | null;
@@ -221,6 +226,109 @@ export default async function handler(
         detail: `awaiting user consent for ${ageDays} days — user never replied "I AUTHORIZE"`,
         userId: t?.user_id || l.user_id,
       });
+    }
+
+    // (5) EVIDENCE-INTEGRATION AUDIT.
+    //     Any ticket where the user submitted evidence (user_evidence is set
+    //     OR there's a ticket_evidence row OR evidence_received_at is stamped)
+    //     MUST have a contest letter with evidence_integrated=true.
+    //     Two failure modes this catches:
+    //       (a) Letter never regenerated (orphan-status bug — fixed but
+    //           regression-guarded here).
+    //       (b) Photo attachments arrived but Claude Vision wasn't run, so
+    //           the letter never references what's actually in the photos.
+    //     The check is intentionally loud: if a user gave us evidence and the
+    //     letter doesn't show it as integrated, we want to know TODAY.
+    const { data: ticketsWithEvidence } = await supabaseAdmin
+      .from('detected_tickets')
+      .select(`
+        id, ticket_number, user_id, user_evidence, user_evidence_uploaded_at,
+        evidence_received_at, status,
+        contest_letters ( id, status, evidence_integrated, evidence_integrated_at, mailed_at, created_at )
+      `)
+      .or('user_evidence.not.is.null,evidence_received_at.not.is.null')
+      .limit(200);
+
+    for (const t of (ticketsWithEvidence as any[]) || []) {
+      const letters = Array.isArray(t.contest_letters) ? t.contest_letters : (t.contest_letters ? [t.contest_letters] : []);
+      // Use the most recently-touched letter (created or mailed) for this ticket.
+      const letter = letters
+        .slice()
+        .sort((a: any, b: any) =>
+          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(),
+        )[0];
+
+      const evidenceUploadedAt = t.user_evidence_uploaded_at || t.evidence_received_at;
+      if (!evidenceUploadedAt) continue;
+
+      // Skip if the letter was already mailed BEFORE the evidence arrived —
+      // there's nothing to integrate after the fact.
+      if (letter?.mailed_at && new Date(letter.mailed_at) < new Date(evidenceUploadedAt)) continue;
+
+      const evidenceIntegrated = letter?.evidence_integrated === true;
+      const ageHours = Math.round((Date.now() - new Date(evidenceUploadedAt).getTime()) / 3.6e6);
+
+      // Give the system 1 hour to run — anything fresher might just be
+      // mid-flight through the webhook handler.
+      if (ageHours < 1) continue;
+
+      if (!letter) {
+        stuckRows.push({
+          kind: 'evidence_not_integrated',
+          letterId: null,
+          ticketId: t.id,
+          ticketNumber: t.ticket_number,
+          ageHours,
+          detail: `evidence uploaded ${ageHours}h ago but NO contest letter exists for this ticket`,
+          userId: t.user_id,
+        });
+        continue;
+      }
+
+      if (!evidenceIntegrated) {
+        stuckRows.push({
+          kind: 'evidence_not_integrated',
+          letterId: letter.id,
+          ticketId: t.id,
+          ticketNumber: t.ticket_number,
+          ageHours,
+          detail: `evidence uploaded ${ageHours}h ago, letter.evidence_integrated is ${letter.evidence_integrated ?? 'NULL'} (letter status=${letter.status})`,
+          userId: t.user_id,
+        });
+        continue;
+      }
+
+      // Letter says integrated. Verify photo content actually made it through:
+      // if user_evidence text parses as JSON with attachment_urls but no
+      // photo_analyses, Claude Vision didn't run and the letter is missing
+      // photo-derived facts.
+      if (typeof t.user_evidence === 'string' && t.user_evidence.length > 0) {
+        try {
+          const parsed = JSON.parse(t.user_evidence);
+          const hasAttachments = Array.isArray(parsed?.attachment_urls) && parsed.attachment_urls.length > 0;
+          const hasPhotoAnalyses = Array.isArray(parsed?.photo_analyses) && parsed.photo_analyses.length > 0;
+          if (hasAttachments && !hasPhotoAnalyses) {
+            // Only flag if any attachment URL looks like an image.
+            const imgRe = /\.(jpe?g|png|gif|heic|webp)(\?|$)/i;
+            const hasImage = (parsed.attachment_urls as string[]).some(u => imgRe.test(u));
+            if (hasImage) {
+              stuckRows.push({
+                kind: 'evidence_not_integrated',
+                letterId: letter.id,
+                ticketId: t.id,
+                ticketNumber: t.ticket_number,
+                ageHours,
+                detail: `letter integrated but ${parsed.attachment_urls.length} attachment(s) have no photo_analyses — Claude Vision likely failed`,
+                userId: t.user_id,
+              });
+            }
+          }
+        } catch (_) {
+          // user_evidence may be legacy free-form text — not necessarily JSON.
+          // We've already confirmed evidence_integrated=true, so this isn't a
+          // hard failure.
+        }
+      }
     }
 
     // Run the contest-pipeline smoke test before deciding whether to send.
@@ -408,12 +516,14 @@ export default async function handler(
         evidence_received_unmailed: 'User submitted evidence, letter not promoted',
         mailing_stuck: 'Letter stuck in "mailing" status',
         awaiting_consent_stale: 'Awaiting user consent > 7 days',
+        evidence_not_integrated: 'User evidence NOT integrated into letter',
       };
       const kindColor: Record<StuckRow['kind'], string> = {
         evidence_deadline_overdue: '#dc2626',
         evidence_received_unmailed: '#dc2626',
         mailing_stuck: '#f59e0b',
         awaiting_consent_stale: '#6b7280',
+        evidence_not_integrated: '#dc2626',
       };
 
       html += `
