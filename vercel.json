@@ -140,6 +140,9 @@
     },
     "pages/api/cron/create-authorized-renewal-consents.ts": {
       "maxDuration": 120
+    },
+    "pages/api/cron/expire-stale-consents.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -326,6 +329,10 @@
     {
       "path": "/api/cron/create-authorized-renewal-consents",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/expire-stale-consents",
+      "schedule": "0 12 * * *"
     }
   ],
   "headers": [
