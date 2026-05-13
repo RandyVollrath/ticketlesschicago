@@ -2252,7 +2252,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 return (
                   <View style={styles.heroRiskSection}>
                     <View style={styles.heroRevenueRow}>
-                      <MaterialCommunityIcons name="alert-circle" size={14} color="#FFD700" />
+                      <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#FFD700" />
                       <Text style={styles.heroRevenueText}>
                         {revenueStr
                           ? `${revenueStr} in tickets issued on this block${rankStr}`
@@ -2888,7 +2888,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     style={styles.zoneReportPhotoRemove}
                     onPress={() => { setReportPhotoUri(null); setReportPhotoBase64(null); }}
                   >
-                    <MaterialCommunityIcons name="close-circle" size={22} color={colors.error} />
+                    <MaterialCommunityIcons name="close-circle-outline" size={22} color={colors.error} />
                   </TouchableOpacity>
                 </View>
               )}

@@ -113,7 +113,7 @@ export default function ReportZoneHoursScreen({ navigation, route }: any) {
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.successContainer}>
-          <Icon name="check-circle" size={48} color={colors.success} />
+          <Icon name="check-circle-outline" size={48} color={colors.success} />
           <Text style={styles.successTitle}>Thank you</Text>
           <Text style={styles.successMessage}>{resultMessage}</Text>
           <TouchableOpacity

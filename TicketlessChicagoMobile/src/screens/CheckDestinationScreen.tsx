@@ -733,7 +733,7 @@ export default function CheckDestinationScreen({ navigation, route }: any) {
                 style={{ padding: 4 }}
                 accessibilityLabel="Clear address"
               >
-                <Icon name="close-circle" size={18} color={colors.textTertiary} />
+                <Icon name="close-circle-outline" size={18} color={colors.textTertiary} />
               </TouchableOpacity>
             )}
           </View>

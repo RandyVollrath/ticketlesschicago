@@ -1286,7 +1286,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
 const BulletItem: React.FC<{ text: string }> = ({ text }) => (
   <View style={styles.bulletItem}>
-    <MaterialCommunityIcons name="check-circle" size={16} color={colors.success} />
+    <MaterialCommunityIcons name="check-circle-outline" size={16} color={colors.success} />
     <Text style={styles.bulletText}>{text}</Text>
   </View>
 );

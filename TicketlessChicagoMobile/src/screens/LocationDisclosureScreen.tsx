@@ -75,7 +75,7 @@ export default function LocationDisclosureScreen({ onAccept, onDecline }: Locati
           </View>
 
           <View style={styles.reason}>
-            <MaterialCommunityIcons name="bell-ring" size={24} color={colors.primary} />
+            <MaterialCommunityIcons name="bell-ring-outline" size={24} color={colors.primary} />
             <View style={styles.reasonText}>
               <Text style={styles.reasonTitle}>Move-Your-Car Alerts</Text>
               <Text style={styles.reasonBody}>

@@ -1077,7 +1077,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           accessibilityLiveRegion="polite"
           accessibilityLabel={feedbackMessage}
         >
-          <MaterialCommunityIcons name="check-circle" size={16} color={colors.success} />
+          <MaterialCommunityIcons name="check-circle-outline" size={16} color={colors.success} />
           <Text style={styles.feedbackText}>{feedbackMessage}</Text>
         </RNAnimated.View>
       )}
@@ -1089,7 +1089,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {user && (
           <Section title="Account">
             <View style={styles.accountRow}>
-              <MaterialCommunityIcons name="account-circle" size={40} color={colors.primary} />
+              <MaterialCommunityIcons name="account-circle-outline" size={40} color={colors.primary} />
               <View style={styles.accountInfo}>
                 <Text style={styles.accountName}>{user.name || 'User'}</Text>
                 <Text style={styles.accountEmail}>{user.email}</Text>
