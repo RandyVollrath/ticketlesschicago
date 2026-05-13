@@ -786,6 +786,11 @@ Note: Weather conditions were present but not severe. Only mention if it genuine
     let sweeperVerification: SweeperVerification | null = null;
     let uicFindings: ErroneousFinding[] = [];
     let uicFindingsText = '';
+    // Chicago Open Data enrichments: DOT permits closing parking on the
+    // cited block at ticket time, and 311 tree-obstruction complaints
+    // suggesting the sign was blocked by foliage.
+    let dotPermitFindingsText = '';
+    let treeObstructionFindingsText = '';
     let streetCleaningVerification: {
       checked: boolean;
       ward: string | null;
@@ -1313,6 +1318,87 @@ ${uicFindings.some(f => f.id === 'address_transposition_water' || f.id === 'addr
           }
         } catch (e) {
           console.error('UIC erroneous checks failed (non-fatal):', e);
+        }
+      })());
+    }
+
+    // Chicago Open Data — DOT permits + 311 tree-obstruction enrichment
+    // on the cited block. DOT permits fire for ANY parking violation
+    // (the City permitted closure of parking is dispositive). Tree
+    // obstruction only fires for sign-based violations.
+    if (contest.ticket_location && ticketDate) {
+      evidencePromises.push((async () => {
+        try {
+          const { findActiveDotPermits } = await import('../../../lib/contest-review/dot-permits-enrichment');
+          const { findTreeObstructionComplaints } = await import('../../../lib/contest-review/cdot-311-enrichment');
+          const { SIGN_PHOTO_CODES } = await import('../../../lib/contest-review/beyond-template-arguments');
+
+          const m = (contest.ticket_location || '').trim().match(/^(\d+)\s+([NSEW])\s+([A-Z0-9 ]+?)(?:\s+(?:ST|AVE|BLVD|DR|PL|RD|CT|LN|PKWY|TER|WAY))?$/i);
+          if (!m) return;
+          const streetNumber = parseInt(m[1], 10);
+          const streetDirection = m[2].toUpperCase();
+          const streetName = m[3].toUpperCase().trim();
+          if (!Number.isFinite(streetNumber)) return;
+
+          // DOT permits — fire for all violations.
+          const dot = await findActiveDotPermits({
+            streetNumber, streetDirection, streetName, ticketIsoDate: ticketDate,
+          });
+          if (dot && dot.activePermits.length > 0) {
+            const list = dot.activePermits.slice(0, 5).map((p, i) =>
+              `[${i + 1}] ${p.summary}`,
+            ).join('\n');
+            dotPermitFindingsText = `
+=== CHICAGO DOT PERMIT — PUBLIC RIGHT-OF-WAY CLOSURE AT CITATION ADDRESS ===
+
+The Chicago Department of Transportation issued the following permit(s) covering the citation block, active on the date of citation, that materially affected parking enforcement:
+
+${list}
+
+Source: Chicago Open Data Portal, DOT Permits dataset (pubx-yq2d), pulled at the time of letter generation.
+
+INSTRUCTIONS:
+- This is a STRONG defense argument. The City of Chicago itself permitted closure of parking on the citation block during the period of the citation. Cite the specific permit application number(s) verbatim.
+- Frame the argument: "The City of Chicago issued DOT Permit [X], which authorized [closure type] on the citation block from [start date] through [end date]. The citation was written during this period. The City's own records show that parking enforcement at this location should have been suspended for the duration of the permitted closure."
+- Cite § 9-100-060(a)(7) (codified defense — violation did not in fact occur as charged) AND § 9-64 sign-visibility / meter-restriction sections where applicable.
+- Note that DOT permit records are public and the hearing officer can verify the permit at data.cityofchicago.org.
+- Treat as case-dispositive when the permit covers the exact citation block and citation date.
+`;
+            console.log(`  DOT permits active on cited block: ${dot.activePermits.length}`);
+          }
+
+          // Tree-obstruction — only for sign-based parking violations.
+          if (contest.violation_code && SIGN_PHOTO_CODES[contest.violation_code as string]) {
+            const tree = await findTreeObstructionComplaints({
+              streetNumber, streetDirection, streetName, ticketIsoDate: ticketDate,
+            });
+            if (tree && tree.treeComplaints.length > 0) {
+              const open = tree.treeComplaints.filter(s => s.openAtTicketTime);
+              const recent = tree.treeComplaints.filter(s => !s.openAtTicketTime);
+              const list = (open.length > 0 ? open : recent).slice(0, 5).map((s, i) =>
+                `[${i + 1}] 311 SR ${s.srNumber} — ${s.srType}, ${s.openAtTicketTime ? `OPEN at ticket time (filed ${s.createdDate})` : `closed ${s.daysClosedBeforeTicket} days before ticket`} at ${s.streetNumber} ${s.streetDirection} ${s.streetName}`,
+              ).join('\n');
+              const strength = open.length > 0 ? 'STRONG' : 'SUPPORTING';
+              treeObstructionFindingsText = `
+=== 311 TREE OBSTRUCTION — SIGN MAY HAVE BEEN BLOCKED BY FOLIAGE / DEBRIS ===
+
+Chicago's 311 service-request system shows the following tree-related work order(s) on the citation block, suggesting tree foliage or debris may have obstructed visibility of the parking sign at the time of citation:
+
+${list}
+
+Source: Chicago Open Data Portal, 311 Service Requests dataset (v6vf-nfxy).
+
+INSTRUCTIONS:
+- ${strength} argument for a § 9-64 "signs not visible and legible" defense.
+- Reference the specific 311 SR number(s) in the letter as documentary evidence.
+- Frame: "Chicago 311 records show an ${open.length > 0 ? 'open' : 'recent'} tree-related work order at or near the citation address. Tree foliage and debris are recognized causes of obscured parking signage. Under § 9-64 the City must demonstrate the sign was visible and legible at the time of citation; the 311 record raises a fact question about whether that burden was met."
+- This argument SUPPORTS rather than replaces a substantive defense unless the SR was open on the exact date of citation.
+`;
+              console.log(`  311 tree-obstruction hits on cited block: ${open.length} open + ${recent.length} recent`);
+            }
+          }
+        } catch (e) {
+          console.error('DOT permits / tree-obstruction enrichment failed (non-fatal):', e);
         }
       })());
     }
@@ -2323,6 +2409,8 @@ INSTRUCTIONS: ${isLeadDefense('compliance_corrected')
 `;
 })()}
 ${uicFindingsText}
+${dotPermitFindingsText}
+${treeObstructionFindingsText}
 ${weatherDefenseText}
 ${parkingEvidenceText}
 ${cityStickerReceipt ? `
