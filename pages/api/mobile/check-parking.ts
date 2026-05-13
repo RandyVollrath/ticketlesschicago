@@ -112,6 +112,13 @@ interface MobileCheckParkingResponse {
     severity?: 'warning' | 'info' | 'none';
     nearestMeterDistanceM?: number;
     nearestMeterAddress?: string;
+    /**
+     * ParkChicago pay-zone number — the number printed on the meter pole
+     * that users enter in the ParkChicago app to pay. Surfacing it in
+     * notifications lets users pay from their phone without walking to
+     * the kiosk first.
+     */
+    meterId?: number;
     timeLimitMinutes?: number;
     isEnforcedNow?: boolean;
     estimatedRate?: string;
@@ -1152,6 +1159,39 @@ export default async function handler(
 
           // Filter by max snap distance
           let candidates = allCandidates.filter((s: any) => s.snap_distance_meters <= maxSnapDistance);
+
+          // Wide-ROW fallback: when no candidate is within the close-fit filter
+          // (e.g. Southport at 2472 N — wide street, centerline 48m from GPS
+          // even with 3.5m accuracy), recover by promoting the closest
+          // allCandidate when EITHER:
+          //   (a) it's a geometrically clear winner (≥15m gap to the next
+          //       candidate), or
+          //   (b) Apple's geocoder independently names the same street.
+          // Both gates keep the fallback off at intersections (close
+          // perpendicular competitor) and off-grid (no closer street exists).
+          if (candidates.length === 0 && allCandidates.length > 0) {
+            const closest = allCandidates[0];
+            const secondDist = allCandidates[1]?.snap_distance_meters ?? Number.POSITIVE_INFINITY;
+            const gap = secondDist - closest.snap_distance_meters;
+            const withinRange = closest.snap_distance_meters <= 60;
+            const clearGeometricWinner = gap >= 15;
+            const appleThoroughfare = (appleGeocode?.thoroughfare || '').trim();
+            const appleConfirmsClosest =
+              !!appleThoroughfare &&
+              normChicagoStreet(appleThoroughfare) === normChicagoStreet(closest.street_name);
+            if (withinRange && (clearGeometricWinner || appleConfirmsClosest)) {
+              candidates = [closest];
+              diag.snap_wide_row_fallback = true;
+              diag.snap_wide_row_gap_m = Math.round(gap);
+              diag.snap_wide_row_reason = clearGeometricWinner ? 'geom_gap' : 'apple_confirmed';
+              console.log(
+                `[check-parking] Wide-ROW snap fallback (${diag.snap_wide_row_reason}): no candidate within ${maxSnapDistance.toFixed(0)}m, ` +
+                `accepting ${closest.street_name} at ${closest.snap_distance_meters.toFixed(1)}m ` +
+                `(next: ${secondDist === Number.POSITIVE_INFINITY ? 'none' : `${secondDist.toFixed(1)}m`}, gap=${gap.toFixed(1)}m` +
+                `${appleConfirmsClosest ? `, apple="${appleThoroughfare}"` : ''}).`
+              );
+            }
+          }
 
           // Detect near-intersection: 2+ candidates AND they span both N-S and E-W
           // orientations, or 2+ candidates within ~25m of each other. Previously
@@ -3141,6 +3181,7 @@ export default async function handler(
         severity: meteredParkingResult.severity,
         nearestMeterDistanceM: meteredParkingResult.nearestMeterDistanceM || undefined,
         nearestMeterAddress: meteredParkingResult.nearestMeterAddress || undefined,
+        meterId: meteredParkingResult.meterId || undefined,
         timeLimitMinutes: meteredParkingResult.timeLimitMinutes,
         isEnforcedNow: meteredParkingResult.isEnforcedNow,
         estimatedRate: meteredParkingResult.estimatedRate || undefined,
