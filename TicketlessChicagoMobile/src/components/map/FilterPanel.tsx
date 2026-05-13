@@ -16,7 +16,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { LAYER_COLORS } from '../../services/parking-map/types';
-import { typography } from '../../theme';
+import { typography, colors} from '../../theme';
 
 // =============================================================================
 // Types
@@ -203,7 +203,7 @@ export function FilterPanel({
               <Switch
                 value={filters[item.key]}
                 onValueChange={() => toggleFilter(item.key)}
-                trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
+                trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor="#fff"
               />
             </View>
@@ -265,7 +265,7 @@ export function FilterPanel({
                 <Switch
                   value={userContext.hasDisabledPlacard}
                   onValueChange={toggleDisabledPlacard}
-                  trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
+                  trackColor={{ false: colors.border, true: colors.primary }}
                   thumbColor="#fff"
                 />
               </View>
@@ -330,12 +330,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border,
   },
   title: {
     fontSize: 18,
     fontFamily: typography.fontFamily.bodySemibold,
-    color: '#111827',
+    color: colors.primaryDark,
   },
   closeButton: {
     paddingVertical: 4,
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   closeText: {
     fontSize: 16,
     fontFamily: typography.fontFamily.bodyMedium,
-    color: '#3b82f6',
+    color: colors.primary,
   },
   content: {
     padding: 16,
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontFamily: typography.fontFamily.bodySemibold,
-    color: '#6b7280',
+    color: colors.textSecondary,
     marginBottom: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   },
   filterLabel: {
     fontSize: 15,
-    color: '#374151',
+    color: colors.textPrimary,
   },
   advancedToggle: {
     flexDirection: 'row',
@@ -393,12 +393,12 @@ const styles = StyleSheet.create({
   },
   advancedToggleText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textSecondary,
     marginRight: 4,
   },
   advancedToggleIcon: {
     fontSize: 10,
-    color: '#6b7280',
+    color: colors.textSecondary,
   },
   vehicleGrid: {
     flexDirection: 'row',
@@ -413,12 +413,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     alignItems: 'center',
   },
   vehicleButtonActive: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#eff6ff',
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryTint,
   },
   vehicleIcon: {
     fontSize: 24,
@@ -426,25 +426,25 @@ const styles = StyleSheet.create({
   },
   vehicleLabel: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.textSecondary,
   },
   vehicleLabelActive: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontFamily: typography.fontFamily.bodyMedium,
   },
   placardNote: {
     fontSize: 12,
-    color: '#ef4444',
+    color: colors.error,
     marginTop: 4,
     marginLeft: 32,
   },
   noPermitsText: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: colors.textTertiary,
     fontStyle: 'italic',
   },
   permitItem: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.background,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 6,
@@ -452,14 +452,14 @@ const styles = StyleSheet.create({
   },
   permitText: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.textPrimary,
   },
   addPermitButton: {
     paddingVertical: 8,
   },
   addPermitText: {
     fontSize: 14,
-    color: '#3b82f6',
+    color: colors.primary,
     fontFamily: typography.fontFamily.bodyMedium,
   },
   disclaimer: {

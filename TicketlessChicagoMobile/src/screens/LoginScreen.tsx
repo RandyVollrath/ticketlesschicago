@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   appleButtonText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: typography.sizes.md,
     fontFamily: typography.fontFamily.bodyMedium,
   },

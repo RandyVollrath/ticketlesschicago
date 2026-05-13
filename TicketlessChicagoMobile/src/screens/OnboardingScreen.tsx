@@ -45,7 +45,7 @@ const BASE_SLIDES: OnboardingSlide[] = [
     description: Platform.OS === 'ios'
       ? 'We detect when you park and instantly check your spot for street cleaning, snow bans, permit zones, and more.'
       : 'Pair your car\'s Bluetooth once. After that, we check every spot you park in — completely hands-free.',
-    backgroundColor: '#22c55e',
+    backgroundColor: colors.success,
   },
   {
     id: '3',

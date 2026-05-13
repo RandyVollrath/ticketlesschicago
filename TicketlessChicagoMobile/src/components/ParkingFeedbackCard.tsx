@@ -11,7 +11,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ParkingFeedbackService, ParkingFeedback } from '../services/ParkingFeedbackService';
-import { typography } from '../theme';
+import { typography, colors} from '../theme';
 
 interface Props {
   onDismiss: () => void;
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   question: {
-    color: '#ffffff',
+    color: colors.white,
     fontSize: 16,
     fontFamily: typography.fontFamily.bodyMedium,
     marginBottom: 12,
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   btnText: {
-    color: '#ffffff',
+    color: colors.white,
     fontSize: 15,
     fontFamily: typography.fontFamily.bodyMedium,
   },

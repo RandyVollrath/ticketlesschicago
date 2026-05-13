@@ -13,7 +13,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { ParkingRestrictionLayer } from '../../services/parking-map/types';
-import { typography } from '../../theme';
+import { typography, colors} from '../../theme';
 
 // =============================================================================
 // Types
@@ -119,16 +119,16 @@ const styles = StyleSheet.create({
   toggleText: {
     fontSize: 14,
     fontFamily: typography.fontFamily.bodyMedium,
-    color: '#374151',
+    color: colors.textPrimary,
     flex: 1,
   },
   chevron: {
     fontSize: 10,
-    color: '#6b7280',
+    color: colors.textSecondary,
   },
   layerList: {
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: colors.border,
   },
   layerItem: {
     flexDirection: 'row',
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.background,
   },
   layerItemActive: {
     backgroundColor: '#f0f9ff',
@@ -148,23 +148,23 @@ const styles = StyleSheet.create({
   layerName: {
     flex: 1,
     fontSize: 13,
-    color: '#374151',
+    color: colors.textPrimary,
   },
   layerNameDisabled: {
-    color: '#9ca3af',
+    color: colors.textTertiary,
   },
   checkbox: {
     width: 20,
     height: 20,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: '#d1d5db',
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxActive: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   checkmark: {
     color: '#fff',

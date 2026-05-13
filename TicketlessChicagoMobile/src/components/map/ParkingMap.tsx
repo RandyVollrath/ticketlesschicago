@@ -49,7 +49,7 @@ import TimeSlider from './TimeSlider';
 import LayerToggles from './LayerToggles';
 import Legend from './Legend';
 import SegmentPopup from './SegmentPopup';
-import { typography } from '../../theme';
+import { typography, colors} from '../../theme';
 
 // =============================================================================
 // Types
@@ -268,7 +268,7 @@ export function ParkingMap({
       {/* Loading Overlay */}
       {loading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#3b82f6" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading parking data...</Text>
         </View>
       )}
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.error,
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#374151',
+    color: colors.textPrimary,
   },
   errorBanner: {
     position: 'absolute',

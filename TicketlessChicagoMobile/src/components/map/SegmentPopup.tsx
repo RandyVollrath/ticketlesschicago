@@ -19,7 +19,7 @@ import {
   LAYER_COLORS,
 } from '../../services/parking-map/types';
 import { formatRestrictionDescription } from '../../services/parking-map/compute';
-import { typography } from '../../theme';
+import { typography, colors} from '../../theme';
 
 // =============================================================================
 // Types
@@ -83,7 +83,7 @@ export function SegmentPopup({
           icon: '?',
           text: 'Check posted signs',
           color: LAYER_COLORS.unknown,
-          bgColor: '#f3f4f6',
+          bgColor: colors.background,
         };
     }
   };
@@ -221,25 +221,25 @@ const styles = StyleSheet.create({
   streetName: {
     fontSize: 18,
     fontFamily: typography.fontFamily.bodySemibold,
-    color: '#111827',
+    color: colors.primaryDark,
   },
   blockRange: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   closeButton: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
   },
   closeIcon: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textSecondary,
   },
   statusBanner: {
     flexDirection: 'row',
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontFamily: typography.fontFamily.bodySemibold,
-    color: '#374151',
+    color: colors.textPrimary,
     marginBottom: 6,
   },
   restrictionsList: {
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#9ca3af',
+    backgroundColor: colors.textTertiary,
     marginTop: 7,
     marginRight: 8,
   },
@@ -295,22 +295,22 @@ const styles = StyleSheet.create({
   },
   nextChangeLabel: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.textSecondary,
     marginRight: 6,
   },
   nextChangeText: {
     fontSize: 13,
-    color: '#374151',
+    color: colors.textPrimary,
     fontFamily: typography.fontFamily.bodyMedium,
   },
   confidenceNote: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: colors.textTertiary,
     fontStyle: 'italic',
     marginBottom: 12,
   },
   reminderButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',

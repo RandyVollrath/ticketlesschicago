@@ -48,7 +48,7 @@ function getBannerVisuals(data: NotificationData): {
     return { accent: colors.info, icon: 'weather-snowy-heavy', badge: 'Snow Route', severity };
   }
   if (data.type === 'winter_ban_reminder') {
-    return { accent: '#3B82F6', icon: 'snowflake', badge: 'Winter Ban', severity: 'warning' };
+    return { accent: colors.primary, icon: 'snowflake', badge: 'Winter Ban', severity: 'warning' };
   }
 
   return { accent: colors.primary, icon: 'bell-outline', badge: 'Autopilot', severity };

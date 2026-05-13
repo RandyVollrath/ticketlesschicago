@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
   },
   billingToggle: {
     flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.background,
     borderRadius: 10,
     padding: 3,
     width: '100%',
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
   toggleSavings: {
     fontSize: 11,
     fontFamily: typography.fontFamily.bodySemibold,
-    color: '#10B981',
+    color: colors.success,
     marginTop: 2,
   },
   priceText: {
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
   },
   referralAppliedHint: {
     fontSize: 11,
-    color: '#10B981',
+    color: colors.success,
     marginTop: 4,
     marginLeft: 4,
   },

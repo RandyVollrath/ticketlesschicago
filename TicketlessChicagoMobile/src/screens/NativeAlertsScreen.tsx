@@ -91,12 +91,12 @@ const VIOLATION_LABELS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   found: { label: 'Found', color: '#F59E0B' },
-  contesting: { label: 'Contesting', color: '#3B82F6' },
+  contesting: { label: 'Contesting', color: colors.primary },
   letter_mailed: { label: 'Letter Mailed', color: '#8B5CF6' },
-  contested: { label: 'Contested', color: '#10B981' },
-  dismissed: { label: 'Dismissed', color: '#10B981' },
-  paid: { label: 'Paid', color: '#6B7280' },
-  skipped: { label: 'Skipped', color: '#9CA3AF' },
+  contested: { label: 'Contested', color: colors.success },
+  dismissed: { label: 'Dismissed', color: colors.success },
+  paid: { label: 'Paid', color: colors.textSecondary },
+  skipped: { label: 'Skipped', color: colors.textTertiary },
   pending_approval: { label: 'Pending Approval', color: '#F97316' },
 };
 
@@ -638,7 +638,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           )}
         </View>
         {saveStatus !== 'idle' && (
-          <Text style={[styles.saveStatusText, saveStatus === 'saved' && { color: '#10B981' }]}>
+          <Text style={[styles.saveStatusText, saveStatus === 'saved' && { color: colors.success }]}>
             {saveStatus === 'saving' ? 'Saving...' : 'Saved'}
           </Text>
         )}
@@ -698,7 +698,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             icon="car-search"
             label="Plates Monitored"
             value={String(platesMonitored)}
-            color="#3B82F6"
+            color={colors.primary}
           />
           <StatCard
             icon="ticket-outline"
@@ -710,7 +710,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             icon="calendar-clock"
             label="Next Check"
             value={nextCheckDate || '—'}
-            color="#10B981"
+            color={colors.success}
           />
         </View>
 
@@ -721,7 +721,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>Subscription</Text>
               <View style={[styles.badge, { backgroundColor: '#D1FAE5' }]}>
-                <Text style={[styles.badgeText, { color: '#059669' }]}>
+                <Text style={[styles.badgeText, { color: colors.success }]}>
                   {autopilotSubscription.status.toUpperCase()}
                 </Text>
               </View>
@@ -738,7 +738,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* Missing profile warning */}
         {(!hasActivePlates || !lastName.trim() || !mailingAddress1.trim()) && (
-          <View style={[styles.card, { borderColor: '#EF4444', borderWidth: 1, backgroundColor: '#FEF2F2' }]}>
+          <View style={[styles.card, { borderColor: colors.error, borderWidth: 1, backgroundColor: '#FEF2F2' }]}>
             <View style={styles.cardBody}>
               <Text style={[styles.cardTitle, { color: '#991B1B', marginBottom: 4 }]}>
                 Action Required: Complete Your Profile
@@ -764,7 +764,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.cardBody}>
             {dashboardTickets.length === 0 ? (
               <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                <MaterialCommunityIcons name="check-circle-outline" size={32} color="#10B981" />
+                <MaterialCommunityIcons name="check-circle-outline" size={32} color={colors.success} />
                 <Text style={[styles.mutedText, { marginTop: 8, textAlign: 'center' }]}>
                   No tickets found yet. We check your plates regularly.
                 </Text>
@@ -787,11 +787,11 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     </Text>
                     <View style={[
                       styles.statusBadge,
-                      { backgroundColor: (STATUS_LABELS[ticket.status]?.color || '#6B7280') + '20' },
+                      { backgroundColor: (STATUS_LABELS[ticket.status]?.color || colors.textSecondary) + '20' },
                     ]}>
                       <Text style={[
                         styles.statusText,
-                        { color: STATUS_LABELS[ticket.status]?.color || '#6B7280' },
+                        { color: STATUS_LABELS[ticket.status]?.color || colors.textSecondary },
                       ]}>
                         {STATUS_LABELS[ticket.status]?.label || ticket.status}
                       </Text>
@@ -904,7 +904,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           {wardLookupMessage ? (
             <Text style={[
               styles.lookupMessage,
-              { color: wardLookupStatus === 'success' ? '#10B981' : wardLookupStatus === 'error' ? '#F59E0B' : colors.textTertiary },
+              { color: wardLookupStatus === 'success' ? colors.success : wardLookupStatus === 'error' ? '#F59E0B' : colors.textTertiary },
             ]}>
               {wardLookupStatus === 'loading' ? 'Looking up ward...' : wardLookupMessage}
             </Text>
@@ -970,7 +970,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <TouchableOpacity
             style={[
               styles.checkboxRow,
-              sameAsHomeAddress && { backgroundColor: '#EFF6FF', borderColor: '#3B82F6' },
+              sameAsHomeAddress && { backgroundColor: colors.primaryTint, borderColor: colors.primary },
             ]}
             onPress={() => {
               const newValue = !sameAsHomeAddress;
@@ -986,7 +986,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <MaterialCommunityIcons
               name={sameAsHomeAddress ? 'checkbox-marked' : 'checkbox-blank-outline'}
               size={22}
-              color={sameAsHomeAddress ? '#3B82F6' : colors.textTertiary}
+              color={sameAsHomeAddress ? colors.primary : colors.textTertiary}
             />
             <Text style={styles.checkboxLabel}>Same as home address</Text>
           </TouchableOpacity>
@@ -1205,7 +1205,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <Text style={styles.ticketTypeLabel}>{type.label}</Text>
                 <Text style={[
                   styles.winRate,
-                  { color: type.winRate >= 60 ? '#10B981' : type.winRate <= 20 ? '#EF4444' : colors.textTertiary },
+                  { color: type.winRate >= 60 ? colors.success : type.winRate <= 20 ? colors.error : colors.textTertiary },
                 ]}>
                   {type.winRate}%
                 </Text>
@@ -1213,7 +1213,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             );
           })}
 
-          <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
+          <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border }}>
             <Text style={styles.fieldLabel}>Email Notifications</Text>
             <CheckboxRow
               label="Notify when ticket is found"
@@ -1286,7 +1286,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
 const BulletItem: React.FC<{ text: string }> = ({ text }) => (
   <View style={styles.bulletItem}>
-    <MaterialCommunityIcons name="check-circle" size={16} color="#10B981" />
+    <MaterialCommunityIcons name="check-circle" size={16} color={colors.success} />
     <Text style={styles.bulletText}>{text}</Text>
   </View>
 );
@@ -1322,7 +1322,7 @@ const SettingsCard: React.FC<{
         {subtitle && <Text style={[styles.mutedText, { marginLeft: 8, fontSize: 11 }]}>{subtitle}</Text>}
       </View>
       {badge && (
-        <View style={[styles.badge, { backgroundColor: badgeColor || '#E2E8F0' }]}>
+        <View style={[styles.badge, { backgroundColor: badgeColor || colors.border }]}>
           <Text style={[styles.badgeText, { color: badgeTextColor || colors.textTertiary }]}>{badge}</Text>
         </View>
       )}
@@ -1339,9 +1339,9 @@ const FormField: React.FC<{
   children: React.ReactNode;
 }> = ({ label, required, children }) => (
   <View style={styles.formField}>
-    <Text style={[styles.fieldLabel, required && { color: '#EF4444' }]}>
+    <Text style={[styles.fieldLabel, required && { color: colors.error }]}>
       {label}
-      {required && <Text style={{ color: '#EF4444', fontSize: 10 }}> *REQUIRED</Text>}
+      {required && <Text style={{ color: colors.error, fontSize: 10 }}> *REQUIRED</Text>}
     </Text>
     {children}
   </View>
@@ -1390,7 +1390,7 @@ const CheckboxRow: React.FC<{
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -1399,7 +1399,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.background,
   },
   title: {
     fontSize: typography.sizes.xxl,
@@ -1408,7 +1408,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   saveStatusText: {
@@ -1422,7 +1422,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: spacing.base,
     marginBottom: spacing.sm,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.border,
     borderRadius: 10,
     padding: 3,
   },
@@ -1508,30 +1508,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.background,
   },
   cardTitle: {
     fontSize: 15,
     fontFamily: typography.fontFamily.bodySemibold,
-    color: '#0F172A',
+    color: colors.primaryDark,
   },
   cardBody: {
     padding: 16,
   },
   bodyText: {
     fontSize: 14,
-    color: '#334155',
+    color: colors.textPrimary,
     lineHeight: 20,
     marginBottom: 8,
   },
   mutedText: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   sectionSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 16,
@@ -1567,12 +1567,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontFamily: typography.fontFamily.bodyBold,
-    color: '#0F172A',
+    color: colors.primaryDark,
     marginTop: 4,
   },
   statLabel: {
     fontSize: 10,
-    color: '#64748B',
+    color: colors.textSecondary,
     marginTop: 2,
     textAlign: 'center',
   },
@@ -1584,22 +1584,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.background,
   },
   ticketType: {
     fontSize: 14,
     fontFamily: typography.fontFamily.bodyMedium,
-    color: '#0F172A',
+    color: colors.primaryDark,
   },
   ticketMeta: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   ticketAmount: {
     fontSize: 14,
     fontFamily: typography.fontFamily.bodySemibold,
-    color: '#0F172A',
+    color: colors.primaryDark,
   },
   statusBadge: {
     paddingHorizontal: 6,
@@ -1625,7 +1625,7 @@ const styles = StyleSheet.create({
   },
   bulletText: {
     fontSize: 13,
-    color: '#334155',
+    color: colors.textPrimary,
   },
 
   // Form fields
@@ -1635,7 +1635,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 11,
     fontFamily: typography.fontFamily.bodySemibold,
-    color: '#64748B',
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     marginBottom: 6,
     letterSpacing: 0.3,
@@ -1644,21 +1644,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   input: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     fontSize: 14,
-    color: '#0F172A',
+    color: colors.primaryDark,
   },
   disabledInput: {
-    backgroundColor: '#F1F5F9',
-    color: '#94A3B8',
+    backgroundColor: colors.background,
+    color: colors.textTertiary,
   },
   errorInput: {
-    borderColor: '#EF4444',
+    borderColor: colors.error,
   },
 
   // Plate
@@ -1710,17 +1710,17 @@ const styles = StyleSheet.create({
   },
   toggleRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.background,
   },
   toggleTitle: {
     fontSize: 14,
     fontFamily: typography.fontFamily.bodySemibold,
-    color: '#0F172A',
+    color: colors.primaryDark,
     marginBottom: 2,
   },
   toggleSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textSecondary,
   },
 
   // Chips
@@ -1735,7 +1735,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   chipActive: {
     borderColor: colors.primary,
@@ -1743,7 +1743,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textSecondary,
     fontFamily: typography.fontFamily.bodyMedium,
   },
   chipTextActive: {
@@ -1760,14 +1760,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
+    borderColor: colors.border,
+    backgroundColor: colors.background,
     marginBottom: 12,
   },
   checkboxLabel: {
     fontSize: 14,
     fontFamily: typography.fontFamily.bodyMedium,
-    color: '#0F172A',
+    color: colors.primaryDark,
   },
   checkboxItemRow: {
     flexDirection: 'row',
@@ -1777,7 +1777,7 @@ const styles = StyleSheet.create({
   },
   checkboxItemLabel: {
     fontSize: 14,
-    color: '#334155',
+    color: colors.textPrimary,
   },
 
   // Ticket types
@@ -1789,7 +1789,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     marginBottom: 6,
   },
   ticketTypeRowActive: {
@@ -1799,7 +1799,7 @@ const styles = StyleSheet.create({
   ticketTypeLabel: {
     flex: 1,
     fontSize: 13,
-    color: '#334155',
+    color: colors.textPrimary,
   },
   winRate: {
     fontSize: 11,
