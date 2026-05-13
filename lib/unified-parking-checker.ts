@@ -12,7 +12,7 @@ import { reverseGeocode } from './reverse-geocoder';
 import { estimateAddressFromGps, type SnapGeometry } from './chicago-grid-estimator';
 import { parseChicagoAddress, ParsedAddress } from './address-parser';
 import { validatePermitZone } from './permit-zone-time-validator';
-import { getChicagoDateISO, getChicagoTime } from './chicago-timezone-utils';
+import { getChicagoDateISO, getChicagoTime, isTomorrow } from './chicago-timezone-utils';
 
 export interface UnifiedParkingResult {
   // Location info (from single geocode call)
@@ -340,19 +340,17 @@ export async function checkAllParkingRestrictions(
       blockOverrides,
       dotPermitData,
     ] = await Promise.all([
-      // Street cleaning spatial query
+      // Street cleaning spatial query.
+      // Note: the RPC returns street_name = "Ward X Section Y" (the zone
+      // identifier), not a real street name. The sameStreet cross-check
+      // used elsewhere doesn't apply here — every match would be suppressed
+      // (e.g., snapped to "N BROADWAY" vs RPC "Ward 44 Section 7"). Cleaning
+      // is zone-based; the polygon match is authoritative.
       supabaseAdmin.rpc('get_street_cleaning_at_location_enhanced', {
         user_lat: latitude,
         user_lng: longitude,
         distance_meters: spatialRadius,
-      }).then(r => {
-        const row = r.data?.[0] || null;
-        if (row && !sameStreet(row.street_name)) {
-          console.log(`[unified-checker] Street cleaning suppressed — spatial match on ${row.street_name} but parked on ${snapStreetForCrossCheck}`);
-          return null;
-        }
-        return row;
-      }).catch(() => null),
+      }).then(r => r.data?.[0] || null).catch(() => null),
 
       // Snow route spatial query
       supabaseAdmin.rpc('get_snow_route_at_location_enhanced', {
@@ -461,6 +459,15 @@ export async function checkAllParkingRestrictions(
       if (cleaningDate && cleaningDate === chicagoToday) {
         result.streetCleaning.severity = 'warning';
         result.streetCleaning.message = `Street cleaning scheduled today in Ward ${streetCleaningData.ward}, Section ${streetCleaningData.section}`;
+      } else if (cleaningDate && isTomorrow(cleaningDate)) {
+        // Park-tonight-for-cleaning-tomorrow is the most common late-night
+        // scenario. Without this branch the hero card would only fire the
+        // morning-of 7am notification — too late for someone parking at
+        // 10pm to plan ahead. Severity 'warning' (not 'critical') because
+        // the violation isn't active yet; the hero turns orange "upcoming"
+        // and the rule survives the home-screen info filter.
+        result.streetCleaning.severity = 'warning';
+        result.streetCleaning.message = `Street cleaning tomorrow in Ward ${streetCleaningData.ward}, Section ${streetCleaningData.section}. Move tonight or get a $60 ticket.`;
       } else if (cleaningDate) {
         result.streetCleaning.severity = 'info';
         result.streetCleaning.message = `Next street cleaning: ${cleaningDate}`;
