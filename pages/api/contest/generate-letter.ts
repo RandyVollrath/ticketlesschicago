@@ -1681,7 +1681,7 @@ ${uicFindings.some(f => f.id === 'address_transposition_water' || f.id === 'addr
         (registrationReceipt && registrationReceipt.parsed_purchase_date &&
           contest.ticket_date &&
           new Date(registrationReceipt.parsed_purchase_date) > new Date(contest.ticket_date)) ||
-        contestGrounds?.some(g => /compliance.*corrected|since.*come.*into compliance|issue.*has been.*corrected/i.test(g));
+        contestGrounds?.some(g => /compliance.*corrected|since.*come.*into compliance|issue.*has been.*corrected|underlying.*violation.*(has been|was)\s*corrected|been corrected since the ticket/i.test(g));
       const hasStreetCleaningNotScheduled =
         streetCleaningVerification.checked && !streetCleaningVerification.scheduledOnDate;
       const hasNonResident = !!nonResidentDetected?.isNonResident;
@@ -2259,14 +2259,9 @@ LEGAL BASIS: Under the ADA and § 9-64-180 disability-parking provisions, hearin
 INSTRUCTIONS: In one short paragraph: state the nature of the condition (in general terms — do not require disclosure of specific diagnosis), state how it prevented compliance, and attach any disability placard, doctor's note, or hospital discharge document the user has. This is a discretionary defense — the hearing officer weighs it as mitigating circumstance rather than a per se dismissal.`);
   }
 
-  // Compliance corrected (user-attested) — already handled by the dedicated
-  // block above when receipts are on file; this catches the user-only path.
-  if (/underlying.*violation.*has.*been.*corrected|compliance.*corrected/i.test(grounds) && !cityStickerReceipt && !registrationReceipt) {
-    blocks.push(`=== COMPLIANCE CORRECTED — SUPPORTING ARGUMENT (§ 9-100-060(a)(8), user-attested) ===
-The user attests the underlying compliance issue (broken equipment, missing sticker, expired registration, etc.) has been corrected since the citation was issued.
-
-INSTRUCTIONS: In one short paragraph: state what was corrected and when, cite § 9-100-060(a)(8) — "the compliance violation cited in the notice has been corrected prior to the date of the hearing." Tell the user to attach proof of the correction (receipt, inspection report, repair invoice) if they have it.`);
-  }
+  // Note: compliance-corrected (§ 9-100-060(a)(8)) is handled by the
+  // dedicated COMPLIANCE CORRECTED DEFENSE block above (which also picks
+  // up user-attested cases when no receipt is on file). Not duplicated here.
 
   return blocks.join('\n\n');
 })()}
@@ -2310,7 +2305,7 @@ ${(() => {
   const regCorrected = registrationReceipt?.parsed_purchase_date && tdate &&
     new Date(registrationReceipt.parsed_purchase_date) > tdate;
   const userClaims = contestGrounds?.some(g =>
-    /compliance.*corrected|fix(ed)?.*before.*hearing|since.*come.*into compliance|issue.*corrected/i.test(g)
+    /compliance.*corrected|fix(ed)?.*before.*hearing|since.*come.*into compliance|issue.*corrected|underlying.*violation.*(has been|was)\s*corrected|been corrected since the ticket/i.test(g)
   );
   if (!stickerCorrected && !regCorrected && !userClaims) return '';
   const what = stickerCorrected ? `city sticker purchased ${cityStickerReceipt!.parsed_purchase_date}`
