@@ -43,8 +43,14 @@ export default async function handler(
     // Get inactive users with at least one renewal date set.
     // NOTE: This targets has_contesting=false (legacy "free" users). As of Mar 2026
     // all new users are paid, so this set is shrinking. Kept for legacy accounts.
+    //
+    // ALSO skip users in the new auto-renewal pipeline (auto_renewal_authorized=true).
+    // The create-authorized-renewal-consents cron sends them a different email
+    // ("authorize this renewal" rather than "go renew yourself"), so firing both
+    // would deliver two contradictory messages about the same renewal.
+    //
     // Pagination prevents unbounded memory usage as user_profiles grows.
-    const { data: users, error: usersError } = await supabaseAdmin
+    const { data: users, error: usersError } = await (supabaseAdmin as any)
       .from('user_profiles')
       .select(`
         user_id,
@@ -62,6 +68,7 @@ export default async function handler(
         notification_preferences
       `)
       .eq('has_contesting', false)
+      .eq('auto_renewal_authorized', false)
       .limit(1000);
 
     if (usersError) {
