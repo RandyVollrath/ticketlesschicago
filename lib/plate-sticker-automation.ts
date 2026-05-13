@@ -54,14 +54,26 @@ export interface PlateStickerPurchaseResult {
   invalidCredentialsDetected?: boolean;
 }
 
+// Reuses the same CITY_PAYMENT_CARD_* env-var set as ticket autopay so one
+// operations card pays both renewals AND tickets. See the comment in
+// lib/city-sticker-purchase.ts on the Vercel-vs-worker-machine security
+// stance.
 function readGovCardConfig() {
-  const number = process.env.PLATE_GOV_CARD_NUMBER;
-  const expMonth = process.env.PLATE_GOV_CARD_EXP_MONTH;
-  const expYear = process.env.PLATE_GOV_CARD_EXP_YEAR;
-  const cvv = process.env.PLATE_GOV_CARD_CVV;
-  const zip = process.env.PLATE_GOV_CARD_ZIP;
-  if (!number || !expMonth || !expYear || !cvv || !zip) return null;
-  return { number, expMonth, expYear, cvv, zip };
+  const number = (process.env.CITY_PAYMENT_CARD_NUMBER || '').replace(/\s+/g, '');
+  const expRaw = (process.env.CITY_PAYMENT_CARD_EXP || '').trim();
+  const cvv = (process.env.CITY_PAYMENT_CARD_CVV || '').trim();
+  const billFirst = process.env.CITY_PAYMENT_BILLING_FIRST_NAME?.trim();
+  const billLast = process.env.CITY_PAYMENT_BILLING_LAST_NAME?.trim();
+  const addr1 = process.env.CITY_PAYMENT_BILLING_ADDRESS1?.trim();
+  const billCity = process.env.CITY_PAYMENT_BILLING_CITY?.trim();
+  const billState = process.env.CITY_PAYMENT_BILLING_STATE?.trim();
+  const zip = process.env.CITY_PAYMENT_BILLING_ZIP?.trim();
+  const billEmail = process.env.CITY_PAYMENT_BILLING_EMAIL?.trim();
+  if (!number || !expRaw || !cvv || !billFirst || !billLast || !addr1 || !billCity || !billState || !zip || !billEmail) return null;
+  const match = expRaw.match(/^(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const [, expMonth, expYear] = match;
+  return { number, expMonth, expYear, cvv, zip, billFirst, billLast, addr1, billCity, billState, billEmail };
 }
 
 async function newStealthBrowser(headed: boolean): Promise<{ browser: Browser; page: Page }> {

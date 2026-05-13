@@ -82,8 +82,8 @@ async function main() {
 
   console.log(`Global kill switch (AUTO_RENEWAL_GLOBALLY_ENABLED):  ${isAutoRenewalGloballyEnabled() ? 'ON' : 'OFF (no renewals will run)'}`);
   console.log(`Credentials key (CREDENTIALS_ENCRYPTION_KEY):        ${process.env.CREDENTIALS_ENCRYPTION_KEY ? 'set' : 'MISSING'}`);
-  console.log(`Outbound city card (CITY_GOV_CARD_NUMBER):           ${process.env.CITY_GOV_CARD_NUMBER ? 'set' : 'MISSING'}`);
-  console.log(`Outbound plate card (PLATE_GOV_CARD_NUMBER):         ${process.env.PLATE_GOV_CARD_NUMBER ? 'set' : 'MISSING'}`);
+  console.log(`Ops card for gov payments (CITY_PAYMENT_CARD_*):     ${process.env.CITY_PAYMENT_CARD_NUMBER && process.env.CITY_PAYMENT_CARD_EXP && process.env.CITY_PAYMENT_CARD_CVV ? 'set' : 'MISSING'}`);
+  console.log(`Card billing info (CITY_PAYMENT_BILLING_*):          ${process.env.CITY_PAYMENT_BILLING_ADDRESS1 && process.env.CITY_PAYMENT_BILLING_ZIP ? 'set' : 'MISSING'}`);
   console.log('');
 
   const u = await userCounts();
