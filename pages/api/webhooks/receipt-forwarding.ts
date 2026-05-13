@@ -162,12 +162,13 @@ function parseReceiptMetadata(subject: string, text?: string | null, sourceType?
 
   // Compute expiration date from purchase date + duration.
   // City stickers expire on the last day of the expiration month.
+  // Use setUTCMonth so the math stays in UTC and doesn't drift by a day
+  // when the server runs in a US timezone (parsedPurchaseDate is a UTC date).
   let parsedExpirationDate: string | null = null;
   if (parsedPurchaseDate && stickerDurationMonths) {
     const d = new Date(parsedPurchaseDate);
-    // Move forward by duration months, then get last day of that month.
     // e.g. purchased 2025-07-15 + 12 months → last day of July 2026 → 2026-07-31
-    d.setMonth(d.getMonth() + stickerDurationMonths + 1, 0);
+    d.setUTCMonth(d.getUTCMonth() + stickerDurationMonths + 1, 0);
     parsedExpirationDate = d.toISOString().slice(0, 10);
   }
 
@@ -260,6 +261,68 @@ async function generateEmailEvidenceScreenshot(params: {
 </svg>`;
 
   return sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toBuffer();
+}
+
+/**
+ * Bump user_profiles.city_sticker_expiry or .license_plate_expiry to a newly
+ * parsed expiration date from a forwarded receipt, but only if the new date is
+ * strictly later than what's currently stored. The renewal reminder crons
+ * (notify-free-user-renewals, process-all-renewals, create-authorized-renewal-consents)
+ * all key off these two columns, so moving them forward stops the remaining
+ * pre-expiry reminders for the cycle the user just renewed.
+ *
+ * Returns { changed, previous, next, reason } so the caller can log the
+ * outcome. Never throws — a bump failure must not block evidence storage.
+ */
+async function bumpProfileExpiryFromReceipt(params: {
+  userId: string;
+  sourceType: EvidenceSourceType;
+  newExpirationIso: string | null;
+}): Promise<{ changed: boolean; previous: string | null; next: string | null; reason: string | null }> {
+  const { userId, sourceType, newExpirationIso } = params;
+
+  if (!newExpirationIso) {
+    return { changed: false, previous: null, next: null, reason: 'no parsed_expiration_date' };
+  }
+
+  const column = sourceType === 'city_sticker' ? 'city_sticker_expiry' : 'license_plate_expiry';
+
+  try {
+    const { data: profile, error: readError } = await supabase
+      .from('user_profiles')
+      .select(`user_id, ${column}`)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (readError) {
+      return { changed: false, previous: null, next: newExpirationIso, reason: `read failed: ${readError.message}` };
+    }
+    if (!profile) {
+      return { changed: false, previous: null, next: newExpirationIso, reason: 'profile not found' };
+    }
+
+    const current: string | null = (profile as any)[column] ?? null;
+
+    // Strictly-greater guard. Equal-or-earlier dates are ignored — both to
+    // prevent a flaky parse from yanking the date backward and to make
+    // backfill replays safe (idempotent).
+    if (current && new Date(newExpirationIso) <= new Date(current)) {
+      return { changed: false, previous: current, next: newExpirationIso, reason: `new (${newExpirationIso}) not later than current (${current})` };
+    }
+
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({ [column]: newExpirationIso })
+      .eq('user_id', userId);
+
+    if (updateError) {
+      return { changed: false, previous: current, next: newExpirationIso, reason: `update failed: ${updateError.message}` };
+    }
+
+    return { changed: true, previous: current, next: newExpirationIso, reason: null };
+  } catch (e: any) {
+    return { changed: false, previous: null, next: newExpirationIso, reason: `exception: ${e?.message || String(e)}` };
+  }
 }
 
 // Disable body parsing to read raw body for Svix signature verification
@@ -689,6 +752,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (insertError) {
         console.error('❌ Failed to insert registration evidence metadata:', insertError);
         throw insertError;
+      }
+
+      // Advance the user's stored expiry date so the renewal-reminder cron
+      // (which reads user_profiles.city_sticker_expiry / .license_plate_expiry)
+      // stops firing the remaining 30/14/7/3/1-day reminders for the old
+      // cycle. Strictly-greater guard prevents a fragile parse from moving
+      // the date backward; the source_type guard prevents a city-sticker
+      // receipt from overwriting plate expiry and vice versa.
+      const bumpResult = await bumpProfileExpiryFromReceipt({
+        userId,
+        sourceType: evidenceSource,
+        newExpirationIso: parsed.parsedExpirationDate,
+      });
+      if (bumpResult.changed) {
+        console.log(
+          `📅 Bumped ${evidenceSource} expiry for user ${userId}: ${bumpResult.previous ?? '(null)'} → ${bumpResult.next}`,
+        );
+      } else if (bumpResult.reason) {
+        console.log(`📅 Did not bump ${evidenceSource} expiry for user ${userId}: ${bumpResult.reason}`);
       }
 
       console.log(`🎉 Registration evidence saved for user ${userId}`);
