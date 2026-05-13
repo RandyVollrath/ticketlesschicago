@@ -3442,16 +3442,32 @@ class BackgroundTaskServiceClass {
           const isToday = nextEnforcement.getDate() === now.getDate() && nextEnforcement.getMonth() === now.getMonth();
           const dayPrefix = isToday ? 'today' : dayName;
 
+          // Fire the activation reminder BEFORE enforcement starts, not at
+          // it. Firing AT 8:00 AM when enforcement begins at 8:00 AM means
+          // the user is already getting ticketed by the time the phone
+          // buzzes. 15 min is enough for someone who parked overnight to
+          // wake up, get dressed, and move/pay. If the user parks within
+          // 15 min of activation, fire ~1 min from now so the alert lands
+          // before enforcement instead of being silently skipped.
+          const ADVANCE_WARNING_MIN = 15;
+          let notifyTime = new Date(nextEnforcement.getTime() - ADVANCE_WARNING_MIN * 60 * 1000);
+          if (notifyTime.getTime() <= Date.now()) {
+            notifyTime = new Date(Date.now() + 60 * 1000);
+          }
+
           restrictions.push({
             type: 'metered_parking',
-            restrictionStartTime: nextEnforcement,
+            restrictionStartTime: notifyTime,
             address: result.address || '',
-            details: `Metered parking enforcement starts ${dayPrefix} at ${enfTimeStr} (${rate}, ${limitDisplay} max)${seasonalNote}. Feed the meter or move your car — $50 ticket.`,
+            // "activates" is the marker LocalNotificationService matches on
+            // to pick the urgent "activates soon" title + iOS time-sensitive
+            // interrupt level. Don't reword without updating both ends.
+            details: `Metered parking activates ${dayPrefix} at ${enfTimeStr} (${rate}, ${limitDisplay} max)${seasonalNote}. Pay or move before then — $50 ticket.`,
             latitude: coords.latitude,
             longitude: coords.longitude,
           });
 
-          log.info(`Scheduled metered parking activation reminder for ${nextEnforcement.toLocaleString()} (sundayEnforced=${hasSundayEnforcement}, enforcementStartHour=${enforcementStartHour})`);
+          log.info(`Scheduled metered parking activation reminder for ${notifyTime.toLocaleString()} (15 min before ${nextEnforcement.toLocaleString()}, sundayEnforced=${hasSundayEnforcement}, enforcementStartHour=${enforcementStartHour})`);
         }
       }
     }
@@ -3670,18 +3686,32 @@ class BackgroundTaskServiceClass {
       }
     }
 
-    // Metered parking zone — only mention when enforced
-    if (rawData?.meteredParking?.inMeteredZone && rawData.meteredParking.isEnforcedNow) {
+    // Metered parking zone — mention whether currently enforced or not.
+    // The "currently free, enforced later" case matters for the common
+    // overnight-park-in-a-meter-zone scenario: user parks Sun 10 PM in a
+    // metered zone that activates Mon 8 AM. Without this line the All
+    // Clear notification says "you're good to park here!" which is wrong
+    // for the morning. Scheduled 15-min-before-activation notification
+    // still fires; this is the at-park awareness.
+    if (rawData?.meteredParking?.inMeteredZone) {
       const rate = rawData.meteredParking.estimatedRate || '$2.50/hr';
       const meterLimitMin = rawData.meteredParking.timeLimitMinutes || 120;
       const meterLimitHours = meterLimitMin / 60;
       const limitDisplay = meterLimitHours === 1 ? '1-hour' : `${meterLimitHours}-hour`;
-      const isRushHour = rawData.meteredParking.isRushHour || false;
-      const rushTag = isRushHour ? ' RUSH HOUR' : '';
-      // Calculate and show expiration time
-      const expiryTime = new Date(Date.now() + meterLimitMin * 60 * 1000);
-      const expiryStr = expiryTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      parts.push(`⏰ Metered zone —${rushTag} ${rate}, ${limitDisplay} max (expires ~${expiryStr}). The posted limit is how long you can park, not just pay — move before it expires or risk a $50 ticket.`);
+      if (rawData.meteredParking.isEnforcedNow) {
+        const isRushHour = rawData.meteredParking.isRushHour || false;
+        const rushTag = isRushHour ? ' RUSH HOUR' : '';
+        const expiryTime = new Date(Date.now() + meterLimitMin * 60 * 1000);
+        const expiryStr = expiryTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        parts.push(`⏰ Metered zone —${rushTag} ${rate}, ${limitDisplay} max (expires ~${expiryStr}). The posted limit is how long you can park, not just pay — move before it expires or risk a $50 ticket.`);
+      } else {
+        // Not enforced now — tell them when it activates so they know to
+        // move or pay before then. scheduleText is the canonical hours
+        // string (e.g., "Mon–Sat 8am–10pm, Sun 10am–8pm").
+        const scheduleText = rawData.meteredParking.scheduleText;
+        const schedSuffix = scheduleText ? ` Enforcement: ${scheduleText}.` : '';
+        parts.push(`⏰ Metered zone — free right now, but activates later. We'll alert you 15 min before. ${rate}, ${limitDisplay} max.${schedSuffix}`);
+      }
     }
 
     // DOT permit (construction, filming, moving van, etc.)
