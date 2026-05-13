@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from '../components/Icon';
 import { launchCamera } from 'react-native-image-picker';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import ApiClient from '../utils/ApiClient';

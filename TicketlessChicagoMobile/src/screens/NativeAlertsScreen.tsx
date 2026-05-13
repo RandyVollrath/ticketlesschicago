@@ -14,13 +14,13 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import AuthService from '../services/AuthService';
 import Config from '../config/config';
 import { StorageKeys } from '../constants';
 import Logger from '../utils/Logger';
+import Icon from '../components/Icon';
 
 const log = Logger.createLogger('NativeAlertsScreen');
 
@@ -590,7 +590,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.title}>Alerts</Text>
         </View>
         <View style={styles.centeredContainer}>
-          <MaterialCommunityIcons name="bell-ring-outline" size={48} color={colors.textTertiary} />
+          <Icon name="bell-ring-outline" size={48} color={colors.textTertiary} />
           <Text style={styles.centeredTitle}>Sign in to manage alerts</Text>
           <Text style={styles.centeredText}>
             Get notified about street cleaning, snow bans, tow alerts, and more.
@@ -651,7 +651,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           onPress={() => setActiveTab('dashboard')}
           activeOpacity={0.7}
         >
-          <MaterialCommunityIcons
+          <Icon
             name="view-dashboard-outline"
             size={18}
             color={activeTab === 'dashboard' ? colors.primary : colors.textTertiary}
@@ -665,7 +665,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           onPress={() => setActiveTab('settings')}
           activeOpacity={0.7}
         >
-          <MaterialCommunityIcons
+          <Icon
             name="cog-outline"
             size={18}
             color={activeTab === 'settings' ? colors.primary : colors.textTertiary}
@@ -764,7 +764,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.cardBody}>
             {dashboardTickets.length === 0 ? (
               <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                <MaterialCommunityIcons name="check-circle-outline" size={32} color={colors.success} />
+                <Icon name="check-circle-outline" size={32} color={colors.success} />
                 <Text style={[styles.mutedText, { marginTop: 8, textAlign: 'center' }]}>
                   No tickets found yet. We check your plates regularly.
                 </Text>
@@ -865,7 +865,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 onPress={() => showStatePicker('plate')}
               >
                 <Text style={styles.plateStateText}>{plateState}</Text>
-                <MaterialCommunityIcons name="chevron-down" size={14} color={colors.white} />
+                <Icon name="chevron-down" size={14} color={colors.white} />
               </TouchableOpacity>
               <TextInput
                 style={styles.plateInput}
@@ -983,7 +983,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               }
             }}
           >
-            <MaterialCommunityIcons
+            <Icon
               name={sameAsHomeAddress ? 'checkbox-marked' : 'checkbox-blank-outline'}
               size={22}
               color={sameAsHomeAddress ? colors.primary : colors.textTertiary}
@@ -1197,7 +1197,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 onPress={() => toggleTicketType(type.id)}
                 activeOpacity={0.7}
               >
-                <MaterialCommunityIcons
+                <Icon
                   name={isChecked ? 'checkbox-marked' : 'checkbox-blank-outline'}
                   size={20}
                   color={isChecked ? colors.primary : colors.textTertiary}
@@ -1286,7 +1286,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
 const BulletItem: React.FC<{ text: string }> = ({ text }) => (
   <View style={styles.bulletItem}>
-    <MaterialCommunityIcons name="check-circle-outline" size={16} color={colors.success} />
+    <Icon name="check-circle-outline" size={16} color={colors.success} />
     <Text style={styles.bulletText}>{text}</Text>
   </View>
 );
@@ -1298,7 +1298,7 @@ const StatCard: React.FC<{
   color: string;
 }> = ({ icon, label, value, color }) => (
   <View style={styles.statCard}>
-    <MaterialCommunityIcons name={icon} size={22} color={color} />
+    <Icon name={icon} size={22} color={color} />
     <Text style={styles.statValue}>{value}</Text>
     <Text style={styles.statLabel}>{label}</Text>
   </View>
@@ -1317,7 +1317,7 @@ const SettingsCard: React.FC<{
   <View style={[styles.card, greyed && { opacity: 0.6 }]}>
     <View style={styles.cardHeader}>
       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-        <MaterialCommunityIcons name={icon} size={18} color={colors.primary} style={{ marginRight: 8 }} />
+        <Icon name={icon} size={18} color={colors.primary} style={{ marginRight: 8 }} />
         <Text style={styles.cardTitle}>{title}</Text>
         {subtitle && <Text style={[styles.mutedText, { marginLeft: 8, fontSize: 11 }]}>{subtitle}</Text>}
       </View>
@@ -1376,7 +1376,7 @@ const CheckboxRow: React.FC<{
   onToggle: () => void;
 }> = ({ label, checked, onToggle }) => (
   <TouchableOpacity style={styles.checkboxItemRow} onPress={onToggle} activeOpacity={0.7}>
-    <MaterialCommunityIcons
+    <Icon
       name={checked ? 'checkbox-marked' : 'checkbox-blank-outline'}
       size={20}
       color={checked ? colors.primary : colors.textTertiary}

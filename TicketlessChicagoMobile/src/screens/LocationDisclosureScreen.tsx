@@ -8,9 +8,9 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing } from '../theme';
+import Icon from '../components/Icon';
 
 const DISCLOSURE_ACCEPTED_KEY = 'locationDisclosureAccepted';
 
@@ -40,7 +40,7 @@ export default function LocationDisclosureScreen({ onAccept, onDecline }: Locati
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.iconContainer}>
-          <MaterialCommunityIcons
+          <Icon
             name="map-marker-radius"
             size={64}
             color={colors.primary}
@@ -55,7 +55,7 @@ export default function LocationDisclosureScreen({ onAccept, onDecline }: Locati
 
         <View style={styles.reasonsContainer}>
           <View style={styles.reason}>
-            <MaterialCommunityIcons name="car" size={24} color={colors.primary} />
+            <Icon name="car" size={24} color={colors.primary} />
             <View style={styles.reasonText}>
               <Text style={styles.reasonTitle}>Automatic Parking Detection</Text>
               <Text style={styles.reasonBody}>
@@ -65,7 +65,7 @@ export default function LocationDisclosureScreen({ onAccept, onDecline }: Locati
           </View>
 
           <View style={styles.reason}>
-            <MaterialCommunityIcons name="camera" size={24} color={colors.primary} />
+            <Icon name="camera" size={24} color={colors.primary} />
             <View style={styles.reasonText}>
               <Text style={styles.reasonTitle}>Camera Alerts While Driving</Text>
               <Text style={styles.reasonBody}>
@@ -75,7 +75,7 @@ export default function LocationDisclosureScreen({ onAccept, onDecline }: Locati
           </View>
 
           <View style={styles.reason}>
-            <MaterialCommunityIcons name="bell-ring-outline" size={24} color={colors.primary} />
+            <Icon name="bell-ring-outline" size={24} color={colors.primary} />
             <View style={styles.reasonText}>
               <Text style={styles.reasonTitle}>Move-Your-Car Alerts</Text>
               <Text style={styles.reasonBody}>

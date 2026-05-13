@@ -16,7 +16,6 @@ import {
 import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { Button } from '../components';
 import BluetoothService, { SavedCarDevice } from '../services/BluetoothService';
@@ -32,6 +31,7 @@ import BackgroundLocationService from '../services/BackgroundLocationService';
 import { submitDebugReport } from '../services/DebugReportService';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { MainTabParamList } from '../../App';
+import Icon from '../components/Icon';
 
 const log = Logger.createLogger('SettingsScreen');
 
@@ -123,7 +123,7 @@ const SettingRow: React.FC<SettingRowProps> = ({
   icon, iconColor = colors.textSecondary, title, subtitle, value, disabled = false, onValueChange,
 }) => (
   <View style={styles.settingRow} accessibilityLabel={`${title}${subtitle ? `, ${subtitle}` : ''}, ${value ? 'on' : 'off'}`}>
-    <MaterialCommunityIcons name={icon} size={20} color={iconColor} style={styles.rowIcon} />
+    <Icon name={icon} size={20} color={iconColor} style={styles.rowIcon} />
     <View style={styles.settingInfo}>
       <Text style={styles.settingTitle}>{title}</Text>
       {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
@@ -161,7 +161,7 @@ const LinkRow: React.FC<LinkRowProps> = ({
     accessibilityLabel={`${title}${rightText ? `, ${rightText}` : ''}`}
     accessibilityRole="button"
   >
-    <MaterialCommunityIcons
+    <Icon
       name={icon}
       size={20}
       color={danger ? colors.error : iconColor}
@@ -169,7 +169,7 @@ const LinkRow: React.FC<LinkRowProps> = ({
     />
     <Text style={[styles.linkTitle, danger && styles.dangerText]}>{title}</Text>
     {rightText && <Text style={styles.rightText}>{rightText}</Text>}
-    <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
+    <Icon name="chevron-right" size={20} color={colors.textTertiary} />
   </TouchableOpacity>
 );
 
@@ -1077,7 +1077,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           accessibilityLiveRegion="polite"
           accessibilityLabel={feedbackMessage}
         >
-          <MaterialCommunityIcons name="check-circle-outline" size={16} color={colors.success} />
+          <Icon name="check-circle-outline" size={16} color={colors.success} />
           <Text style={styles.feedbackText}>{feedbackMessage}</Text>
         </RNAnimated.View>
       )}
@@ -1089,7 +1089,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {user && (
           <Section title="Account">
             <View style={styles.accountRow}>
-              <MaterialCommunityIcons name="account-circle-outline" size={40} color={colors.primary} />
+              <Icon name="account-circle-outline" size={40} color={colors.primary} />
               <View style={styles.accountInfo}>
                 <Text style={styles.accountName}>{user.name || 'User'}</Text>
                 <Text style={styles.accountEmail}>{user.email}</Text>
@@ -1124,7 +1124,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Divider />
             {!cameraSettingsLoaded ? (
               <View style={styles.settingRow}>
-                <MaterialCommunityIcons name="camera" size={20} color={colors.info} style={styles.rowIcon} />
+                <Icon name="camera" size={20} color={colors.info} style={styles.rowIcon} />
                 <View style={styles.settingInfo}>
                   <Text style={styles.settingTitle}>Camera Alerts</Text>
                   <Text style={styles.settingSubtitle}>Loading camera alert settings...</Text>
@@ -1176,14 +1176,14 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     />
                     <Divider />
                     <View style={styles.volumeRow}>
-                      <MaterialCommunityIcons name="volume-low" size={20} color={colors.info} style={styles.rowIcon} />
+                      <Icon name="volume-low" size={20} color={colors.info} style={styles.rowIcon} />
                       <View style={styles.settingInfo}>
                         <Text style={styles.settingTitle}>Alert Volume</Text>
                         <Text style={styles.settingSubtitle}>
                           {cameraAlertVolume === 0 ? 'Muted' : `${Math.round(cameraAlertVolume * 100)}%`}
                         </Text>
                       </View>
-                      <MaterialCommunityIcons name="volume-high" size={18} color={colors.textTertiary} />
+                      <Icon name="volume-high" size={18} color={colors.textTertiary} />
                     </View>
                     <View style={styles.sliderContainer}>
                       <Slider
@@ -1363,7 +1363,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     <ActivityIndicator size="small" color={colors.white} />
                   ) : (
                     <>
-                      <MaterialCommunityIcons name="bell-ring-outline" size={16} color={colors.white} />
+                      <Icon name="bell-ring-outline" size={16} color={colors.white} />
                       <Text style={styles.notificationHealthActionText}>
                         {notificationAttentionAction.label}
                       </Text>
@@ -1380,7 +1380,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </View>
           ) : notificationHistory.length === 0 ? (
             <View style={styles.notificationHistoryEmpty}>
-              <MaterialCommunityIcons name="history" size={18} color={colors.textTertiary} />
+              <Icon name="history" size={18} color={colors.textTertiary} />
               <Text style={styles.notificationHistoryEmptyText}>No recent alert history yet.</Text>
             </View>
           ) : (
@@ -1459,7 +1459,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <Divider />
               {/* Phone number */}
               <View style={styles.permitZoneRow}>
-                <MaterialCommunityIcons name="phone" size={20} color={colors.textSecondary} style={styles.rowIcon} />
+                <Icon name="phone" size={20} color={colors.textSecondary} style={styles.rowIcon} />
                 <View style={styles.settingInfo}>
                   {phoneNumberEditing ? (
                     <View style={styles.permitZoneEditRow}>
@@ -1511,7 +1511,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   )}
                 </View>
                 {!phoneNumberEditing && (
-                  <MaterialCommunityIcons name="pencil" size={18} color={colors.textTertiary} />
+                  <Icon name="pencil" size={18} color={colors.textTertiary} />
                 )}
               </View>
             </>
@@ -1530,7 +1530,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   <View key={config.key}>
                     {index > 0 && <Divider />}
                     <View style={styles.callAlertTypeRow}>
-                      <MaterialCommunityIcons
+                      <Icon
                         name={config.icon as any}
                         size={18}
                         color={pref.enabled ? config.iconColor : colors.textTertiary}
@@ -1591,7 +1591,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <View onLayout={e => { sectionLayoutsRef.current['permit_zone'] = e.nativeEvent.layout.y; }} style={highlightedSection === 'permit_zone' ? { borderRadius: 12, borderWidth: 2, borderColor: colors.primary } : undefined}>
         <Section title="Your Permit Zone">
           <View style={styles.permitZoneRow}>
-            <MaterialCommunityIcons name="parking" size={20} color={colors.primary} style={styles.rowIcon} />
+            <Icon name="parking" size={20} color={colors.primary} style={styles.rowIcon} />
             <View style={styles.settingInfo}>
               {permitZoneEditing ? (
                 <View style={styles.permitZoneEditRow}>
@@ -1645,7 +1645,7 @@ const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               )}
             </View>
             {!permitZoneEditing && (
-              <MaterialCommunityIcons name="pencil" size={18} color={colors.textTertiary} />
+              <Icon name="pencil" size={18} color={colors.textTertiary} />
             )}
           </View>
         </Section>

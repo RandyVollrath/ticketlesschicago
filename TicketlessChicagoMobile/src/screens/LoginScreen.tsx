@@ -12,11 +12,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing, borderRadius, commonStyles, shadows } from '../theme';
 import AuthService from '../services/AuthService';
 import GoogleLogo from '../components/GoogleLogo';
 import Logger from '../utils/Logger';
+import Icon from '../components/Icon';
 
 const log = Logger.createLogger('LoginScreen');
 
@@ -312,7 +312,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
                   <ActivityIndicator color={colors.white} />
                 ) : (
                   <>
-                    <MaterialCommunityIcons name="apple" size={20} color={colors.white} />
+                    <Icon name="apple" size={20} color={colors.white} />
                     <Text style={styles.appleButtonText}>Continue with Apple</Text>
                   </>
                 )}
@@ -331,7 +331,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
                 style={styles.emailToggleButton}
                 onPress={() => setShowEmailLogin(true)}
               >
-                <MaterialCommunityIcons name="email-outline" size={20} color={colors.textSecondary} />
+                <Icon name="email-outline" size={20} color={colors.textSecondary} />
                 <Text style={styles.emailToggleText}>Sign in with email</Text>
               </TouchableOpacity>
             ) : (

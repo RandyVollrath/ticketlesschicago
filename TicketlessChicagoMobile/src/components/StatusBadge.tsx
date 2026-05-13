@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, borderRadius, spacing } from '../theme';
+import Icon from '../components/Icon';
 
 type BadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral';
 
@@ -58,7 +58,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
       ]}
     >
       {icon && (
-        <MaterialCommunityIcons
+        <Icon
           name={icon}
           size={12}
           color={variantStyles.textColor}

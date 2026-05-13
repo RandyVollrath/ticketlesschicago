@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, borderRadius, spacing } from '../theme';
 import { ParkingRule } from '../services/LocationService';
+import Icon from '../components/Icon';
 
 interface RuleCardProps {
   rule: ParkingRule;
@@ -84,7 +84,7 @@ const RuleCard: React.FC<RuleCardProps> = ({ rule }) => {
       ]}
     >
       <View style={styles.header}>
-        <MaterialCommunityIcons
+        <Icon
           name={getRuleIcon(rule.type)}
           size={18}
           color={severityStyle.textColor}
@@ -108,7 +108,7 @@ const RuleCard: React.FC<RuleCardProps> = ({ rule }) => {
       )}
       {rule.schedule && (
         <View style={styles.scheduleRow}>
-          <MaterialCommunityIcons
+          <Icon
             name="calendar-outline"
             size={12}
             color={colors.textTertiary}
@@ -119,7 +119,7 @@ const RuleCard: React.FC<RuleCardProps> = ({ rule }) => {
       )}
       {rule.nextDate && !rule.isActiveNow && (
         <View style={styles.scheduleRow}>
-          <MaterialCommunityIcons
+          <Icon
             name="clock-outline"
             size={12}
             color={colors.textTertiary}

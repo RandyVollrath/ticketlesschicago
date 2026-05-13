@@ -23,7 +23,6 @@ import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, RouteProp } from '@react-navigation/native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { ParkingHistoryService } from './HistoryScreen';
 import { Button, Card, RuleCard, StatusBadge } from '../components';
@@ -44,6 +43,7 @@ import NetworkStatus from '../utils/NetworkStatus';
 import { StorageKeys } from '../constants';
 import LocationDisclosureScreen, { hasAcceptedLocationDisclosure } from './LocationDisclosureScreen';
 import RenewalDatesPromptCard from '../components/RenewalDatesPromptCard';
+import Icon from '../components/Icon';
 
 // Native module for querying BT connection state directly from foreground service
 const BluetoothMonitorModule = Platform.OS === 'android' ? NativeModules.BluetoothMonitorModule : null;
@@ -1737,14 +1737,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       {isOffline && (
         <View style={styles.offlineBanner} accessibilityRole="alert" accessibilityLabel="No internet connection. Camera alerts still work offline.">
-          <MaterialCommunityIcons name="wifi-off" size={14} color={colors.textPrimary} />
+          <Icon name="wifi-off" size={14} color={colors.textPrimary} />
           <Text style={styles.offlineBannerText}> No internet — camera alerts still work offline</Text>
         </View>
       )}
       {showBatteryWarning && Platform.OS === 'android' && (
         <View style={styles.batteryBanner}>
           <View style={styles.batteryBannerContent}>
-            <MaterialCommunityIcons name="battery-alert-variant-outline" size={18} color={colors.warning} />
+            <Icon name="battery-alert-variant-outline" size={18} color={colors.warning} />
             <View style={styles.batteryBannerTextWrap}>
               <Text style={styles.batteryBannerTitle}>Background detection may be restricted</Text>
               <Text style={styles.batteryBannerBody}>
@@ -1757,7 +1757,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               accessibilityLabel="Dismiss battery warning"
               accessibilityRole="button"
             >
-              <MaterialCommunityIcons name="close" size={16} color={colors.textTertiary} />
+              <Icon name="close" size={16} color={colors.textTertiary} />
             </TouchableOpacity>
           </View>
           <View style={styles.batteryBannerActions}>
@@ -1808,7 +1808,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       {locationDenied && (
         <View style={styles.permissionBanner} accessibilityRole="alert">
           <View style={styles.permissionBannerContent}>
-            <MaterialCommunityIcons name="map-marker-off" size={18} color={colors.error} />
+            <Icon name="map-marker-off" size={18} color={colors.error} />
             <View style={styles.permissionBannerTextWrap}>
               <Text style={styles.permissionBannerTitle}>Location access required</Text>
               <Text style={styles.permissionBannerBody}>
@@ -1832,7 +1832,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       {motionDenied && Platform.OS === 'ios' && !locationDenied && (
         <View style={styles.permissionBanner} accessibilityRole="alert">
           <View style={styles.permissionBannerContent}>
-            <MaterialCommunityIcons name="run" size={18} color={colors.warning} />
+            <Icon name="run" size={18} color={colors.warning} />
             <View style={styles.permissionBannerTextWrap}>
               <Text style={styles.permissionBannerTitle}>Motion & Fitness disabled</Text>
               <Text style={styles.permissionBannerBody}>
@@ -1854,7 +1854,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       {notificationsDenied && Platform.OS === 'ios' && !locationDenied && (
         <View style={styles.permissionBanner} accessibilityRole="alert">
           <View style={styles.permissionBannerContent}>
-            <MaterialCommunityIcons name="bell-off" size={18} color={colors.warning} />
+            <Icon name="bell-off" size={18} color={colors.warning} />
             <View style={styles.permissionBannerTextWrap}>
               <Text style={styles.permissionBannerTitle}>Notifications disabled</Text>
               <Text style={styles.permissionBannerBody}>
@@ -1875,7 +1875,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       {backgroundRefreshBlocked && Platform.OS === 'ios' && !locationDenied && (
         <View style={styles.permissionBanner} accessibilityRole="alert">
           <View style={styles.permissionBannerContent}>
-            <MaterialCommunityIcons name="refresh-off" size={18} color={colors.warning} />
+            <Icon name="refresh-off" size={18} color={colors.warning} />
             <View style={styles.permissionBannerTextWrap}>
               <Text style={styles.permissionBannerTitle}>Background App Refresh off</Text>
               <Text style={styles.permissionBannerBody}>
@@ -1896,7 +1896,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       {lowPowerWarning && Platform.OS === 'ios' && !locationDenied && (
         <View style={styles.permissionBanner} accessibilityRole="alert">
           <View style={styles.permissionBannerContent}>
-            <MaterialCommunityIcons name="battery-alert" size={18} color={colors.warning} />
+            <Icon name="battery-alert" size={18} color={colors.warning} />
             <View style={styles.permissionBannerTextWrap}>
               <Text style={styles.permissionBannerTitle}>Low Power Mode is on</Text>
               <Text style={styles.permissionBannerBody}>
@@ -1909,7 +1909,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       {healthRecoveryWarning && Platform.OS === 'ios' && !locationDenied && (
         <View style={styles.permissionBanner} accessibilityRole="alert">
           <View style={styles.permissionBannerContent}>
-            <MaterialCommunityIcons name="alert-circle-outline" size={18} color={colors.warning} />
+            <Icon name="alert-circle-outline" size={18} color={colors.warning} />
             <View style={styles.permissionBannerTextWrap}>
               <Text style={styles.permissionBannerTitle}>Background reliability warning</Text>
               <Text style={styles.permissionBannerBody}>
@@ -1922,7 +1922,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       {showGroundTruthBanner && lastParkingCheck && !isDriving && (
         <View style={styles.groundTruthBanner} accessibilityRole="alert">
           <View style={styles.groundTruthBannerHeader}>
-            <MaterialCommunityIcons name="map-marker-check-outline" size={18} color={colors.primary} />
+            <Icon name="map-marker-check-outline" size={18} color={colors.primary} />
             <Text style={styles.groundTruthBannerTitle}>Parking detected. Is this correct?</Text>
           </View>
           <Text style={styles.groundTruthBannerBody} numberOfLines={2}>
@@ -1986,7 +1986,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               style={styles.debugToggle}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <MaterialCommunityIcons
+              <Icon
                 name="bug-outline"
                 size={18}
                 color={showDebug ? colors.primary : colors.textTertiary}
@@ -2101,7 +2101,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 ? 'rgba(0,102,255,0.1)'
                 : 'rgba(255,255,255,0.2)' },
             ]}>
-              <MaterialCommunityIcons
+              <Icon
                 name={heroConfig.icon}
                 size={32}
                 color={heroConfig.iconColor}
@@ -2119,7 +2119,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               </Text>
             </View>
             {(heroState === 'clear' || heroState === 'upcoming' || heroState === 'violation') && (
-              <MaterialCommunityIcons
+              <Icon
                 name={showDetails ? 'chevron-up' : 'chevron-down'}
                 size={20}
                 color={heroConfig.textColor}
@@ -2132,7 +2132,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           {lastParkingCheck && (heroState === 'clear' || heroState === 'upcoming' || heroState === 'violation') && (
             <View style={styles.heroTimerRow}>
               <View style={styles.heroTimerBadge}>
-                <MaterialCommunityIcons name="timer-outline" size={12} color={heroConfig.textColor} />
+                <Icon name="timer-outline" size={12} color={heroConfig.textColor} />
                 <Text style={[styles.heroTimerText, { color: heroConfig.textColor }]}>
                   Parked {formatTimeSince(lastParkingCheck.timestamp)}
                 </Text>
@@ -2144,13 +2144,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               {(lastParkingCheck.rawApiData?.parkingAnchor?.lockedByUserAnchor ||
                 lastParkingCheck.rawApiData?.location?.userCorrected) && (
                 <View style={styles.anchorBadge}>
-                  <MaterialCommunityIcons name="map-marker-check" size={12} color={colors.white} />
+                  <Icon name="map-marker-check" size={12} color={colors.white} />
                   <Text style={styles.anchorBadgeText}>Anchored</Text>
                 </View>
               )}
               {isDriving && (
                 <View style={styles.drivingBadge}>
-                  <MaterialCommunityIcons name="car" size={12} color={colors.white} />
+                  <Icon name="car" size={12} color={colors.white} />
                   <Text style={styles.drivingBadgeText}>Driving</Text>
                 </View>
               )}
@@ -2160,7 +2160,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 {/* Driving overlay badge — show only when no parking result */}
           {isDriving && heroState !== 'clear' && heroState !== 'upcoming' && heroState !== 'violation' && (
             <View style={[styles.drivingBadge, { marginTop: spacing.sm }]}>
-              <MaterialCommunityIcons name="car" size={12} color={colors.white} />
+              <Icon name="car" size={12} color={colors.white} />
               <Text style={styles.drivingBadgeText}>Driving</Text>
             </View>
           )}
@@ -2187,7 +2187,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   const iconName = rule.severity === 'critical' ? 'alert' : 'clock-alert-outline';
                   return (
                     <View key={index} style={styles.heroRuleRow}>
-                      <MaterialCommunityIcons name={iconName as any} size={14} color="rgba(255,255,255,0.95)" />
+                      <Icon name={iconName as any} size={14} color="rgba(255,255,255,0.95)" />
                       <Text style={styles.heroRuleText}>{rule.message || rule.type}</Text>
                     </View>
                   );
@@ -2207,7 +2207,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 const sched = infoPermit.schedule ? ` · ${infoPermit.schedule}` : '';
                 return (
                   <View style={styles.heroInfoChipRow}>
-                    <MaterialCommunityIcons name="information-outline" size={12} color="rgba(255,255,255,0.7)" />
+                    <Icon name="information-outline" size={12} color="rgba(255,255,255,0.7)" />
                     <Text style={styles.heroInfoChipText}>
                       In permit zone {infoPermit.zoneName?.replace(/^Zone\s*/i, '') ?? ''}{sched} · not active now
                     </Text>
@@ -2217,7 +2217,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
               {!!permitZoneSummary && (
                 <View style={styles.heroPermitSummaryRow}>
-                  <MaterialCommunityIcons name="card-account-details-outline" size={14} color="rgba(255,255,255,0.9)" />
+                  <Icon name="card-account-details-outline" size={14} color="rgba(255,255,255,0.9)" />
                   <Text style={styles.heroPermitSummaryText}>{permitZoneSummary}</Text>
                 </View>
               )}
@@ -2228,7 +2228,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   accessibilityLabel="Update permit zone hours"
                   accessibilityRole="button"
                 >
-                  <MaterialCommunityIcons name="pencil-outline" size={12} color="rgba(255,255,255,0.7)" />
+                  <Icon name="pencil-outline" size={12} color="rgba(255,255,255,0.7)" />
                   <Text style={styles.heroZoneReportText}>Update hours</Text>
                 </TouchableOpacity>
               )}
@@ -2252,7 +2252,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 return (
                   <View style={styles.heroRiskSection}>
                     <View style={styles.heroRevenueRow}>
-                      <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#FFD700" />
+                      <Icon name="alert-circle-outline" size={14} color="#FFD700" />
                       <Text style={styles.heroRevenueText}>
                         {revenueStr
                           ? `${revenueStr} in tickets issued on this block${rankStr}`
@@ -2269,7 +2269,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   accessibilityLabel={showParkingMap ? 'Hide map' : 'Show map with restrictions'}
                   accessibilityRole="button"
                 >
-                  <MaterialCommunityIcons name={showParkingMap ? 'map-minus' : 'map-marker-radius'} size={14} color={colors.white} />
+                  <Icon name={showParkingMap ? 'map-minus' : 'map-marker-radius'} size={14} color={colors.white} />
                   <Text style={styles.heroActionText}>{showParkingMap ? 'Hide Map' : 'Open in Map'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -2278,7 +2278,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   accessibilityLabel="Share parking result"
                   accessibilityRole="button"
                 >
-                  <MaterialCommunityIcons name="share-variant" size={14} color={colors.white} />
+                  <Icon name="share-variant" size={14} color={colors.white} />
                   <Text style={styles.heroActionText}>Share</Text>
                 </TouchableOpacity>
                 <Text style={styles.heroTimestamp}>
@@ -2302,7 +2302,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   accessibilityLabel="Address may be wrong — tap to fix"
                   accessibilityRole="button"
                 >
-                  <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#FFD700" />
+                  <Icon name="alert-circle-outline" size={14} color="#FFD700" />
                   <Text style={styles.heroVerifyPromptText}>
                     Verify this block before you trust it
                   </Text>
@@ -2315,7 +2315,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   accessibilityLabel="Mark this as not parked"
                   accessibilityRole="button"
                 >
-                  <MaterialCommunityIcons name="close-circle-outline" size={14} color={colors.white} />
+                  <Icon name="close-circle-outline" size={14} color={colors.white} />
                   <Text style={styles.heroFeedbackText}>Not parked</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -2324,7 +2324,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   accessibilityLabel="Fix the parking street if it is wrong"
                   accessibilityRole="button"
                 >
-                  <MaterialCommunityIcons name="pencil-outline" size={14} color={colors.white} />
+                  <Icon name="pencil-outline" size={14} color={colors.white} />
                   <Text style={styles.heroFeedbackText}>
                     {lastParkingCheck.rawApiData?.needsVerification ? 'Verify block' : 'Wrong street?'}
                   </Text>
@@ -2335,7 +2335,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   accessibilityLabel="Confirm this parked location"
                   accessibilityRole="button"
                 >
-                  <MaterialCommunityIcons name="check-circle-outline" size={14} color={colors.white} />
+                  <Icon name="check-circle-outline" size={14} color={colors.white} />
                   <Text style={styles.heroFeedbackText}>I parked here</Text>
                 </TouchableOpacity>
               </View>
@@ -2347,7 +2347,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {heroState === 'clear' && showCrossPollinationPrompt && (
           <View style={styles.crossPollCard}>
             <View style={styles.crossPollContent}>
-              <MaterialCommunityIcons name="calendar-clock" size={24} color="#5856D6" />
+              <Icon name="calendar-clock" size={24} color="#5856D6" />
               <View style={styles.crossPollTextWrap}>
                 <Text style={styles.crossPollTitle}>Get advance alerts for your block</Text>
                 <Text style={styles.crossPollBody}>
@@ -2362,7 +2362,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 accessibilityLabel="Dismiss advance alerts suggestion"
               >
-                <MaterialCommunityIcons name="close" size={18} color={colors.textTertiary} />
+                <Icon name="close" size={18} color={colors.textTertiary} />
               </TouchableOpacity>
             </View>
             <TouchableOpacity
@@ -2375,7 +2375,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               accessibilityLabel="Set up advance alerts in the Address tab"
             >
               <Text style={styles.crossPollCtaText}>Set Up in Address</Text>
-              <MaterialCommunityIcons name="chevron-right" size={16} color="#5856D6" />
+              <Icon name="chevron-right" size={16} color="#5856D6" />
             </TouchableOpacity>
           </View>
         )}
@@ -2384,7 +2384,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {showParkingMap && lastParkingCheck && (
           <View style={styles.parkingMapCard}>
             <View style={styles.parkingMapHeader}>
-              <MaterialCommunityIcons name="map" size={18} color={colors.primary} />
+              <Icon name="map" size={18} color={colors.primary} />
               <Text style={styles.parkingMapHeaderText}>Restrictions Map</Text>
               <TouchableOpacity
                 onPress={() => {
@@ -2398,7 +2398,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 style={styles.parkingMapDirectionsBtn}
                 accessibilityLabel="Get directions in Maps app"
               >
-                <MaterialCommunityIcons name="directions" size={16} color={colors.primary} />
+                <Icon name="directions" size={16} color={colors.primary} />
                 <Text style={styles.parkingMapDirectionsText}>Directions</Text>
               </TouchableOpacity>
             </View>
@@ -2411,7 +2411,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             {pinCorrectionPending && (
               <View style={styles.pinCorrectionBanner}>
                 <View style={styles.pinCorrectionTextWrap}>
-                  <MaterialCommunityIcons name="map-marker-radius" size={18} color={colors.primary} />
+                  <Icon name="map-marker-radius" size={18} color={colors.primary} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.pinCorrectionTitle}>Save this spot?</Text>
                     <Text style={styles.pinCorrectionAddress} numberOfLines={2}>
@@ -2445,7 +2445,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                       <ActivityIndicator size="small" color={colors.white} />
                     ) : (
                       <>
-                        <MaterialCommunityIcons name="check" size={16} color={colors.white} />
+                        <Icon name="check" size={16} color={colors.white} />
                         <Text style={styles.pinCorrectionConfirmText}>Move</Text>
                       </>
                     )}
@@ -2492,14 +2492,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {showQuickStart && (
           <View style={styles.quickStartCard}>
             <View style={styles.quickStartHeader}>
-              <MaterialCommunityIcons name="rocket-launch-outline" size={20} color={colors.primary} />
+              <Icon name="rocket-launch-outline" size={20} color={colors.primary} />
               <Text style={styles.quickStartTitle}>Quick Start</Text>
               <TouchableOpacity
                 onPress={dismissQuickStart}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 accessibilityLabel="Dismiss quick start tips"
               >
-                <MaterialCommunityIcons name="close" size={18} color={colors.textTertiary} />
+                <Icon name="close" size={18} color={colors.textTertiary} />
               </TouchableOpacity>
             </View>
             {Platform.OS === 'android' && !savedCarName && (
@@ -2509,14 +2509,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 accessibilityLabel="Pair your car's Bluetooth for auto-detection"
                 accessibilityRole="button"
               >
-                <MaterialCommunityIcons name="bluetooth" size={18} color={colors.primary} />
+                <Icon name="bluetooth" size={18} color={colors.primary} />
                 <Text style={styles.quickStartItemText}>Pair your car's Bluetooth for auto-detection</Text>
-                <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
+                <Icon name="chevron-right" size={16} color={colors.textTertiary} />
               </TouchableOpacity>
             )}
             {Platform.OS === 'ios' && (
               <View style={styles.quickStartItem}>
-                <MaterialCommunityIcons name="map-marker-check" size={16} color={colors.success} />
+                <Icon name="map-marker-check" size={16} color={colors.success} />
                 <Text style={styles.quickStartItemText}>Allow "Always" location for background parking detection</Text>
               </View>
             )}
@@ -2526,12 +2526,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               accessibilityLabel="Enable Camera Alerts in Settings for speed and red light warnings"
               accessibilityRole="button"
             >
-              <MaterialCommunityIcons name="camera" size={16} color={colors.info} />
+              <Icon name="camera" size={16} color={colors.info} />
               <Text style={styles.quickStartItemText}>Enable Camera Alerts in Settings for speed/red light warnings</Text>
-              <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
+              <Icon name="chevron-right" size={16} color={colors.textTertiary} />
             </TouchableOpacity>
             <View style={styles.quickStartItem}>
-              <MaterialCommunityIcons name="parking" size={16} color={colors.primary} />
+              <Icon name="parking" size={16} color={colors.primary} />
               <Text style={styles.quickStartItemText}>Set your home permit zone in Settings to avoid false alerts</Text>
             </View>
             <TouchableOpacity
@@ -2552,7 +2552,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             variant="primary"
             size="md"
             onPress={resumeMonitoring}
-            icon={<MaterialCommunityIcons name="play-circle-outline" size={20} color={colors.white} />}
+            icon={<Icon name="play-circle-outline" size={20} color={colors.white} />}
             style={styles.resumeButton}
           />
         )}
@@ -2564,19 +2564,19 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           loading={loading}
           size="lg"
           style={styles.mainButton}
-          icon={!loading ? <MaterialCommunityIcons name="crosshairs-gps" size={20} color={colors.white} /> : undefined}
+          icon={!loading ? <Icon name="crosshairs-gps" size={20} color={colors.white} /> : undefined}
         />
 
         {/* Check progress / address display */}
         {loading && checkingAddress && (
           <View style={styles.checkingProgress}>
-            <MaterialCommunityIcons name="map-marker" size={14} color={colors.primary} />
+            <Icon name="map-marker" size={14} color={colors.primary} />
             <Text style={styles.checkingProgressText} numberOfLines={1}>{checkingAddress}</Text>
           </View>
         )}
         {loading && isGettingLocation && !checkingAddress && (
           <View style={styles.checkingProgress}>
-            <MaterialCommunityIcons name="crosshairs-gps" size={14} color={colors.textTertiary} />
+            <Icon name="crosshairs-gps" size={14} color={colors.textTertiary} />
             <Text style={styles.checkingProgressText}>Acquiring GPS signal...</Text>
           </View>
         )}
@@ -2616,7 +2616,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             accessibilityRole={!savedCarName ? 'button' : 'text'}
             accessibilityHint={!savedCarName ? 'Opens Bluetooth pairing screen' : undefined}
           >
-            <MaterialCommunityIcons
+            <Icon
               name={
                 parkingState === 'DRIVING' ? 'bluetooth-connect' :
                 parkingState === 'PARKING_PENDING' ? 'car-brake-parking' :
@@ -2645,7 +2645,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 : 'Pair your car for auto-detection'}
             </Text>
             {!savedCarName && (
-              <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
+              <Icon name="chevron-right" size={20} color={colors.textTertiary} />
             )}
           </TouchableOpacity>
         )}
@@ -2661,7 +2661,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             }`}
             accessibilityRole="text"
           >
-            <MaterialCommunityIcons
+            <Icon
               name={currentActivity === 'automotive' ? 'car' : currentActivity === 'walking' ? 'walk' : 'shield-check-outline'}
               size={22}
               color={currentActivity === 'automotive' ? colors.primary : colors.textTertiary}
@@ -2683,13 +2683,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           activeOpacity={0.7}
         >
           <View style={styles.destinationIcon}>
-            <MaterialCommunityIcons name="map-search" size={22} color={colors.primary} />
+            <Icon name="map-search" size={22} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.destinationTitle}>Check Destination Parking</Text>
             <Text style={styles.destinationSubtitle}>See restrictions before you go</Text>
           </View>
-          <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textTertiary} />
+          <Icon name="chevron-right" size={22} color={colors.textTertiary} />
         </TouchableOpacity>
 
         {/* ──── Car Ticket Protection (collapsed indicator) ──── */}
@@ -2703,7 +2703,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           >
             <View style={styles.protectionHeaderLeft}>
               <View style={styles.protectionBadge}>
-                <MaterialCommunityIcons name="shield-check" size={18} color={colors.white} />
+                <Icon name="shield-check" size={18} color={colors.white} />
               </View>
               <View>
                 <Text style={styles.protectionHeaderTitle}>Car Ticket Protection</Text>
@@ -2712,7 +2712,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 </Text>
               </View>
             </View>
-            <MaterialCommunityIcons
+            <Icon
               name={protectionExpanded ? 'chevron-up' : 'chevron-down'}
               size={20}
               color={colors.textTertiary}
@@ -2733,13 +2733,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   activeOpacity={0.7}
                 >
                   <View style={styles.protectionRowDot} />
-                  <MaterialCommunityIcons
+                  <Icon
                     name={item.icon}
                     size={18}
                     color={colors.success}
                   />
                   <Text style={styles.protectionRowText}>{item.label}</Text>
-                  <MaterialCommunityIcons
+                  <Icon
                     name="chevron-right"
                     size={16}
                     color={colors.textTertiary}
@@ -2769,7 +2769,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               {activeSheet && (
                 <>
                   <View style={styles.sheetHeader}>
-                    <MaterialCommunityIcons
+                    <Icon
                       name={activeSheet.icon}
                       size={28}
                       color={colors.primary}
@@ -2791,7 +2791,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                       }}
                     >
                       <Text style={styles.sheetActionText}>{activeSheet.sheetAction.label}</Text>
-                      <MaterialCommunityIcons name="chevron-right" size={18} color={colors.primary} />
+                      <Icon name="chevron-right" size={18} color={colors.primary} />
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity
@@ -2825,7 +2825,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <View style={styles.zoneReportContainer} onStartShouldSetResponder={() => true}>
               <View style={styles.sheetHandle} />
               <View style={styles.sheetHeader}>
-                <MaterialCommunityIcons name="clipboard-edit-outline" size={28} color={colors.primary} />
+                <Icon name="clipboard-edit-outline" size={28} color={colors.primary} />
                 <Text style={styles.sheetTitle}>Update Permit Hours</Text>
               </View>
               <Text style={styles.zoneReportHint}>
@@ -2868,7 +2868,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
               {/* Photo */}
               <TouchableOpacity style={styles.zoneReportPhotoButton} onPress={pickReportPhoto}>
-                <MaterialCommunityIcons
+                <Icon
                   name={reportPhotoUri ? 'check-circle' : 'camera-plus-outline'}
                   size={20}
                   color={reportPhotoUri ? colors.success : colors.primary}
@@ -2888,7 +2888,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     style={styles.zoneReportPhotoRemove}
                     onPress={() => { setReportPhotoUri(null); setReportPhotoBase64(null); }}
                   >
-                    <MaterialCommunityIcons name="close-circle-outline" size={22} color={colors.error} />
+                    <Icon name="close-circle-outline" size={22} color={colors.error} />
                   </TouchableOpacity>
                 </View>
               )}
@@ -2903,7 +2903,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   <ActivityIndicator size="small" color={colors.white} />
                 ) : (
                   <>
-                    <MaterialCommunityIcons name="check-circle-outline" size={18} color={colors.white} />
+                    <Icon name="check-circle-outline" size={18} color={colors.white} />
                     <Text style={styles.zoneReportSubmitText}>Update Hours</Text>
                   </>
                 )}
@@ -2951,7 +2951,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <View style={styles.zoneReportContainer} onStartShouldSetResponder={() => true}>
                   <View style={styles.sheetHandle} />
                   <View style={styles.sheetHeader}>
-                    <MaterialCommunityIcons name="map-marker-question-outline" size={28} color={colors.primary} />
+                    <Icon name="map-marker-question-outline" size={28} color={colors.primary} />
                     <Text style={styles.sheetTitle}>Fix Parking Street</Text>
                   </View>
                   <Text style={styles.zoneReportHint}>
@@ -2979,7 +2979,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                           onPress={() => applyStreetCorrection(alt.address, 'alternate_tap')}
                           disabled={wrongStreetSubmitting}
                         >
-                          <MaterialCommunityIcons name="map-marker-check-outline" size={18} color={colors.primary} />
+                          <Icon name="map-marker-check-outline" size={18} color={colors.primary} />
                           <Text style={styles.altButtonText}>{alt.label}</Text>
                         </TouchableOpacity>
                       ))}
@@ -2993,7 +2993,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                       accessibilityLabel="None of these — type a different address"
                       accessibilityRole="button"
                     >
-                      <MaterialCommunityIcons name="pencil-outline" size={16} color={colors.primary} />
+                      <Icon name="pencil-outline" size={16} color={colors.primary} />
                       <Text style={styles.altTypedDisclosureText}>None of these — type a different address</Text>
                     </TouchableOpacity>
                   )}
@@ -3036,7 +3036,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                               accessibilityLabel={`Use address ${s.description}`}
                               accessibilityRole="button"
                             >
-                              <MaterialCommunityIcons name="map-marker-outline" size={16} color={colors.textSecondary} />
+                              <Icon name="map-marker-outline" size={16} color={colors.textSecondary} />
                               <View style={{ flex: 1 }}>
                                 <Text style={styles.suggestMain} numberOfLines={1}>{s.main_text}</Text>
                                 {s.secondary_text ? (
@@ -3057,7 +3057,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                           <ActivityIndicator size="small" color={colors.white} />
                         ) : (
                           <>
-                            <MaterialCommunityIcons name="check-circle-outline" size={18} color={colors.white} />
+                            <Icon name="check-circle-outline" size={18} color={colors.white} />
                             <Text style={styles.zoneReportSubmitText}>Save correction</Text>
                           </>
                         )}
@@ -3077,7 +3077,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     accessibilityLabel="Drop pin on map"
                     accessibilityRole="button"
                   >
-                    <MaterialCommunityIcons name="map-marker-radius" size={16} color={colors.primary} />
+                    <Icon name="map-marker-radius" size={16} color={colors.primary} />
                     <Text style={styles.altTypedDisclosureText}>Or drop a pin on the map</Text>
                   </TouchableOpacity>
 

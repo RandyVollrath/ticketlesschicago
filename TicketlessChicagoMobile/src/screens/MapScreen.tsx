@@ -14,7 +14,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute, useNavigation, RouteProp, NavigationProp } from '@react-navigation/native';
@@ -24,6 +23,7 @@ import LocationService, { Coordinates, ParkingCheckResult } from '../services/Lo
 import NetworkStatus from '../utils/NetworkStatus';
 import Logger from '../utils/Logger';
 import { StorageKeys } from '../constants';
+import Icon from '../components/Icon';
 
 const log = Logger.createLogger('MapScreen');
 
@@ -453,7 +453,7 @@ const MapScreenContent: React.FC = () => {
                 <View style={styles.mapCardHeader}>
                   <Text style={styles.mapCardTitle}>Street Cleaning Map</Text>
                   <View style={styles.mapExpandHint}>
-                    <MaterialCommunityIcons name="arrow-expand" size={14} color={colors.textTertiary} />
+                    <Icon name="arrow-expand" size={14} color={colors.textTertiary} />
                     <Text style={styles.mapExpandText}>Tap to expand</Text>
                   </View>
                 </View>
@@ -503,7 +503,7 @@ const MapScreenContent: React.FC = () => {
                 accessibilityRole="button"
               >
                 <Text style={{ fontSize: 16, fontFamily: typography.fontFamily.bodySemibold, color: colors.textPrimary }}>Protection Status</Text>
-                <MaterialCommunityIcons
+                <Icon
                   name={showProtectionStatus ? 'chevron-up' : 'chevron-down'}
                   size={22}
                   color={colors.textTertiary}
@@ -648,7 +648,7 @@ const MapScreenContent: React.FC = () => {
               accessibilityRole="button"
               hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
             >
-              <MaterialCommunityIcons name="close" size={22} color={colors.white} />
+              <Icon name="close" size={22} color={colors.white} />
               <Text style={styles.fullscreenCloseLabel}>Close</Text>
             </TouchableOpacity>
           </SafeAreaView>
