@@ -8,7 +8,7 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from './Icon';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import {
   chicagoDateISO,

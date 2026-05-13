@@ -1,6 +1,6 @@
 import React from 'react';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { StyleProp, ViewStyle, TextStyle } from 'react-native';
+import * as Lucide from 'lucide-react-native';
 import { colors } from '../theme';
 
 export type IconSet = 'material' | 'ionicons';
@@ -9,40 +9,196 @@ interface IconProps {
   name: string;
   size?: number;
   color?: string;
+  // Retained for backward compatibility; ignored. All icons render as Lucide
+  // outline glyphs to match autopilotamerica.com (Heroicons outline style).
   set?: IconSet;
+  strokeWidth?: number;
+  // Lucide forwards SvgProps style; many callers passed style to MCI to nudge
+  // alignment (marginRight, marginTop, etc.). Accept either Text or View style.
+  style?: StyleProp<ViewStyle | TextStyle>;
 }
 
+// Map kebab-case names (MCI style — what the rest of the app passes in) to
+// Lucide PascalCase component names. Lucide is outline-only, matching web's
+// Heroicons outline style, so `-outline` variants collapse to the same icon.
+const NAME_MAP: Record<string, string> = {
+  // Tab bar / shields
+  'shield-check': 'ShieldCheck',
+  'shield-check-outline': 'ShieldCheck',
+  'shield': 'ShieldCheck',
+
+  // Car & parking
+  'car': 'Car',
+  'car-outline': 'Car',
+  'car-off': 'CarFront',
+  'car-connected': 'Car',
+  'parking': 'SquareParking',
+
+  // Maps / pins / navigation
+  'map': 'Map',
+  'map-outline': 'Map',
+  'map-search': 'SearchCheck',
+  'map-search-outline': 'SearchCheck',
+  'map-marker': 'MapPin',
+  'map-marker-outline': 'MapPin',
+  'map-marker-check': 'MapPinCheck',
+  'map-marker-check-outline': 'MapPinCheck',
+  'map-marker-off': 'MapPinOff',
+  'map-marker-alert': 'MapPin',
+  'map-marker-question-outline': 'MapPin',
+  'map-marker-radius': 'MapPin',
+  'home-map-marker': 'MapPinHouse',
+  'directions': 'Signpost',
+  'navigation-variant': 'Navigation',
+  'crosshairs-gps': 'Crosshair',
+  'gps': 'Crosshair',
+
+  // Home / settings
+  'home': 'House',
+  'home-outline': 'House',
+  'history': 'History',
+  'cog': 'Settings',
+  'cog-outline': 'Settings',
+  'settings': 'Settings',
+
+  // Status / alerts
+  'check': 'Check',
+  'check-circle': 'CircleCheck',
+  'check-circle-outline': 'CircleCheck',
+  'alert': 'TriangleAlert',
+  'alert-circle': 'CircleAlert',
+  'alert-circle-outline': 'CircleAlert',
+  'close': 'X',
+  'close-circle': 'CircleX',
+  'close-circle-outline': 'CircleX',
+  'plus': 'Plus',
+  'information-outline': 'Info',
+  'information': 'Info',
+
+  // Time / clock
+  'clock': 'Clock',
+  'clock-outline': 'Clock',
+  'calendar-clock': 'CalendarClock',
+  'timer-outline': 'Timer',
+  'timer-sand': 'Hourglass',
+
+  // Weather / rules
+  'snowflake': 'Snowflake',
+  'broom': 'PaintBucket',
+
+  // Bell / notifications
+  'bell': 'Bell',
+  'bell-outline': 'Bell',
+  'bell-ring': 'BellRing',
+  'bell-ring-outline': 'BellRing',
+  'bell-alert': 'BellRing',
+  'bell-off': 'BellOff',
+
+  // Profile / account
+  'account-circle': 'CircleUser',
+  'account-circle-outline': 'CircleUser',
+  'account': 'CircleUser',
+  'card-account-details-outline': 'IdCard',
+  'lock': 'Lock',
+  'logout': 'LogOut',
+  'fingerprint': 'Fingerprint',
+
+  // Actions
+  'pencil': 'Pencil',
+  'pencil-outline': 'Pencil',
+  'trash-can-outline': 'Trash2',
+  'trash': 'Trash2',
+  'delete-outline': 'Trash2',
+  'refresh': 'RefreshCw',
+  'refresh-off': 'RefreshCwOff',
+  'share-variant': 'Share2',
+  'arrow-expand': 'Maximize2',
+  'clipboard-edit-outline': 'ClipboardPen',
+  'play-circle-outline': 'CirclePlay',
+  'play-circle': 'CirclePlay',
+  'pause-circle': 'CirclePause',
+  'rocket-launch-outline': 'Rocket',
+
+  // Hardware / signal
+  'bluetooth': 'Bluetooth',
+  'bluetooth-connect': 'Bluetooth',
+  'wifi-off': 'WifiOff',
+  'phone': 'Phone',
+  'camera': 'Camera',
+  'volume-high': 'Volume2',
+  'volume-low': 'Volume1',
+  'signal-cellular-3': 'Signal',
+  'battery-alert': 'BatteryWarning',
+  'battery-alert-variant-outline': 'BatteryWarning',
+
+  // Misc
+  'email-outline': 'Mail',
+  'web': 'Globe',
+  'file-document-outline': 'FileText',
+  'ticket-percent-outline': 'TicketPercent',
+  'piggy-bank-outline': 'PiggyBank',
+  'lightbulb-outline': 'Lightbulb',
+  'road': 'Milestone',
+  'speedometer': 'Gauge',
+  'run': 'Footprints',
+  'apple': 'Apple',
+  'traffic-light': 'TrafficCone',
+  'location-enter': 'LogIn',
+  'location-exit': 'LogOut',
+
+  // Geometric / fallbacks
+  'chevron-down': 'ChevronDown',
+  'chevron-right': 'ChevronRight',
+  'chevron-up': 'ChevronUp',
+  'circle': 'Circle',
+  'circle-outline': 'Circle',
+};
+
 /**
- * Unified icon component wrapping react-native-vector-icons.
- * Defaults to MaterialCommunityIcons which has the broadest set.
+ * Unified icon component. Renders Lucide icons styled to match web's
+ * @heroicons/react outline glyphs (stroke-width 2 by default).
  *
- * Usage:
+ * Accepts MCI-style kebab-case names for backward compatibility with the
+ * rest of the app; internally maps to Lucide PascalCase components.
+ *
  *   <Icon name="car" size={24} color={colors.primary} />
- *   <Icon name="chevron-forward" set="ionicons" />
  */
 const Icon: React.FC<IconProps> = ({
   name,
   size = 24,
   color = colors.textPrimary,
-  set = 'material',
+  strokeWidth = 2,
+  style,
 }) => {
-  if (set === 'ionicons') {
-    return <Ionicons name={name} size={size} color={color} />;
+  const compName = NAME_MAP[name];
+  const Comp = compName ? (Lucide as any)[compName] : null;
+  if (!Comp) {
+    return (
+      <Lucide.Circle
+        size={size}
+        color={color}
+        strokeWidth={strokeWidth}
+        style={style as any}
+      />
+    );
   }
-  return <MaterialCommunityIcons name={name} size={size} color={color} />;
+  return (
+    <Comp
+      size={size}
+      color={color}
+      strokeWidth={strokeWidth}
+      style={style}
+    />
+  );
 };
 
-// Pre-defined icon mappings for the app
 export const AppIcons = {
-  // Tab bar
   home: 'home',
-  homeOutline: 'home-outline',
+  homeOutline: 'home',
   history: 'history',
   historyOutline: 'clock-outline',
   settings: 'cog',
-  settingsOutline: 'cog-outline',
-
-  // Parking & driving
+  settingsOutline: 'cog',
   car: 'car',
   carConnected: 'car-connected',
   parking: 'parking',
@@ -51,8 +207,6 @@ export const AppIcons = {
   mapMarkerAlert: 'map-marker-alert',
   navigation: 'navigation-variant',
   directions: 'directions',
-
-  // Status
   checkCircle: 'check-circle',
   checkCircleOutline: 'check-circle-outline',
   alertCircle: 'alert-circle',
@@ -60,15 +214,11 @@ export const AppIcons = {
   alert: 'alert',
   shield: 'shield-check',
   shieldOutline: 'shield-check-outline',
-
-  // Weather / rules
   snowflake: 'snowflake',
   broom: 'broom',
   clock: 'clock-outline',
   calendarClock: 'calendar-clock',
   timerSand: 'timer-sand',
-
-  // Actions
   bluetooth: 'bluetooth',
   bluetoothConnect: 'bluetooth-connect',
   refresh: 'refresh',
@@ -78,8 +228,6 @@ export const AppIcons = {
   close: 'close',
   plus: 'plus',
   delete: 'delete-outline',
-
-  // Profile / settings
   account: 'account-circle',
   accountOutline: 'account-circle-outline',
   bell: 'bell',
@@ -93,8 +241,6 @@ export const AppIcons = {
   email: 'email-outline',
   fileDocument: 'file-document-outline',
   information: 'information-outline',
-
-  // Misc
   lightbulb: 'lightbulb-outline',
   road: 'road',
   gps: 'crosshairs-gps',

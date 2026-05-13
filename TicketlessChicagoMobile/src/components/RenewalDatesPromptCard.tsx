@@ -9,10 +9,10 @@ import {
   Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import AuthService from '../services/AuthService';
 import Logger from '../utils/Logger';
+import Icon from '../components/Icon';
 
 const log = Logger.createLogger('RenewalDatesPromptCard');
 
@@ -136,7 +136,7 @@ const RenewalDatesPromptCard: React.FC = () => {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <MaterialCommunityIcons name="calendar-clock" size={24} color={colors.primary} />
+        <Icon name="calendar-clock" size={24} color={colors.primary} />
         <Text style={styles.title}>Add your renewal dates</Text>
       </View>
       <Text style={styles.subtitle}>

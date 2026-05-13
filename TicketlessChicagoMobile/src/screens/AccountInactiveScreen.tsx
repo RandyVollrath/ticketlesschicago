@@ -12,11 +12,11 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing } from '../theme';
 import AuthService from '../services/AuthService';
 import IAPService, { type BillingPlan } from '../services/IAPService';
 import Logger from '../utils/Logger';
+import Icon from '../components/Icon';
 
 const log = Logger.createLogger('AccountInactiveScreen');
 
@@ -176,7 +176,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
         <View style={styles.content}>
           {/* Hero */}
           <View style={styles.iconContainer}>
-            <MaterialCommunityIcons
+            <Icon
               name="shield-car"
               size={64}
               color={colors.primary}
@@ -194,7 +194,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
             {VALUE_PROPS.map((prop) => (
               <View key={prop.title} style={styles.valuePropRow}>
                 <View style={styles.valuePropIcon}>
-                  <MaterialCommunityIcons name={prop.icon} size={22} color={colors.primary} />
+                  <Icon name={prop.icon} size={22} color={colors.primary} />
                 </View>
                 <View style={styles.valuePropText}>
                   <Text style={styles.valuePropTitle}>{prop.title}</Text>
@@ -207,7 +207,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
           {/* Email display */}
           {user?.email && (
             <View style={styles.emailBadge}>
-              <MaterialCommunityIcons name="email-outline" size={16} color={colors.textSecondary} />
+              <Icon name="email-outline" size={16} color={colors.textSecondary} />
               <Text style={styles.emailText}>{user.email}</Text>
             </View>
           )}
@@ -259,7 +259,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
                   <ActivityIndicator size="small" color={colors.textInverse} />
                 ) : (
                   <>
-                    <MaterialCommunityIcons name="shield-check" size={20} color={colors.textInverse} />
+                    <Icon name="shield-check" size={20} color={colors.textInverse} />
                     <Text style={styles.primaryButtonText}>
                       Subscribe — {billingPlan === 'annual'
                         ? (annualPrice || '$79') + '/year'
@@ -278,7 +278,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
                 onPress={handleRedeemOfferCode}
                 accessibilityRole="button"
               >
-                <MaterialCommunityIcons name="ticket-percent-outline" size={18} color={colors.primary} />
+                <Icon name="ticket-percent-outline" size={18} color={colors.primary} />
                 <Text style={styles.redeemButtonText}>Have a discount code? Redeem in App Store</Text>
               </TouchableOpacity>
 
@@ -337,7 +337,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
           {/* Android: Open website button */}
           {Platform.OS !== 'ios' && (
             <TouchableOpacity style={styles.primaryButton} onPress={handleOpenWebsite}>
-              <MaterialCommunityIcons name="shield-check" size={20} color={colors.textInverse} />
+              <Icon name="shield-check" size={20} color={colors.textInverse} />
               <Text style={styles.primaryButtonText}>Get Started — From $9/mo</Text>
             </TouchableOpacity>
           )}
@@ -359,7 +359,7 @@ export default function AccountInactiveScreen({ onSignOut, onRetryCheck }: Accou
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <>
-                <MaterialCommunityIcons name="refresh" size={20} color={colors.primary} />
+                <Icon name="refresh" size={20} color={colors.primary} />
                 <Text style={styles.secondaryButtonText}>I've already set up my account</Text>
               </>
             )}

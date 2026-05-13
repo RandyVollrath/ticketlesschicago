@@ -12,11 +12,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing } from '../theme';
 import { Button } from '../components';
 import { StorageKeys } from '../constants';
 import Logger from '../utils/Logger';
+import Icon from '../components/Icon';
 
 const log = Logger.createLogger('OnboardingScreen');
 
@@ -147,7 +147,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation, onCompl
       accessibilityLabel={`${item.title}. ${item.description}`}
     >
       <View style={styles.iconContainer}>
-        <MaterialCommunityIcons
+        <Icon
           name={item.icon}
           size={72}
           color={colors.white}

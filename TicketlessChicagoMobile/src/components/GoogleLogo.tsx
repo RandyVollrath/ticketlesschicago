@@ -1,6 +1,5 @@
 import React from 'react';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-
+import Icon from '../components/Icon';
 interface GoogleLogoProps {
   size?: number;
 }
@@ -11,7 +10,7 @@ interface GoogleLogoProps {
  */
 const GoogleLogo: React.FC<GoogleLogoProps> = ({ size = 20 }) => {
   return (
-    <MaterialCommunityIcons
+    <Icon
       name="google"
       size={size}
       color="#4285F4"

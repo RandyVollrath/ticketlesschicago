@@ -7,9 +7,9 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { borderRadius, colors, shadows, spacing, typography } from '../../theme';
 import type { NotificationData } from '../../services/PushNotificationService';
+import Icon from '../../components/Icon';
 
 type BannerSeverity = NonNullable<NotificationData['severity']>;
 
@@ -70,7 +70,7 @@ export default function ForegroundNotificationBanner({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={[styles.iconWrap, { backgroundColor: `${visuals.accent}18` }]}>
-              <MaterialCommunityIcons name={visuals.icon as any} size={18} color={visuals.accent} />
+              <Icon name={visuals.icon as any} size={18} color={visuals.accent} />
             </View>
             <Text style={[styles.badge, { color: visuals.accent }]}>{visuals.badge}</Text>
           </View>
@@ -80,14 +80,14 @@ export default function ForegroundNotificationBanner({
             accessibilityLabel="Dismiss alert banner"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <MaterialCommunityIcons name="close" size={18} color={colors.textTertiary} />
+            <Icon name="close" size={18} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
         <Text style={styles.body} numberOfLines={2}>{body}</Text>
         <View style={styles.footer}>
           <Text style={styles.footerText}>Open</Text>
-          <MaterialCommunityIcons name="chevron-right" size={16} color={colors.primary} />
+          <Icon name="chevron-right" size={16} color={colors.primary} />
         </View>
       </Pressable>
     </View>

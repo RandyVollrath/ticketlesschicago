@@ -15,7 +15,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import { StatusBadge, RuleCard } from '../components';
 import { ParkingRule, Coordinates } from '../services/LocationService';
@@ -29,6 +28,7 @@ import { isCoordinateAddress, formatCoordinateFallback, resolveAddress } from '.
 import { distanceMeters } from '../utils/geo';
 import Config from '../config/config';
 import { StorageKeys } from '../constants';
+import Icon from '../components/Icon';
 
 const log = Logger.createLogger('HistoryScreen');
 
@@ -688,19 +688,19 @@ interface StatsProps {
 const StatsHeader: React.FC<StatsProps> = ({ totalChecks, violationsFound, estimatedSaved }) => (
   <View style={styles.statsCard}>
     <View style={styles.statItem}>
-      <MaterialCommunityIcons name="map-marker-check" size={20} color={colors.primary} />
+      <Icon name="map-marker-check" size={20} color={colors.primary} />
       <Text style={styles.statValue}>{totalChecks}</Text>
       <Text style={styles.statLabel}>Checks</Text>
     </View>
     <View style={styles.statDivider} />
     <View style={styles.statItem}>
-      <MaterialCommunityIcons name="alert-circle-outline" size={20} color={colors.warning} />
+      <Icon name="alert-circle-outline" size={20} color={colors.warning} />
       <Text style={styles.statValue}>{violationsFound}</Text>
       <Text style={styles.statLabel}>Alerts</Text>
     </View>
     <View style={styles.statDivider} />
     <View style={styles.statItem}>
-      <MaterialCommunityIcons name="piggy-bank-outline" size={20} color={colors.success} />
+      <Icon name="piggy-bank-outline" size={20} color={colors.success} />
       <Text style={[styles.statValue, styles.statHighlight]}>
         ~${estimatedSaved}
       </Text>
@@ -803,7 +803,7 @@ const CameraEventCard: React.FC<CameraEventCardProps> = ({ event, isExpanded, on
       <View style={cameraCardStyles.content}>
         {/* Collapsed row */}
         <View style={cameraCardStyles.collapsedRow}>
-          <MaterialCommunityIcons
+          <Icon
             name={isSpeed ? 'speedometer' : 'traffic-light'}
             size={18}
             color={severity.color}
@@ -815,7 +815,7 @@ const CameraEventCard: React.FC<CameraEventCardProps> = ({ event, isExpanded, on
           </View>
           <View style={cameraCardStyles.rightCol}>
             <Text style={cameraCardStyles.relTime}>{formatRelativeTime(timestamp)}</Text>
-            <MaterialCommunityIcons
+            <Icon
               name={isExpanded ? 'chevron-up' : 'chevron-down'}
               size={16}
               color={colors.textTertiary}
@@ -1046,7 +1046,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
       <View style={styles.timelineSpine}>
         {!isFirst && <View style={[styles.timelineLine, styles.timelineLineTop]} />}
         <View style={[styles.timelineDot, { backgroundColor: dotColor }]}>
-          <MaterialCommunityIcons
+          <Icon
             name={hasViolations ? 'alert' : 'check'}
             size={10}
             color={colors.white}
@@ -1069,7 +1069,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
         </View>
 
         <View style={styles.timelineAddress}>
-          <MaterialCommunityIcons name="map-marker" size={14} color={colors.textTertiary} />
+          <Icon name="map-marker" size={14} color={colors.textTertiary} />
           <Text style={styles.timelineAddressText} numberOfLines={isExpanded ? 3 : 1}>
             {item.address && !isCoordinateAddress(item.address)
               ? item.address
@@ -1088,7 +1088,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
 
         {isExpanded && item.rules.length === 0 && (
           <View style={styles.timelineClear}>
-            <MaterialCommunityIcons name="check-circle-outline" size={16} color={colors.success} />
+            <Icon name="check-circle-outline" size={16} color={colors.success} />
             <Text style={styles.timelineClearText}>No parking restrictions found</Text>
           </View>
         )}
@@ -1097,7 +1097,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
         {isExpanded && item.departure && (
           <View style={styles.departureSection}>
             <View style={styles.departureRow}>
-              <MaterialCommunityIcons
+              <Icon
                 name={item.departure.isConclusive ? 'location-exit' : 'map-marker-radius'}
                 size={16}
                 color={item.departure.isConclusive ? colors.success : colors.warning}
@@ -1125,7 +1125,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
         {/* Expanded: no departure data */}
         {isExpanded && !item.departure && (
           <View style={styles.noDepartureRow}>
-            <MaterialCommunityIcons name="car-off" size={14} color={colors.textTertiary} />
+            <Icon name="car-off" size={14} color={colors.textTertiary} />
             <Text style={styles.noDepartureText}>Departure not recorded</Text>
           </View>
         )}
@@ -1144,7 +1144,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
                 if (url) Linking.openURL(url).catch((e) => log.debug('Failed to open maps URL', e));
               }}
             >
-              <MaterialCommunityIcons name="map-outline" size={14} color={colors.primary} />
+              <Icon name="map-outline" size={14} color={colors.primary} />
               <Text style={styles.historyActionText}>Open in Maps</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -1158,7 +1158,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
                 try { await Share.share({ message: msg }); } catch { /* cancelled */ }
               }}
             >
-              <MaterialCommunityIcons name="share-variant" size={14} color={colors.primary} />
+              <Icon name="share-variant" size={14} color={colors.primary} />
               <Text style={styles.historyActionText}>Share</Text>
             </TouchableOpacity>
           </View>
@@ -1166,7 +1166,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
 
         {/* Expand hint */}
         <View style={styles.expandRow}>
-          <MaterialCommunityIcons
+          <Icon
             name={isExpanded ? 'chevron-up' : 'chevron-down'}
             size={16}
             color={colors.textTertiary}
@@ -1447,7 +1447,7 @@ const HistoryScreen: React.FC = () => {
 
   const renderEmptyState = useCallback(() => (
     <View style={styles.emptyState}>
-      <MaterialCommunityIcons name="clock-outline" size={48} color={colors.textTertiary} />
+      <Icon name="clock-outline" size={48} color={colors.textTertiary} />
       <Text style={styles.emptyTitle}>No history yet</Text>
       <Text style={styles.emptyText}>
         Every time you park, we'll check for restrictions and save the results here. Go park somewhere!
@@ -1490,7 +1490,7 @@ const HistoryScreen: React.FC = () => {
             {isClearing ? (
               <ActivityIndicator size="small" color={colors.error} />
             ) : (
-              <MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.error} />
+              <Icon name="trash-can-outline" size={20} color={colors.error} />
             )}
           </TouchableOpacity>
         )}
@@ -1542,7 +1542,7 @@ const HistoryScreen: React.FC = () => {
               style={[styles.cameraSubTabBtn, cameraSubTab === 'speed' && styles.cameraSubTabBtnActive]}
               onPress={() => { setCameraSubTab('speed'); setExpandedCameraId(null); }}
             >
-              <MaterialCommunityIcons name="speedometer" size={14} color={cameraSubTab === 'speed' ? colors.white : colors.textSecondary} style={{ marginRight: 4 }} />
+              <Icon name="speedometer" size={14} color={cameraSubTab === 'speed' ? colors.white : colors.textSecondary} style={{ marginRight: 4 }} />
               <Text style={[styles.cameraSubTabText, cameraSubTab === 'speed' && styles.cameraSubTabTextActive]}>
                 Speed
               </Text>
@@ -1551,7 +1551,7 @@ const HistoryScreen: React.FC = () => {
               style={[styles.cameraSubTabBtn, cameraSubTab === 'redlight' && styles.cameraSubTabBtnActive]}
               onPress={() => { setCameraSubTab('redlight'); setExpandedCameraId(null); }}
             >
-              <MaterialCommunityIcons name="traffic-light" size={14} color={cameraSubTab === 'redlight' ? colors.white : colors.textSecondary} style={{ marginRight: 4 }} />
+              <Icon name="traffic-light" size={14} color={cameraSubTab === 'redlight' ? colors.white : colors.textSecondary} style={{ marginRight: 4 }} />
               <Text style={[styles.cameraSubTabText, cameraSubTab === 'redlight' && styles.cameraSubTabTextActive]}>
                 Red Light
               </Text>
@@ -1560,7 +1560,7 @@ const HistoryScreen: React.FC = () => {
 
           {cameraSubTab === 'speed' && speedCameraEvents.length === 0 ? (
             <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="speedometer" size={48} color={colors.textTertiary} />
+              <Icon name="speedometer" size={48} color={colors.textTertiary} />
               <Text style={styles.emptyTitle}>No speed camera events yet</Text>
               <Text style={styles.emptyText}>
                 Drive with camera alerts enabled and we&apos;ll record your speed when you pass speed camera locations.
@@ -1591,7 +1591,7 @@ const HistoryScreen: React.FC = () => {
             />
           ) : redLightCameraEvents.length === 0 ? (
             <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="traffic-light" size={48} color={colors.textTertiary} />
+              <Icon name="traffic-light" size={48} color={colors.textTertiary} />
               <Text style={styles.emptyTitle}>No red light camera events yet</Text>
               <Text style={styles.emptyText}>
                 Drive with camera alerts enabled and we&apos;ll record your stop data when you pass red light camera locations.

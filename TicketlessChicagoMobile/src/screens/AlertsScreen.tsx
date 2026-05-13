@@ -9,13 +9,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 import AuthService from '../services/AuthService';
 import Config from '../config/config';
 import { StorageKeys } from '../constants';
 import Logger from '../utils/Logger';
+import Icon from '../components/Icon';
 
 const log = Logger.createLogger('AlertsScreen');
 
@@ -235,7 +235,7 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.title}>Alerts</Text>
         </View>
         <View style={styles.unauthContainer}>
-          <MaterialCommunityIcons
+          <Icon
             name="bell-ring-outline"
             size={48}
             color={colors.textTertiary}
@@ -283,7 +283,7 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             accessibilityLabel="Refresh alerts settings"
             accessibilityRole="button"
           >
-            <MaterialCommunityIcons
+            <Icon
               name="refresh"
               size={20}
               color={colors.primary}
@@ -294,7 +294,7 @@ const AlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       {hasError ? (
         <View style={styles.errorContainer} accessibilityRole="alert">
-          <MaterialCommunityIcons
+          <Icon
             name="wifi-off"
             size={48}
             color={colors.textTertiary}

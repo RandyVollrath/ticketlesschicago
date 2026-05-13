@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, typography, spacing, shadows } from '../theme';
+import Icon from '../components/Icon';
 
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   Home: { active: 'shield-check', inactive: 'shield-check-outline' },
@@ -62,7 +62,7 @@ const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation })
             style={styles.tab}
           >
             <View style={[styles.iconContainer, isFocused && styles.iconContainerActive]}>
-              <MaterialCommunityIcons
+              <Icon
                 name={isFocused ? icons.active : icons.inactive}
                 size={20}
                 color={isFocused ? colors.primary : colors.textTertiary}
