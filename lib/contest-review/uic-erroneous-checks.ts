@@ -69,11 +69,119 @@ export interface TicketContext {
   longitude: number | null;
   /** Free-form ticket address string for logging */
   ticketAddress: string | null;
-  /** Violation code as we classify it internally (e.g. "9-64-010") */
+  /**
+   * Violation code. May be EITHER our internal hyphenated code (e.g.
+   * "9-64-010" from violation-classifier.ts) OR the real Chicago muni code
+   * from FOIA enrichment (e.g. "0964040B"). The checker normalizes both
+   * forms — caller doesn't need to know which.
+   */
   violationCode: string | null;
+  /**
+   * Violation description as displayed on the ticket / portal (e.g.
+   * "NO PARKING IN LOOP", "EXP. METER CENTRAL BUSINESS DISTRICT").
+   * The Loop and CBD checks require this because our internal classifier
+   * does NOT distinguish those subtypes from their parent categories.
+   */
+  violationDescription?: string | null;
   /** Optional pre-resolved ward/section for street cleaning (saves an RPC) */
   ward?: string | null;
   section?: string | null;
+}
+
+// ─── Violation-code matchers ─────────────────────────────────
+// Each UIC category can present in three forms:
+//   (a) Our internal hyphenated code (output of violation-classifier.ts)
+//   (b) The real Chicago muni code from FOIA (no hyphens, optional letter
+//       suffix and asterisk for Smart Streets variants, e.g. "0964190B")
+//   (c) A description string from the portal / FOIA
+// Matchers below accept all three. Verified against ~/Documents/FOIA/foia.db
+// on 2026-05-12 with `sqlite3 ... 'select violation_code, violation_desc...'`.
+
+function normalizeCode(c: string | null | undefined): string {
+  // Strip hyphens, spaces, asterisks, and any leading zeros so that
+  // our internal hyphenated form ("9-64-190") and the FOIA "0"-prefixed
+  // form ("0964190B" or "0964190B*") collapse to the same root
+  // ("964190" / "964190B"). The leading-zero strip is safe because every
+  // real Chicago muni code we care about starts with the digit 9.
+  return (c || '').replace(/[-\s*]/g, '').toUpperCase().replace(/^0+(?=9)/, '');
+}
+
+function descIncludes(desc: string | null | undefined, ...needles: string[]): boolean {
+  const d = (desc || '').toUpperCase();
+  return needles.some(n => d.includes(n.toUpperCase()));
+}
+
+/**
+ * Like descIncludes, but each needle must NOT be preceded by NON-
+ * Used for the CBD check, where the description "EXP. METER
+ * NON-CENTRAL BUSINESS DISTRICT" would otherwise trigger a substring
+ * match on "CENTRAL BUSINESS DISTRICT".
+ */
+function descIncludesPositive(desc: string | null | undefined, ...needles: string[]): boolean {
+  const d = (desc || '').toUpperCase();
+  return needles.some(n => {
+    const idx = d.indexOf(n.toUpperCase());
+    if (idx < 0) return false;
+    // Look back 4 chars for "NON-" or "NON "
+    const back = d.slice(Math.max(0, idx - 4), idx);
+    if (/NON[\s-]?$/.test(back)) return false;
+    return true;
+  });
+}
+
+function isStreetCleaningTicket(t: TicketContext): boolean {
+  const c = normalizeCode(t.violationCode);
+  // Our internal: 9-64-010. FOIA real: 0964040B, 09645020.
+  if (c === '964010' || c.startsWith('964040B') || c.startsWith('09645020')) return true;
+  return descIncludes(t.violationDescription, 'STREET CLEAN');
+}
+
+function isSpecialEventsTicket(t: TicketContext): boolean {
+  const c = normalizeCode(t.violationCode);
+  // Real FOIA: 0964041, 0964041B. No internal classification path for this.
+  if (c.startsWith('964041') || c === '0964041') return true;
+  return descIncludes(t.violationDescription, 'SPECIAL EVENT');
+}
+
+function isWinterBanTicket(t: TicketContext): boolean {
+  const c = normalizeCode(t.violationCode);
+  // Our internal: 9-64-081. FOIA real: 0964060.
+  if (c === '964081' || c === '964060') return true;
+  return descIncludes(t.violationDescription, 'WINTER OVERNIGHT', 'WINTER PARKING', '3-7', '3 - 7');
+}
+
+function isTwoInchSnowRouteTicket(t: TicketContext): boolean {
+  const c = normalizeCode(t.violationCode);
+  // Our internal: 9-64-100 ("Snow Route" — generic). FOIA real: 0964070.
+  // The internal code collides with the older muni reference but our
+  // classifier emits 9-64-100 for any portal description containing
+  // "SNOW ROUTE", so this is the right key.
+  if (c === '964100' || c === '964070') return true;
+  return descIncludes(t.violationDescription, 'SNOW ROUTE', '2 INCH', '2"', "2''");
+}
+
+function isNoParkingInLoopTicket(t: TicketContext): boolean {
+  const c = normalizeCode(t.violationCode);
+  // Real FOIA: 0964180A. There is NO internal classifier path for "No
+  // Parking in Loop" — our internal 9-64-180 means Disabled/Handicapped.
+  // The check must therefore require a code OR description match that
+  // unambiguously identifies the Loop subtype.
+  if (c.startsWith('964180A') || c === '0964180A') return true;
+  return descIncludes(t.violationDescription, 'NO PARKING IN LOOP', 'NO PRKG LOOP', 'PARKING/LOOP');
+}
+
+function isExpiredMeterCBDTicket(t: TicketContext): boolean {
+  const c = normalizeCode(t.violationCode);
+  // Real FOIA: 0964190B (CBD) — normalizes to 964190B.
+  //            0964190A (NON-CBD) — normalizes to 964190A — MUST NOT match.
+  // Our internal 9-64-190 = Rush Hour (collision!) — must not match.
+  // We require the FOIA "B" suffix OR a description identifying the CBD
+  // variant, and explicitly reject "NON-CENTRAL" descriptions.
+  if (c.startsWith('964190B')) return true;
+  // Description must mention CBD/CENTRAL BUSINESS DISTRICT *positively*
+  // (not preceded by "NON-"). "CBD" alone is unambiguous.
+  if (descIncludes(t.violationDescription, 'CBD')) return true;
+  return descIncludesPositive(t.violationDescription, 'CENTRAL BUSINESS DISTRICT');
 }
 
 export interface CheckDeps {
@@ -98,7 +206,7 @@ const STREET_CLEANING_WINDOW_END_HOUR = 14; // 2:00pm
 export function checkStreetCleaningTimeWindow(
   ticket: TicketContext,
 ): ErroneousFinding | null {
-  if (ticket.violationCode !== '9-64-010') return null;
+  if (!isStreetCleaningTicket(ticket)) return null;
   if (!ticket.issueDateTime) return null;
 
   const t = parseChicagoLocalDateTime(ticket.issueDateTime);
@@ -158,10 +266,33 @@ export async function checkSpecialEventsPermitCoverage(
   ticket: TicketContext,
   deps: CheckDeps,
 ): Promise<ErroneousFinding | null> {
-  if (ticket.violationCode !== '9-64-041') return null;
+  if (!isSpecialEventsTicket(ticket)) return null;
   if (ticket.latitude == null || ticket.longitude == null) return null;
 
   try {
+    // DATABASE FRESHNESS GUARD. The dot_permits table is synced daily from
+    // the City Data Portal and only stores currently-active permits. For
+    // (a) a stale or empty table, OR (b) a ticket date older than ~30 days
+    // (the permit may have been closed and dropped from the snapshot), a
+    // "no permits found" response is uninformative and would generate
+    // false-positive findings. We require BOTH: the table has permits AND
+    // the ticket date falls in the table's coverage window.
+    const ticketAge = ageInDaysFromIssueDate(ticket.issueDate);
+    if (ticketAge != null && ticketAge > 30) {
+      return null;
+    }
+    // Count permits citywide for the ticket date — if zero, the snapshot
+    // is empty or doesn't cover this date.
+    const { count, error: countErr } = await deps.supabase
+      .from('dot_permits')
+      .select('id', { count: 'exact', head: true })
+      .lte('start_date', `${ticket.issueDate}T23:59:59`)
+      .gte('end_date', `${ticket.issueDate}T00:00:00`)
+      .eq('application_status', 'Open');
+    if (countErr || !count || count === 0) {
+      return null;
+    }
+
     const { data, error } = await deps.supabase.rpc(
       'get_dot_permits_at_location',
       {
@@ -220,7 +351,7 @@ export async function checkWinterBan(
   ticket: TicketContext,
   deps: CheckDeps,
 ): Promise<ErroneousFinding | null> {
-  if (ticket.violationCode !== '9-64-081' && ticket.violationCode !== '9-64-060') return null;
+  if (!isWinterBanTicket(ticket)) return null;
 
   // Date range check — Dec 1 to Apr 1 (inclusive of Dec 1; April 1 is the
   // last enforced day per the City's own publications).
@@ -325,9 +456,49 @@ const TWO_INCH_GRACE_DAYS = 3;
 
 export async function checkTwoInchSnowRoute(
   ticket: TicketContext,
+  deps: CheckDeps,
 ): Promise<ErroneousFinding | null> {
-  if (ticket.violationCode !== '9-64-100') return null;
+  if (!isTwoInchSnowRouteTicket(ticket)) return null;
 
+  // (a) On-network check: was the cited address actually on a designated
+  //     snow route? Uses the same RPC the real-time alerter uses.
+  if (ticket.latitude != null && ticket.longitude != null) {
+    try {
+      const { data: routeData, error: routeErr } = await deps.supabase.rpc(
+        'get_snow_route_at_location_enhanced',
+        {
+          user_lat: ticket.latitude,
+          user_lng: ticket.longitude,
+          distance_meters: 201, // 660 ft grace, matches UIC's buffer
+        },
+      );
+      if (!routeErr && Array.isArray(routeData) && routeData.length === 0) {
+        return {
+          id: 'two_inch_snow_not_on_network',
+          title: 'Ticket location is not on a designated 2-inch snow route',
+          explanation:
+            'The 2-inch snow ban only applies on the city\'s designated arterial snow-route network (~500 miles, posted with signs). The cited address is not on that network, so the ban could not have been enforced here.',
+          defenseParagraph:
+            `Chicago Municipal Code § 9-64-070 prohibits parking with 2 or more inches of snow accumulation only on streets "designated by appropriate signs as a 'Snow Route.'" Cross-referencing the cited address (${ticket.ticketAddress || 'cited location'}) against the City of Chicago's designated Snow Route street network (with a one-city-block buffer for measurement tolerance) returns no match. Because this is not a designated 2-inch Snow Route, no § 9-64-070 prohibition was in effect at this location regardless of snowfall. I respectfully request dismissal under § 9-100-060(a)(7) and request that the City produce the current Snow Route street list confirming whether the cited block is on it.`,
+          estimatedUpliftPct: 0.40,
+          strength: 'strong',
+          ordinance: '§ 9-64-070',
+          evidence: {
+            latitude: ticket.latitude,
+            longitude: ticket.longitude,
+            ticketAddress: ticket.ticketAddress,
+            searchRadiusMeters: 201,
+            onNetwork: false,
+          },
+        };
+      }
+    } catch {
+      // RPC unavailable — fall through to weather check.
+    }
+  }
+
+  // (b) Snowfall check: did >=2" actually fall on the ticket date or the
+  //     3 days before (UIC's grace window for plowing delays)?
   try {
     const ticketDate = parseDateOnly(ticket.issueDate);
     if (!ticketDate) return null;
@@ -423,7 +594,7 @@ async function getLoopPolygon(): Promise<number[][] | null> {
 export async function checkNoParkingInLoop(
   ticket: TicketContext,
 ): Promise<ErroneousFinding | null> {
-  if (ticket.violationCode !== '9-64-180') return null;
+  if (!isNoParkingInLoopTicket(ticket)) return null;
   if (ticket.latitude == null || ticket.longitude == null) return null;
 
   const polygon = await getLoopPolygon();
@@ -474,7 +645,7 @@ const CBD_EAST_LNG = -87.6150;
 export function checkExpiredMeterCBD(
   ticket: TicketContext,
 ): ErroneousFinding | null {
-  if (ticket.violationCode !== '9-64-190') return null;
+  if (!isExpiredMeterCBDTicket(ticket)) return null;
   if (ticket.latitude == null || ticket.longitude == null) return null;
 
   const insideCBD =
@@ -598,7 +769,7 @@ export async function runAllUICChecks(
     Promise.resolve(checkStreetCleaningTimeWindow(ticket)),
     checkSpecialEventsPermitCoverage(ticket, deps),
     checkWinterBan(ticket, deps),
-    checkTwoInchSnowRoute(ticket),
+    checkTwoInchSnowRoute(ticket, deps),
     checkNoParkingInLoop(ticket),
     Promise.resolve(checkExpiredMeterCBD(ticket)),
     Promise.resolve(checkAddressTransposition(ticket)),
@@ -675,4 +846,10 @@ function normalizeStreetName(name: string): string {
     .replace(/\bPARKWAY\b/g, 'PKWY')
     .replace(/\bPLAZA\b/g, 'PLZ')
     .trim();
+}
+
+function ageInDaysFromIssueDate(issueDate: string): number | null {
+  const d = parseDateOnly(issueDate);
+  if (!d) return null;
+  return Math.floor((Date.now() - d.getTime()) / (24 * 60 * 60 * 1000));
 }
