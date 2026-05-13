@@ -786,9 +786,29 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
       ) : null}
 
       {(() => {
-        // Re-derive past-mail-window at render time using the type-specific
-        // deadline (21 for camera, 25 for parking). This corrects stored rows
-        // from the old worker that used a flat 21-day threshold for all tickets.
+        // Tight-window banner — fires in the last 7 days before the mail
+        // deadline but while we can still file via mail. Type-aware: camera
+        // tickets close at day 21, parking at day 25.
+        if (t.daysSinceIssue == null || t.recommendation === 'skip') return null;
+        const deadline = mailDeadlineDays(t.violationCode);
+        const daysLeft = deadline - t.daysSinceIssue;
+        if (daysLeft < 1 || daysLeft > 7) return null;
+        return (
+          <div style={{
+            marginTop: 10, padding: '10px 12px', borderRadius: 8,
+            background: '#FEF3C7', border: '1px solid #FDE68A',
+            fontSize: 13, color: '#78350F', lineHeight: 1.5,
+          }}>
+            <strong>⏰ {daysLeft} day{daysLeft === 1 ? '' : 's'} left on the mail-contest deadline.</strong>{' '}
+            We pick up new signups every Monday and Thursday — sign up now to make the next batch.
+          </div>
+        );
+      })()}
+
+      {(() => {
+        // Past-window banner — fires once daysSince > deadline. Re-derived at
+        // render time so stored rows from the old worker (flat 21-day threshold)
+        // render correctly for parking tickets at days 22-25 (still legal mail).
         if (t.daysSinceIssue == null || t.recommendation === 'skip') return null;
         const deadline = mailDeadlineDays(t.violationCode);
         if (t.daysSinceIssue <= deadline) return null;
