@@ -83,17 +83,21 @@ function saveDone(state: { blocks: Set<string>; corridors: Set<string> }) {
 }
 
 // ============================================================================
-// Mission planner: builds time-budgeted stops ranked by ROI
+// Mission planner: builds time-budgeted stops ranked by ROI, mixing cleaning
+// hot blocks AND general-parking ticket corridors. Nearest-neighbor ordered
+// for minimum drive time among picked stops.
 // ============================================================================
 interface Mission {
   id: string
-  name: string            // e.g. "Pilsen — 18th St corridor"
+  kind: 'cleaning' | 'ticket'
+  name: string
   lat: number; lng: number
   streets: { name: string; tickets: number }[]
-  totalTickets: number    // sum of ticket counts for all streets
-  walkMinutes: number     // estimated time on foot
-  roiPerHour: number      // tickets / hour of walking
-  reason: string          // why this stop is good
+  totalTickets: number
+  walkMinutes: number
+  roiPerHour: number
+  reason: string
+  walkInstructions?: string  // for ticket corridors: "Walk Hubbard from State to Franklin"
   driveMinFromPrev: number
 }
 
@@ -103,84 +107,123 @@ function distKm(a: {lat:number;lng:number}, b: {lat:number;lng:number}): number 
   return Math.sqrt(dlat*dlat + dlng*dlng) * 111
 }
 
+const AVG_FINE = 75 // rough avg for converting ticket-corridor $ → ticket-count equivalent
+
 function buildMissions(
   hotBlocks: HotBlock[],
   scheduleZones: Zone[],
   justTicketedZones: Zone[],
   towBlocks: HotBlock[],
+  ticketCorridors: TicketCorridor[],
+  doneBlocks: Set<string>,
+  doneCorridors: Set<string>,
   start: { lat: number; lng: number }
 ): Mission[] {
-  // Step 1: Build "corridors" from hot blocks — group nearby blocks into walkable stops
-  const corridors: Mission[] = []
-  const used = new Set<number>()
-  const CLUSTER_KM = 0.8 // ~0.5 miles
+  const missions: Mission[] = []
+  const CLUSTER_KM = 0.8
 
-  // Sort hot blocks by tickets desc
-  const sorted = hotBlocks.map((b, i) => ({ ...b, idx: i })).sort((a, b) => b.tickets - a.tickets)
+  // ---- Cleaning corridors: cluster nearby hot blocks ----
+  const liveHot = hotBlocks.filter(b => !doneBlocks.has(b.block))
+  const used = new Set<number>()
+  const sorted = liveHot.map((b, i) => ({ ...b, idx: i })).sort((a, b) => b.tickets - a.tickets)
 
   for (const block of sorted) {
     if (used.has(block.idx)) continue
     used.add(block.idx)
     const cluster = [block]
-
-    // Pull in nearby blocks
     for (const other of sorted) {
       if (used.has(other.idx)) continue
       if (distKm(block, other) < CLUSTER_KM) {
-        cluster.push(other)
-        used.add(other.idx)
+        cluster.push(other); used.add(other.idx)
       }
     }
-
     const streets = cluster.map(b => ({ name: b.block, tickets: b.tickets }))
     const totalTickets = streets.reduce((s, st) => s + st.tickets, 0)
-    const walkMin = cluster.length * 5 // ~5 min per block
+    const walkMin = cluster.length * 5
     const roiPerHour = walkMin > 0 ? Math.round(totalTickets / (walkMin / 60)) : 0
     const centerLat = cluster.reduce((s, b) => s + b.lat, 0) / cluster.length
     const centerLng = cluster.reduce((s, b) => s + b.lng, 0) / cluster.length
 
-    // Check if any schedule zones overlap (cleaning tomorrow or just cleaned)
     const hasScheduleTomorrow = scheduleZones.some(z => distKm(z, { lat: centerLat, lng: centerLng }) < 1.5)
     const wasJustCleaned = justTicketedZones.some(z => distKm(z, { lat: centerLat, lng: centerLng }) < 1.5)
     const hasTowData = towBlocks.some(t => distKm(t, { lat: centerLat, lng: centerLng }) < CLUSTER_KM)
 
-    let reason = `${totalTickets.toLocaleString()} tickets on ${cluster.length} block${cluster.length > 1 ? 's' : ''}`
+    let reason = `${totalTickets.toLocaleString()} cleaning tix on ${cluster.length} block${cluster.length > 1 ? 's' : ''}`
     if (hasScheduleTomorrow) reason += ' — CLEANING TOMORROW'
     else if (wasJustCleaned) reason += ' — just cleaned, fresh tickets'
     if (hasTowData) reason += ' — cars get towed here'
 
-    // Boost ROI for schedule relevance
     let boostedRoi = roiPerHour
     if (hasScheduleTomorrow) boostedRoi = Math.round(roiPerHour * 2.0)
     else if (wasJustCleaned) boostedRoi = Math.round(roiPerHour * 1.5)
     if (hasTowData) boostedRoi = Math.round(boostedRoi * 1.3)
 
-    corridors.push({
-      id: `${block.neighborhood}-${block.block}`,
+    missions.push({
+      id: `clean-${block.neighborhood}-${block.block}`.replace(/\s+/g,'_'),
+      kind: 'cleaning',
       name: cluster.length > 1
-        ? `${block.neighborhood} — ${cluster.length} blocks`
+        ? `${block.neighborhood} — ${cluster.length} cleaning blocks`
         : `${block.neighborhood} — ${block.block}`,
       lat: centerLat, lng: centerLng,
       streets, totalTickets, walkMinutes: walkMin,
-      roiPerHour: boostedRoi,
-      reason,
+      roiPerHour: boostedRoi, reason,
       driveMinFromPrev: 0,
     })
   }
 
-  // Step 2: Sort by boosted ROI
-  corridors.sort((a, b) => b.roiPerHour - a.roiPerHour)
-
-  // Step 3: Compute drive time from start → first stop, then between stops
-  // Use nearest-neighbor to reorder while preserving top picks
-  // Actually just compute drive times in current (ROI-sorted) order
-  let prev = start
-  for (const m of corridors) {
-    m.driveMinFromPrev = Math.round(distKm(prev, m) / 25 * 60) // 25 km/h city driving
-    prev = { lat: m.lat, lng: m.lng }
+  // ---- Ticket corridors: each = one mission (already pre-grouped) ----
+  for (const c of ticketCorridors) {
+    if (doneCorridors.has(c.id)) continue
+    const ticketEstimate = Math.round(c.finesPerYearAvg / AVG_FINE) // annual count
+    const roiPerHour = c.walkMinutes > 0 ? Math.round(ticketEstimate / (c.walkMinutes / 60)) : 0
+    missions.push({
+      id: `tix-${c.id}`,
+      kind: 'ticket',
+      name: c.name,
+      lat: c.centerLat, lng: c.centerLng,
+      streets: c.blocks.map(b => ({ name: b, tickets: 0 })),
+      totalTickets: ticketEstimate,
+      walkMinutes: c.walkMinutes,
+      roiPerHour,
+      reason: `$${(c.fines2024/1000).toFixed(0)}k in 2024 fines &middot; ${c.pitch}`,
+      walkInstructions: c.walk,
+      driveMinFromPrev: 0,
+    })
   }
 
-  return corridors
+  // ---- Sort by ROI, then NN reorder for drive efficiency ----
+  missions.sort((a, b) => b.roiPerHour - a.roiPerHour)
+
+  // Keep top ~14 by ROI (enough headroom for a 4h budget at ~30min/stop)
+  const candidates = missions.slice(0, 14)
+  const tail = missions.slice(14)
+
+  // Nearest-neighbor among the top candidates
+  const ordered: Mission[] = []
+  const remaining = [...candidates]
+  let cur = start
+  while (remaining.length > 0) {
+    let bestIdx = 0, bestScore = -Infinity
+    for (let i = 0; i < remaining.length; i++) {
+      // Score combines proximity (1/dist) with ROI tier (rank). Favor close+high-ROI.
+      const d = Math.max(0.2, distKm(cur, remaining[i]))
+      const roiRank = (candidates.length - candidates.indexOf(remaining[i])) / candidates.length
+      const score = (1 / d) * 0.6 + roiRank * 0.4
+      if (score > bestScore) { bestScore = score; bestIdx = i }
+    }
+    const next = remaining.splice(bestIdx, 1)[0]
+    next.driveMinFromPrev = Math.round(distKm(cur, next) / 25 * 60)
+    ordered.push(next)
+    cur = { lat: next.lat, lng: next.lng }
+  }
+
+  // Tail keeps ROI order with sequential drive time (rarely shown)
+  for (const m of tail) {
+    m.driveMinFromPrev = Math.round(distKm(cur, m) / 25 * 60)
+    cur = { lat: m.lat, lng: m.lng }
+  }
+
+  return [...ordered, ...tail]
 }
 
 function mapsUrl(lat: number, lng: number): string {
@@ -266,8 +309,13 @@ export default function FlyerRoutes() {
 
   const missions = useMemo(() => {
     if (!data) return []
-    return buildMissions(data.hotBlocks, data.tomorrowZones, data.justCleanedZones, data.towBlocks || [], start)
-  }, [data, start])
+    return buildMissions(
+      data.hotBlocks, data.tomorrowZones, data.justCleanedZones, data.towBlocks || [],
+      data.ticketCorridors || [],
+      doneState.blocks, doneState.corridors,
+      start,
+    )
+  }, [data, start, doneState])
 
   // Fit missions into the time budget
   const plan = useMemo(() => {
@@ -341,9 +389,9 @@ export default function FlyerRoutes() {
           {/* View tabs */}
           <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}` }}>
             {([
-              { id: 'plan' as const, label: 'Cleaning Plan' },
-              { id: 'tickets' as const, label: '$ Tickets' },
-              { id: 'all-blocks' as const, label: 'All Blocks' },
+              { id: 'plan' as const, label: "Tonight's Route" },
+              { id: 'tickets' as const, label: '$ Corridors' },
+              { id: 'all-blocks' as const, label: 'Lookup' },
               { id: 'strategy' as const, label: 'Strategy' },
             ]).map(t => (
               <button key={t.id} onClick={() => setActiveView(t.id)} style={{
@@ -372,7 +420,9 @@ export default function FlyerRoutes() {
                       {plan.stops.length} stop{plan.stops.length !== 1 ? 's' : ''} in {timeBudget}h
                     </div>
                     <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>
-                      {plan.totalTickets.toLocaleString()} tickets/yr across these blocks &middot; ~{plan.totalMin} min total
+                      {plan.stops.filter(s => s.kind==='cleaning').length} cleaning corridor{plan.stops.filter(s => s.kind==='cleaning').length !== 1 ? 's' : ''} +{' '}
+                      {plan.stops.filter(s => s.kind==='ticket').length} $-ticket corridor{plan.stops.filter(s => s.kind==='ticket').length !== 1 ? 's' : ''} &middot;{' '}
+                      ~{plan.totalMin} min total &middot; nearest-neighbor drive order
                     </div>
                   </div>
                   {plan.stops.length > 1 && (
@@ -381,6 +431,10 @@ export default function FlyerRoutes() {
                       Open Drive Route
                     </a>
                   )}
+                </div>
+                <div style={{ marginTop: 8, fontSize: 11, opacity: 0.75 }}>
+                  Skipping {doneState.blocks.size} block{doneState.blocks.size !== 1 ? 's' : ''} +{' '}
+                  {doneState.corridors.size} corridor{doneState.corridors.size !== 1 ? 's' : ''} you've flyered.
                 </div>
               </div>
 
@@ -412,20 +466,46 @@ export default function FlyerRoutes() {
                           {idx + 1}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: 15, color: C.dark }}>{m.name}</div>
-                          <div style={{ fontSize: 12, color: C.slate, marginTop: 2 }}>
-                            {m.streets.length} block{m.streets.length > 1 ? 's' : ''} &middot; ~{m.walkMinutes} min walking &middot;{' '}
-                            <strong style={{ color: C.red }}>{m.roiPerHour.toLocaleString()} tix/hr</strong>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{
+                              fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                              background: m.kind === 'cleaning' ? '#DBEAFE' : '#FEF3C7',
+                              color: m.kind === 'cleaning' ? '#1D4ED8' : '#92400E',
+                              textTransform: 'uppercase', letterSpacing: '0.04em',
+                            }}>
+                              {m.kind === 'cleaning' ? 'Cleaning' : '$ Ticket'}
+                            </span>
+                            <div style={{ fontWeight: 700, fontSize: 15, color: C.dark }}>{m.name}</div>
                           </div>
-                          <div style={{ fontSize: 11, color: m.reason.includes('TOMORROW') ? C.red : m.reason.includes('just cleaned') ? C.yellow : C.slate, fontWeight: m.reason.includes('TOMORROW') || m.reason.includes('towed') ? 700 : 400, marginTop: 1 }}>
-                            {m.reason}
+                          <div style={{ fontSize: 12, color: C.slate, marginTop: 4 }}>
+                            {m.streets.length} block{m.streets.length > 1 ? 's' : ''} &middot; ~{m.walkMinutes} min walking
                           </div>
+                          {m.walkInstructions && (
+                            <div style={{ fontSize: 12, color: C.dark, marginTop: 3, fontWeight: 500 }}>
+                              {m.walkInstructions}
+                            </div>
+                          )}
+                          <div style={{ fontSize: 11, color: m.reason.includes('TOMORROW') ? C.red : m.reason.includes('just cleaned') ? C.yellow : C.slate, fontWeight: m.reason.includes('TOMORROW') || m.reason.includes('towed') ? 700 : 400, marginTop: 2 }}
+                            dangerouslySetInnerHTML={{ __html: m.reason }} />
                         </div>
-                        <a href={mapsUrl(m.lat, m.lng)} target="_blank" rel="noopener noreferrer"
-                          onClick={e => e.stopPropagation()}
-                          style={{ padding: '8px 14px', borderRadius: 8, background: C.green, color: 'white', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                          Park Here
-                        </a>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'stretch' }}>
+                          <a href={mapsUrl(m.lat, m.lng)} target="_blank" rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            style={{ padding: '7px 12px', borderRadius: 6, background: C.green, color: 'white', fontSize: 11, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                            Park Here
+                          </a>
+                          <button onClick={e => {
+                            e.stopPropagation()
+                            if (m.kind === 'ticket') {
+                              toggleDoneCorridor(m.id.replace(/^tix-/, ''))
+                            } else {
+                              m.streets.forEach(s => toggleDoneBlock(s.name))
+                            }
+                          }}
+                            style={{ padding: '6px 10px', borderRadius: 6, background: '#F1F5F9', color: C.dark, border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            Done
+                          </button>
+                        </div>
                       </div>
 
                       {/* Expanded: street-by-street walking plan */}
@@ -581,10 +661,10 @@ export default function FlyerRoutes() {
             <>
               <div style={{ background: C.white, borderRadius: 10, padding: 14, marginBottom: 10, border: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>
-                  {visibleHot.length} street-cleaning hot blocks + {(data.towBlocks || []).length} tow blocks
+                  Block lookup &middot; mark off as you go
                 </div>
                 <p style={{ fontSize: 12, color: C.slate, margin: '4px 0 0' }}>
-                  Each block ranked by street-cleaning tickets. Pair with the Cleaning Plan tab to know when to hit them.
+                  Reference list of every street-cleaning hot block. Use this if you remember walking a block and want to mark it done so Tonight's Route stops suggesting it. The main planning happens on the Tonight's Route tab.
                 </p>
               </div>
 
