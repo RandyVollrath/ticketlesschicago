@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   countdownText: {
     color: '#fff',
     fontSize: 24,
-    fontFamily: typography.fontFamily.bodyBold,
+    fontFamily: typography.fontFamily.displayBold,
     fontVariant: ['tabular-nums'],
   },
   countdownUrgentText: {

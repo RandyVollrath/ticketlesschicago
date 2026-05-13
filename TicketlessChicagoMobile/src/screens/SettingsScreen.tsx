@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontSize: typography.sizes.xl,
-    fontFamily: typography.fontFamily.bodyBold,
+    fontFamily: typography.fontFamily.displayBold,
     color: colors.textPrimary,
     marginBottom: spacing.xs,
   },

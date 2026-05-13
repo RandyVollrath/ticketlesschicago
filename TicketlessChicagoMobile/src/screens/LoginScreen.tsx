@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     fontSize: typography.sizes.xxxl,
-    fontFamily: typography.fontFamily.bodyBold,
+    fontFamily: typography.fontFamily.displayBold,
     color: colors.primary,
     marginBottom: spacing.xs,
   },
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
   },
   formTitle: {
     fontSize: typography.sizes.xl,
-    fontFamily: typography.fontFamily.bodyBold,
+    fontFamily: typography.fontFamily.displayBold,
     color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.xs,
@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontSize: typography.sizes.xxl,
-    fontFamily: typography.fontFamily.bodyBold,
+    fontFamily: typography.fontFamily.displayBold,
     color: colors.textPrimary,
     marginBottom: spacing.md,
   },

@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xl,
-    fontFamily: typography.fontFamily.bodyBold,
+    fontFamily: typography.fontFamily.displayBold,
     color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.md,

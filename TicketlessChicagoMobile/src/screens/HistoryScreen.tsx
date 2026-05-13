@@ -1652,7 +1652,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xxl,
-    fontFamily: typography.fontFamily.bodyBold,
+    fontFamily: typography.fontFamily.displayBold,
     color: colors.textPrimary,
   },
   viewToggleRow: {
@@ -1728,7 +1728,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: typography.sizes.xl,
-    fontFamily: typography.fontFamily.bodyBold,
+    fontFamily: typography.fontFamily.displayBold,
     color: colors.textPrimary,
     marginTop: spacing.xs,
   },
