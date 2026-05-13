@@ -48,6 +48,21 @@ export default async function handler(
       // The user won't get drip emails, but marketing_consent may be stale
     }
 
+    // Also mark FOIA-history drip as unsubscribed for this email.
+    // Flyer/QR FOIA users aren't in drip_campaign_status (no user_profile),
+    // they're tracked on foia_history_requests directly.
+    const { error: foiaUnsubError } = await supabase
+      .from('foia_history_requests')
+      .update({
+        drip_unsubscribed: true,
+        drip_unsubscribed_at: new Date().toISOString(),
+      } as any)
+      .eq('email', email.toLowerCase());
+
+    if (foiaUnsubError) {
+      console.error('Error unsubscribing FOIA drip (other unsubs succeeded):', foiaUnsubError.message);
+    }
+
     console.log(`Unsubscribed: ${email}`);
 
     return res.status(200).json({
