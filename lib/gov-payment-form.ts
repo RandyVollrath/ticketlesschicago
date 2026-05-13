@@ -54,21 +54,33 @@ interface MatchRule {
 }
 
 const RULES: MatchRule[] = [
-  // Order matters — more specific first.
-  { key: 'card_number', hints: ['cardnumber', 'card_number', 'card number', 'pan', 'cc-number', 'ccnumber', 'creditcard', 'credit card', 'card no'], exclusive: true },
+  // Order matters — more specific first. Each field is tested against the
+  // rules in order and uses the first that matches; once a key is claimed
+  // (exclusive: true), later inputs skip the rule even if they'd match.
+  { key: 'card_number', hints: ['cardnumber', 'card_number', 'card number', 'cc-number', 'cc-num', 'ccnumber', 'creditcard', 'credit card', 'card no', 'pan'], exclusive: true },
   { key: 'cvv', hints: ['cvv', 'cvc', 'securitycode', 'security code', 'cv2', 'cid', 'card-security'], exclusive: true },
-  { key: 'exp_combined', hints: ['expirydate', 'expiration date', 'expdate', 'exp_date', 'expdate', 'card-expiry', 'expiry'], exclusive: true },
-  { key: 'exp_month', hints: ['expmonth', 'exp_month', 'expiration month', 'expirationmonth', 'cc-exp-month'], exclusive: true },
-  { key: 'exp_year', hints: ['expyear', 'exp_year', 'expiration year', 'expirationyear', 'cc-exp-year'], exclusive: true },
+  // exp_month/year MUST come before exp_combined — a split-form field
+  // labeled "Expiration Month" would otherwise match exp_combined's
+  // generic 'expiration' hint and get silently skipped.
+  { key: 'exp_month', hints: ['expmonth', 'exp_month', 'exp-month', 'expiration month', 'expirationmonth', 'cc-exp-month'], exclusive: true },
+  { key: 'exp_year', hints: ['expyear', 'exp_year', 'exp-year', 'expiration year', 'expirationyear', 'cc-exp-year'], exclusive: true },
+  { key: 'exp_combined', hints: ['expirydate', 'expiration date', 'expdate', 'exp_date', 'expiration', 'card-expiry', 'expiry'], exclusive: true },
   { key: 'first_name', hints: ['firstname', 'first name', 'given name', 'fname'], exclusive: true },
   { key: 'last_name', hints: ['lastname', 'last name', 'family name', 'surname', 'lname'], exclusive: true },
   { key: 'address1', hints: ['address1', 'address 1', 'street address', 'streetaddress', 'addressline1', 'billing address'], exclusive: true },
-  { key: 'city', hints: ['billing city', 'city name', 'billingcity', '"city"'], exclusive: true },
-  { key: 'state', hints: ['billingstate', 'state code', 'state province', 'billing state'], exclusive: true },
+  // city/state must come AFTER address1 (which would match if the blob
+  // contained "city" or "state"). 'address1' is checked first above.
+  { key: 'city', hints: ['billing city', 'city name', 'billingcity', '>city<', 'city '], exclusive: true },
+  { key: 'state', hints: ['billingstate', 'state code', 'state province', 'billing state', '>state<', 'state '], exclusive: true },
   { key: 'zip', hints: ['zip', 'postal', 'postcode', 'post code'], exclusive: true },
   { key: 'confirm_email', hints: ['confirm email', 'confirmemail', 'verify email', 'email confirmation'], exclusive: true },
   { key: 'email', hints: ['email'], exclusive: true },
   { key: 'agree_terms', hints: ['agreement', 'terms', 'i agree', 'acknowledg', 'serviceagreement', 'service fee'], exclusive: true },
+  // Bare-word fallbacks — only fire if no more specific rule has claimed
+  // the key. Without these, fields whose only signal is "City" or "State"
+  // in their label go un-filled.
+  { key: 'city', hints: ['city'], exclusive: true },
+  { key: 'state', hints: ['state'], exclusive: true },
 ];
 
 function makeBlob(parts: Record<string, string | boolean | null | undefined>): string {
@@ -307,12 +319,16 @@ export async function clickContinue(page: Page): Promise<string | null> {
  */
 export async function scrapeConfirmationReference(page: Page): Promise<string | null> {
   const txt = await page.evaluate(() => document.body?.innerText || '');
+  // Accept a few connecting words ("is", "was", "of") between the label
+  // and the value — some pages format as "Your transaction id is XYZ."
+  // rather than "Transaction ID: XYZ".
+  const sep = String.raw`(?:[:\s]*|\s+(?:is|was|of|number)\s+)`;
   const patterns = [
-    /(?:confirmation\s*(?:number|#|no\.?))[:\s]*([A-Z0-9][A-Z0-9\-_]{4,})/i,
-    /(?:transaction\s*(?:id|#|number|no\.?))[:\s]*([A-Z0-9][A-Z0-9\-_]{4,})/i,
-    /(?:receipt\s*(?:number|#|no\.?))[:\s]*([A-Z0-9][A-Z0-9\-_]{4,})/i,
-    /(?:order\s*(?:id|#|number))[:\s]*([A-Z0-9][A-Z0-9\-_]{4,})/i,
-    /(?:reference\s*(?:#|number|no\.?))[:\s]*([A-Z0-9][A-Z0-9\-_]{4,})/i,
+    new RegExp(`(?:confirmation\\s*(?:number|#|no\\.?|reference))${sep}([A-Z0-9][A-Z0-9\\-_]{4,})`, 'i'),
+    new RegExp(`(?:transaction\\s*(?:id|#|number|no\\.?))${sep}([A-Z0-9][A-Z0-9\\-_]{4,})`, 'i'),
+    new RegExp(`(?:receipt\\s*(?:number|#|no\\.?))${sep}([A-Z0-9][A-Z0-9\\-_]{4,})`, 'i'),
+    new RegExp(`(?:order\\s*(?:id|#|number))${sep}([A-Z0-9][A-Z0-9\\-_]{4,})`, 'i'),
+    new RegExp(`(?:reference\\s*(?:#|number|no\\.?))${sep}([A-Z0-9][A-Z0-9\\-_]{4,})`, 'i'),
   ];
   for (const re of patterns) {
     const m = txt.match(re);
@@ -332,11 +348,13 @@ export async function looksLikePaymentForm(page: Page): Promise<boolean> {
     const info = await el.evaluate((e) => {
       const i = e as HTMLInputElement;
       const blob = `${i.id || ''} ${i.name || ''} ${i.placeholder || ''} ${i.getAttribute('aria-label') || ''}`.toLowerCase();
+      // also look at a wrapping label for cases where the field has no
+      // id/name match (e.g. aria-label="Card Number" with id="f1")
       const visible = (i as HTMLElement).offsetParent !== null;
       return { blob, visible };
     });
     if (!info.visible) continue;
-    if (/cardnumber|card_number|cc-number|ccnumber|creditcard|pan/.test(info.blob)) return true;
+    if (/card\s*number|cardnumber|card_number|cc[-_]?num(?:ber)?|ccnumber|credit\s*card|creditcard|\bpan\b/.test(info.blob)) return true;
   }
   return false;
 }
