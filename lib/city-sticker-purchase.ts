@@ -50,14 +50,32 @@ export interface CitySticerPurchaseResult {
 
 const ENTRY_URL = 'https://ezbuy.chicityclerk.com/vehicle-stickers';
 
+// Reuses the same env-var set as the existing ticket-autopay city portal
+// worker (scripts/run-city-payment-queue.ts). One operations card pays
+// both stickers AND tickets.
+//
+// IMPORTANT: those env vars are documented as "kept ONLY on the worker
+// machine, never in Vercel" for PCI scope reduction. If this function is
+// invoked from a Vercel function (the current orchestration cron) the
+// env vars must also exist in Vercel — OR move the actual automation to
+// the same worker machine that runs the ticket payment queue.
 function readGovCardConfig() {
-  const number = process.env.CITY_GOV_CARD_NUMBER;
-  const expMonth = process.env.CITY_GOV_CARD_EXP_MONTH;
-  const expYear = process.env.CITY_GOV_CARD_EXP_YEAR;
-  const cvv = process.env.CITY_GOV_CARD_CVV;
-  const zip = process.env.CITY_GOV_CARD_ZIP;
-  if (!number || !expMonth || !expYear || !cvv || !zip) return null;
-  return { number, expMonth, expYear, cvv, zip };
+  const number = (process.env.CITY_PAYMENT_CARD_NUMBER || '').replace(/\s+/g, '');
+  const expRaw = (process.env.CITY_PAYMENT_CARD_EXP || '').trim();
+  const cvv = (process.env.CITY_PAYMENT_CARD_CVV || '').trim();
+  const billFirst = process.env.CITY_PAYMENT_BILLING_FIRST_NAME?.trim();
+  const billLast = process.env.CITY_PAYMENT_BILLING_LAST_NAME?.trim();
+  const addr1 = process.env.CITY_PAYMENT_BILLING_ADDRESS1?.trim();
+  const billCity = process.env.CITY_PAYMENT_BILLING_CITY?.trim();
+  const billState = process.env.CITY_PAYMENT_BILLING_STATE?.trim();
+  const zip = process.env.CITY_PAYMENT_BILLING_ZIP?.trim();
+  const billEmail = process.env.CITY_PAYMENT_BILLING_EMAIL?.trim();
+  if (!number || !expRaw || !cvv || !billFirst || !billLast || !addr1 || !billCity || !billState || !zip || !billEmail) return null;
+  // expRaw is MM/YYYY — split for forms that want them separately.
+  const match = expRaw.match(/^(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const [, expMonth, expYear] = match;
+  return { number, expMonth, expYear, cvv, zip, billFirst, billLast, addr1, billCity, billState, billEmail };
 }
 
 async function newStealthBrowser(headed: boolean): Promise<{ browser: Browser; page: Page }> {
