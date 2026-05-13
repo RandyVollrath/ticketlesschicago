@@ -231,7 +231,8 @@ class LocalNotificationServiceClass {
         hoursBefore = 0; // Time is pre-computed by BackgroundTaskService
         notificationId = `${NOTIFICATION_PREFIX.METERED_PARKING}${Date.now()}`;
         channelId = 'parking-alerts';
-        // Detect subtype: 10-min warning, 30-min warning, expired, or enforcement activation
+        // Detect subtype: 10-min warning, 30-min warning, expired, or
+        // zone-activation (15 min before enforcement begins).
         if (details?.includes('expires in 10 minutes')) {
           title = '⏰ Meter Expiring in 10 Minutes!';
           isUrgent = true;
@@ -239,6 +240,11 @@ class LocalNotificationServiceClass {
           title = '⏰ Meter Expiring in 30 Minutes!';
         } else if (details?.includes('has expired')) {
           title = '⏰ Meter Expired — Move Now!';
+          isUrgent = true;
+        } else if (details?.includes('activates')) {
+          // The "free overnight, meter goes hot at 8 AM" case. Fires ~15
+          // min before activation (see BackgroundTaskService scheduling).
+          title = '🅿️ Meter activates in 15 min — pay or move';
           isUrgent = true;
         } else {
           title = '⏰ Meter Enforcement Starting!';
