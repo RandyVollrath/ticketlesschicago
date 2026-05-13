@@ -335,6 +335,174 @@ const STREET_BLOCKS: StreetBlock[] = [
 ];
 
 // ============================================================================
+// TICKETED-BLOCK CORRIDORS — general parking (NOT street cleaning, NOT cameras)
+// Source: 35.7M tickets, 2018-2025, excluding speed/red-light/cleaning/snow.
+// Each corridor = a walkable run of adjacent high-fine blocks. avgPerYear is
+// the 8-year average. fines2024 is the most recent full year (peak).
+// ============================================================================
+
+interface TicketCorridor {
+  id: string;
+  name: string;
+  neighborhood: string;
+  walk: string;              // human-readable "Walk X St from A to B"
+  blocks: string[];          // exact block labels (used to mark-done)
+  centerLat: number;
+  centerLng: number;
+  walkMinutes: number;
+  fines2024: number;
+  finesPerYearAvg: number;
+  fines8yrTotal: number;
+  pitch: string;             // why this corridor matters in plain English
+}
+
+const TICKET_CORRIDORS: TicketCorridor[] = [
+  {
+    id: 'streeterville-ohio',
+    name: 'Streeterville — Ohio St',
+    neighborhood: 'Streeterville',
+    walk: 'Walk Ohio St from Michigan Ave (100E) to McClurg Ct (400E)',
+    blocks: ['200 E Ohio St', '300 E Ohio St', '400 E Ohio St'],
+    centerLat: 41.8923, centerLng: -87.6175,
+    walkMinutes: 20,
+    fines2024: 873000, finesPerYearAvg: 587000, fines8yrTotal: 4694000,
+    pitch: 'Three back-to-back blocks each pulling $150k+ a year. Tourists + Mag Mile shoppers leave cars all afternoon.',
+  },
+  {
+    id: 'mag-mile-residential',
+    name: 'Mag Mile residential — Walton/Oak/Chestnut/Maple',
+    neighborhood: 'Gold Coast',
+    walk: 'Walk Walton (0E) → Oak St (0E) → Chestnut St (0E) → Maple St (0W). Four parallel blocks one block apart.',
+    blocks: ['0 E Walton St', '0 E Oak St', '0 E Chestnut St', '0 W Maple St'],
+    centerLat: 41.9020, centerLng: -87.6275,
+    walkMinutes: 25,
+    fines2024: 795000, finesPerYearAvg: 617000, fines8yrTotal: 4938000,
+    pitch: 'Wealthy residential pocket. Each block pulls $130-200k/yr. App-affordable demographic.',
+  },
+  {
+    id: 'streeterville-huron-erie-superior',
+    name: 'Streeterville — Huron/Erie/Superior',
+    neighborhood: 'Streeterville',
+    walk: 'Walk Huron (0/300E), Erie (0/300E), Superior (0/300E) — six blocks in a 3-block-tall grid east of Mag Mile',
+    blocks: ['0 E Huron St', '300 E Huron St', '0 E Erie St', '300 E Erie St', '0 E Superior St', '300 E Superior St'],
+    centerLat: 41.8950, centerLng: -87.6175,
+    walkMinutes: 35,
+    fines2024: 1373000, finesPerYearAvg: 885000, fines8yrTotal: 7080000,
+    pitch: '$7M over 8 years in a six-block grid. Hospital workers + Northwestern. They park here daily.',
+  },
+  {
+    id: 'rivernorth-hubbard',
+    name: 'River North — Hubbard St',
+    neighborhood: 'River North',
+    walk: 'Walk Hubbard St from State (0) to Franklin (300W) — four consecutive blocks',
+    blocks: ['0 E Hubbard St', '0 W Hubbard St', '100 W Hubbard St', '300 W Hubbard St'],
+    centerLat: 41.8895, centerLng: -87.6320,
+    walkMinutes: 20,
+    fines2024: 1016000, finesPerYearAvg: 832000, fines8yrTotal: 6659000,
+    pitch: 'Restaurant & nightclub strip. Cars pile up Thu-Sat evenings. $1M+ in 2024 alone.',
+  },
+  {
+    id: 'loop-randolph-lake',
+    name: 'Loop — Randolph + Lake corridor',
+    neighborhood: 'Loop',
+    walk: 'Walk Randolph (0W and 100W) and Lake St (0W, 0E) — two parallel streets one block apart',
+    blocks: ['0 W Randolph St', '100 W Randolph St', '0 W Lake St', '0 E Lake St'],
+    centerLat: 41.8847, centerLng: -87.6300,
+    walkMinutes: 25,
+    fines2024: 1093000, finesPerYearAvg: 821000, fines8yrTotal: 6567000,
+    pitch: 'Daley Plaza + Theater District. Commuters and theatergoers. Pure CBD pain.',
+  },
+  {
+    id: 'wabash-corridor',
+    name: 'Loop — Wabash Ave corridor',
+    neighborhood: 'Loop',
+    walk: 'Walk Wabash from Madison (0S) north through Lake (200N). Four 100-blocks.',
+    blocks: ['0 S Wabash Ave', '100 S Wabash Ave', '100 N Wabash Ave', '400 N Wabash Ave'],
+    centerLat: 41.8870, centerLng: -87.6260,
+    walkMinutes: 25,
+    fines2024: 1612000, finesPerYearAvg: 854000, fines8yrTotal: 6829000,
+    pitch: 'Wabash is the single highest-fines street in the Loop. 100 N Wabash alone hit $739k in 2024.',
+  },
+  {
+    id: 'rivernorth-wells-state',
+    name: 'River North — Wells + State + Franklin',
+    neighborhood: 'River North',
+    walk: 'Walk Wells (100N, 400N, 600N), State (400N), Franklin (400N). All within a 3x3 block grid.',
+    blocks: ['100 N Wells St', '400 N Wells St', '600 N Wells St', '400 N State St', '400 N Franklin St'],
+    centerLat: 41.8920, centerLng: -87.6340,
+    walkMinutes: 30,
+    fines2024: 1190000, finesPerYearAvg: 829000, fines8yrTotal: 6638000,
+    pitch: 'Galleries + restaurants. Wells St alone has 3 hot blocks within 6 minutes walking.',
+  },
+  {
+    id: 'hyde-park-53rd',
+    name: 'Hyde Park — 53rd St',
+    neighborhood: 'Hyde Park',
+    walk: 'Walk 53rd St from Kimbark (1300E) to Cornell (1600E) — four blocks',
+    blocks: ['1300 E 53rd St', '1400 E 53rd St', '1500 E 53rd St', '1600 E 53rd St'],
+    centerLat: 41.7995, centerLng: -87.5870,
+    walkMinutes: 20,
+    fines2024: 692000, finesPerYearAvg: 558000, fines8yrTotal: 4467000,
+    pitch: 'U of C neighborhood. Students + faculty + Whole Foods shoppers. App-savvy crowd.',
+  },
+  {
+    id: 'wicker-park-milwaukee',
+    name: 'Wicker Park — Milwaukee Ave',
+    neighborhood: 'Wicker Park',
+    walk: 'Walk Milwaukee Ave from Division (1200N) to North Ave (1600N) — three consecutive blocks',
+    blocks: ['1300 N Milwaukee Ave', '1400 N Milwaukee Ave', '1500 N Milwaukee Ave'],
+    centerLat: 41.9085, centerLng: -87.6770,
+    walkMinutes: 18,
+    fines2024: 666000, finesPerYearAvg: 405000, fines8yrTotal: 3242000,
+    pitch: 'Hipster strip. Bars, coffee, retail. Young app-using demographic.',
+  },
+  {
+    id: 'lakeview-clark',
+    name: 'Lakeview — Clark St',
+    neighborhood: 'Lakeview',
+    walk: 'Walk Clark St from Belmont (3200N) to Addison (3600N) — five consecutive blocks',
+    blocks: ['3300 N Clark St', '3400 N Clark St', '3500 N Clark St', '3600 N Clark St', '3700 N Clark St'],
+    centerLat: 41.9450, centerLng: -87.6590,
+    walkMinutes: 25,
+    fines2024: 502000, finesPerYearAvg: 343000, fines8yrTotal: 2744000,
+    pitch: 'Wrigleyville. Game-day overflow + nightlife. Easy weekend visibility.',
+  },
+  {
+    id: 'chinatown-archer',
+    name: 'Chinatown — Archer + China Pl',
+    neighborhood: 'Chinatown',
+    walk: 'Walk Archer Ave 2100S and China Pl 2100S — adjacent within the Chinatown gate',
+    blocks: ['2100 S Archer Ave', '2100 S China Pl'],
+    centerLat: 41.8530, centerLng: -87.6310,
+    walkMinutes: 12,
+    fines2024: 934000, finesPerYearAvg: 534000, fines8yrTotal: 4277000,
+    pitch: 'Tourist + dim-sum traffic. $708k in 2024 on Archer alone. Two blocks, huge yield.',
+  },
+  {
+    id: 'south-loop-9th-11th',
+    name: 'South Loop — 9th + 11th',
+    neighborhood: 'South Loop',
+    walk: 'Walk 9th St (0E) and 11th St (0E) — two blocks one Roosevelt-distance apart',
+    blocks: ['0 E 9th St', '0 E 11th St'],
+    centerLat: 41.8720, centerLng: -87.6260,
+    walkMinutes: 12,
+    fines2024: 303000, finesPerYearAvg: 247000, fines8yrTotal: 1979000,
+    pitch: 'Columbia College + Roosevelt students. App demographic.',
+  },
+  {
+    id: 'west-loop-randolph',
+    name: 'West Loop — Randolph restaurant row',
+    neighborhood: 'West Loop',
+    walk: 'Walk Randolph from Halsted (800W) to Aberdeen (1000W). Single hot block.',
+    blocks: ['900 W Randolph St'],
+    centerLat: 41.8847, centerLng: -87.6520,
+    walkMinutes: 8,
+    fines2024: 366000, finesPerYearAvg: 167000, fines8yrTotal: 1334000,
+    pitch: 'Restaurant row. Friday/Saturday dinner + Sunday brunch hits.',
+  },
+];
+
+// ============================================================================
 // Chicago grid constants for matching streets to zones
 // ============================================================================
 
@@ -613,12 +781,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Tomorrow = flyer TONIGHT for max impact
       tomorrowZones: sortAndOptimize(tomorrowZones),
       tomorrowCount: tomorrowZones.length,
-      // Block-level hotspots with FOIA data
+      // Block-level hotspots with FOIA data (street-cleaning specific)
       hotBlocks: TOP_BLOCKS,
       // Tow/seizure-eligible blocks (cars actively being booted/towed)
       towBlocks: TOW_BLOCKS,
       // Neighborhood intelligence
       neighborhoods: NEIGHBORHOOD_RANKINGS,
+      // General parking-ticket corridors (Loop / Mag Mile / Hyde Park / etc).
+      // Different from street cleaning: high $$/year on the same blocks every day.
+      ticketCorridors: TICKET_CORRIDORS,
       startingPoint: { lat: startLat, lng: startLng },
     });
   } catch (error: any) {
