@@ -31,6 +31,25 @@ export function mailContestDeadlineDays(violationCode: string | null): number {
 }
 
 /**
+ * Parking-sign-based violation codes — these are the codes where sign
+ * condition is dispositive ("signs must be visible and legible" under
+ * § 9-64). Used by both the evidence-photo finding (asks user to
+ * document the signs) and the 311 sign-repair enrichment (joins to the
+ * City's own sign-maintenance complaint history).
+ */
+export const SIGN_PHOTO_CODES: Record<string, string> = {
+  '9-64-010': 'street-cleaning',
+  '9-64-040': 'no-parking / tow-zone',
+  '9-64-050': 'bus stop / stand',
+  '9-64-090': 'bike lane marking',
+  '9-64-100': 'snow-route',
+  '9-64-140': 'no-standing / time-restriction',
+  '9-64-160': 'commercial-loading',
+  '9-64-190': 'rush-hour',
+  '9-64-081': 'winter overnight parking ban',
+};
+
+/**
  * Whether the finding is something we already know is true (portal-data
  * driven) or something the user can do/produce after the fact to strengthen
  * the contest. Both feed the same UI, but the recommender treats them
@@ -398,17 +417,6 @@ export function detectCureAndEvidencePaths(
   // say at the moment of the ticket?" The standard template asks the
   // city for sign maintenance records; a present-day photo of the sign
   // (or absence of it) is often more persuasive.
-  const SIGN_PHOTO_CODES: Record<string, string> = {
-    '9-64-010': 'street-cleaning',
-    '9-64-040': 'no-parking / tow-zone',
-    '9-64-050': 'bus stop / stand',
-    '9-64-090': 'bike lane marking',
-    '9-64-100': 'snow-route',
-    '9-64-140': 'no-standing / time-restriction',
-    '9-64-160': 'commercial-loading',
-    '9-64-190': 'rush-hour',
-    '9-64-081': 'winter overnight parking ban',
-  };
   if (SIGN_PHOTO_CODES[code]) {
     const subject = SIGN_PHOTO_CODES[code];
     out.push({
@@ -512,6 +520,15 @@ export interface AutopilotEnrichment {
   blockDismissalRate?: number | null;
   /** Optional flag: ticket was matched in FOIA at all */
   foundInFoia: boolean;
+  /**
+   * Chicago 311 sign-repair complaints on the cited block face.
+   * Populated by the free-review worker from the public 311 dataset
+   * (data.cityofchicago.org/resource/v6vf-nfxy.json). Only fires for
+   * sign-based parking violations (see SIGN_PHOTO_CODES).
+   */
+  signComplaintsOpenAtTicketTime?: number;
+  signComplaintsRecentClosed?: number;
+  signComplaintTopSrNumber?: string | null;
 }
 
 const CITYWIDE_MAIL_BASELINE = 0.59; // FOIA hearings, contest_method=Mail, 2023–2025 trailing, n=287,532. Per reference_marketing_numbers.md (2026-05-03 refresh).
@@ -608,6 +625,42 @@ export function buildAutopilotFindings(
         'A block-level dismissal pattern is one of the strongest non-merits defenses available. Hearing officers see the FOIA numbers in the letter and tend to follow the prior pattern.',
       estimatedUpliftPct: 0.15,
       strength: 'strong',
+      kind: 'autopilot',
+    });
+  }
+
+  // ── Chicago 311 sign-repair complaints on the cited block ─────────
+  // Only relevant for sign-based parking violations. If the City had an
+  // OPEN sign-repair work order on the cited block at the time of the
+  // ticket, that's prima facie evidence the signage was non-compliant
+  // and the City itself documented it.
+  const isSignBasedViolation = classified.violationCode != null &&
+    SIGN_PHOTO_CODES[classified.violationCode] != null;
+
+  if (isSignBasedViolation && (enrichment.signComplaintsOpenAtTicketTime ?? 0) > 0) {
+    const n = enrichment.signComplaintsOpenAtTicketTime!;
+    out.push({
+      id: 'cdot_311_sign_open',
+      title: `City had ${n} open sign-repair complaint${n === 1 ? '' : 's'} on this block when the ticket was issued`,
+      explanation:
+        `Pulled from Chicago's public 311 service-request dataset: at the time this ticket was written, the City of Chicago had ${n} open "Sign Repair Request" work order${n === 1 ? '' : 's'} on the same block face${enrichment.signComplaintTopSrNumber ? ` (e.g. ${enrichment.signComplaintTopSrNumber})` : ''}. That's the City itself documenting that the signage in this area was flagged for repair when the ticket was issued — the kind of evidence that maps directly to a § 9-64 "signage was not visible and legible" defense.`,
+      uplift:
+        'An open city work order on the cited block is one of the strongest sign-based defenses available. Hearing officers treat the City\'s own 311 records as authoritative on the condition of the signage at the time of citation.',
+      estimatedUpliftPct: 0.20,
+      strength: 'strong',
+      kind: 'autopilot',
+    });
+  } else if (isSignBasedViolation && (enrichment.signComplaintsRecentClosed ?? 0) > 0) {
+    const n = enrichment.signComplaintsRecentClosed!;
+    out.push({
+      id: 'cdot_311_sign_recent',
+      title: `${n} sign-repair complaint${n === 1 ? '' : 's'} closed on this block within the year before your ticket`,
+      explanation:
+        `Pulled from Chicago's public 311 service-request dataset: the same block face had ${n} "Sign Repair Request" work order${n === 1 ? '' : 's'} filed and closed within the 12 months before your ticket${enrichment.signComplaintTopSrNumber ? ` (most recent: ${enrichment.signComplaintTopSrNumber})` : ''}. That's documented evidence that signage in this area was actively in maintenance churn around the time of citation.`,
+      uplift:
+        'Recent sign-repair history on the cited block is supporting evidence that the signage was non-compliant at or near the time of the violation. It complements a "signs were not visible and legible" defense.',
+      estimatedUpliftPct: 0.10,
+      strength: 'moderate',
       kind: 'autopilot',
     });
   }

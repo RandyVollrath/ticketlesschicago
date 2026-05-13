@@ -525,8 +525,8 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
                 For $79/year Autopilot checks your plate against the city portal every Monday and Thursday, sends you
                 street-cleaning, snow-ban, and renewal alerts before tickets happen, and automatically files a contest
                 for every ticket that does land — mail-in if we catch it inside the deadline, late-hearing if it slips
-                past. FOIA requests, evidence packet, and tracking handled end-to-end. Our 2023–2025 mail-in win rate
-                is 59%.
+                past. FOIA requests, evidence packet, cross-checks against the City's own 311 sign-repair complaints,
+                and tracking handled end-to-end. Our 2023–2025 mail-in win rate is 59%.
               </div>
               <a href="/get-started" style={{
                 display: 'inline-block', marginTop: 16, padding: '12px 20px', borderRadius: 10,
@@ -675,6 +675,8 @@ const FINDING_CATEGORY: Record<string, string> = {
   autopilot_address_resolved: 'a location-specific defense',
   autopilot_officer_dismissal_rate: 'an officer-pattern signal',
   autopilot_block_pattern: 'a block-pattern signal',
+  cdot_311_sign_open: 'an open city sign-repair complaint on this block',
+  cdot_311_sign_recent: 'a recent sign-repair history on this block',
   // Fact tier — portal-data anomalies
   plate_mismatch: 'a plate-identification defense',
   state_mismatch: 'a plate-identification defense',
