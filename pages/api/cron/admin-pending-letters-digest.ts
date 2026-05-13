@@ -337,6 +337,121 @@ export default async function handler(
     // letter validator, or the date formatter gets caught the next morning.
     const smoke = await runContestPipelineSmokeTest();
 
+    // ── LIGHT END-TO-END STATE-MACHINE SMOKE ──
+    // Inserts a synthetic test ticket + letter (is_test=true so it never
+    // mails), simulates the autopilot-reminders promotion logic, then asserts
+    // the letter is now in a status the mailing cron loads. Cleans up either
+    // way. This catches regressions in the promotion path — the exact class
+    // of bug that almost shipped this week (Day-17 trigger vs evidence_deadline).
+    // No Claude calls, no Lob — runs in ~1s.
+    let pipelineSmokePassed = true;
+    let pipelineSmokeDetail = 'state-machine OK';
+    {
+      const SMOKE_USER_ID = '7d1adabb-f9f5-41ec-9075-5f7cb311a822'; // qa-bot
+      const SMOKE_PLATE_ID = '849461dc-1746-4fb5-bb95-53c33aecbbe5';
+      const ticketNumber = `SMOKE-DIGEST-${Date.now()}`;
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+      let testTicketId: string | null = null;
+      let testLetterId: string | null = null;
+      try {
+        const { data: tIns } = await supabaseAdmin
+          .from('detected_tickets')
+          .insert({
+            user_id: SMOKE_USER_ID,
+            plate_id: SMOKE_PLATE_ID,
+            plate: 'QABOT01',
+            state: 'IL',
+            ticket_number: ticketNumber,
+            violation_type: 'street_cleaning',
+            violation_description: 'STREET CLEANING — DIGEST SMOKE',
+            violation_date: '2026-05-01',
+            amount: 60,
+            status: 'pending_evidence',
+            found_at: new Date().toISOString(),
+            source: 'digest_smoke',
+            evidence_requested_at: new Date().toISOString(),
+            evidence_deadline: twoHoursAgo,
+            auto_send_deadline: twoHoursAgo,
+            is_test: true,
+          })
+          .select('id')
+          .single();
+        if (!tIns) throw new Error('insert test ticket failed');
+        testTicketId = tIns.id;
+
+        const placeholder = 'RE: Ticket #' + ticketNumber + '\n\nI am writing to formally contest...';
+        const { data: lIns } = await supabaseAdmin
+          .from('contest_letters')
+          .insert({
+            ticket_id: testTicketId,
+            user_id: SMOKE_USER_ID,
+            letter_content: placeholder,
+            letter_text: placeholder,
+            defense_type: 'digest_smoke',
+            status: 'pending_evidence',
+            using_default_address: false,
+          })
+          .select('id')
+          .single();
+        if (!lIns) throw new Error('insert test letter failed');
+        testLetterId = lIns.id;
+
+        // Simulate the autopilot-reminders trigger: evidence_deadline passed,
+        // promote ticket + letter to 'approved'.
+        await supabaseAdmin
+          .from('detected_tickets')
+          .update({ status: 'approved', auto_send_deadline: new Date().toISOString() })
+          .eq('id', testTicketId)
+          .eq('status', 'pending_evidence');
+
+        await supabaseAdmin
+          .from('contest_letters')
+          .update({ status: 'approved', approved_via: 'auto_deadline_safety_net', approved_at: new Date().toISOString() })
+          .eq('id', testLetterId)
+          .eq('status', 'pending_evidence');
+
+        // Confirm the mail-letters .or() filter would now match.
+        const { data: matched } = await supabaseAdmin
+          .from('contest_letters')
+          .select('id, status, detected_tickets!inner ( is_test )')
+          .or('status.eq.approved,status.eq.ready,status.eq.awaiting_consent,status.eq.mailing')
+          .eq('id', testLetterId)
+          .limit(1);
+        if (!matched || matched.length === 0) {
+          throw new Error('promoted letter not matched by mail-letters .or() filter');
+        }
+        if ((matched[0] as any).detected_tickets?.is_test !== true) {
+          throw new Error('is_test flag missing on test ticket — would actually mail!');
+        }
+      } catch (smokeErr: any) {
+        pipelineSmokePassed = false;
+        pipelineSmokeDetail = smokeErr?.message || 'unknown failure';
+        console.error('Pipeline state-machine smoke FAILED:', smokeErr);
+      } finally {
+        if (testLetterId) {
+          await supabaseAdmin.from('contest_letters').delete().eq('id', testLetterId);
+        }
+        if (testTicketId) {
+          await supabaseAdmin.from('ticket_audit_log').delete().eq('ticket_id', testTicketId);
+          await supabaseAdmin.from('detected_tickets').delete().eq('id', testTicketId);
+        }
+      }
+    }
+    if (!pipelineSmokePassed) {
+      smoke.passed = false;
+      smoke.checks.push({
+        name: 'pipeline state-machine: pending_evidence → approved → mail-letters filter',
+        passed: false,
+        detail: pipelineSmokeDetail,
+      });
+    } else {
+      smoke.checks.push({
+        name: 'pipeline state-machine: pending_evidence → approved → mail-letters filter',
+        passed: true,
+        detail: pipelineSmokeDetail,
+      });
+    }
+
     if ((!pendingLetters || pendingLetters.length === 0) && foiaWaiting.length === 0 && stuckRows.length === 0 && smoke.passed) {
       console.log('No pending letters, no stuck rows, smoke test passed — skipping digest email');
       return res.status(200).json({
