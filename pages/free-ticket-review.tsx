@@ -634,7 +634,7 @@ function HeroCallout({
       <div style={{ marginTop: 6, fontSize: 16, color: '#CBD5E1', lineHeight: 1.5 }}>
         Autopilot found <strong style={{ color: '#fff' }}>{verdict}</strong> on your plate.
         {deadlineRiskCount > 0 && (
-          <> <span style={{ color: '#FCD34D' }}>{deadlineRiskCount} {deadlineRiskCount === 1 ? 'ticket is' : 'tickets are'} past the mail-contest deadline</span> — we switch those to the in-person/virtual hearing path, which actually wins more often.</>
+          <> <span style={{ color: '#FCD34D' }}>{deadlineRiskCount} {deadlineRiskCount === 1 ? 'is' : 'are'} past the mail deadline</span> — we can still file those for you in the next Monday/Thursday batch.</>
         )}
       </div>
       <a href="/get-started" style={{
@@ -798,10 +798,8 @@ function TicketCard({ t, accent }: { t: PerTicketAnalysis; accent: string }) {
             background: '#FEF3C7', border: '1px solid #FDE68A',
             fontSize: 13, color: '#78350F', lineHeight: 1.5,
           }}>
-            <strong>🕒 Past the {deadline}-day mail deadline (issued {t.daysSinceIssue} days ago).</strong>{' '}
-            We can still file this on the late-hearing path. <strong>Heads up:</strong> at this age the city may have already entered a late fee, so the fine on file could be roughly double the original.{' '}
-            <strong>In-person and virtual hearings dismiss at ~75% in the 22–45 day window</strong> (Chicago FOIA, 2023–2025) — actually higher than the 59% mail-in baseline.{' '}
-            We process the queue Monday and Thursday, so your contest goes out in the next batch — meaning we lead with the strongest defense available right now and supplement if city records come back in time.
+            <strong>🕒 Issued {t.daysSinceIssue} days ago — past the {deadline}-day mail deadline, but we can still file it for you.</strong>{' '}
+            The city may have added a late fee by now (fine could be roughly double the original). We pick up new signups every Monday and Thursday, so yours goes out in the next batch.
           </div>
         );
       })()}
