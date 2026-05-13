@@ -218,6 +218,18 @@ const MAX_DEBUG_LOG = 30;
 const QUICK_START_DISMISSED_KEY = 'quickStartDismissed';
 const BATTERY_WARNING_DISMISSED_KEY = 'batteryWarningDismissed';
 
+// Fire-and-forget telemetry POST. The user's tap is the authoritative event;
+// the server-side feedback row is just training data. Awaiting it gates the
+// confirmation popup on a 15s × 4-attempt retry loop, which has caused the
+// "Thanks" popup to appear 30+ seconds after a tap when the network is slow.
+// Always returns immediately; errors are logged but never thrown.
+const postParkingFeedback = (body: Record<string, unknown>): void => {
+  ApiClient.authPost('/api/mobile/parking-feedback', body, { showErrorAlert: false })
+    .catch((err) => {
+      log.warn('parking-feedback telemetry failed (non-fatal)', err);
+    });
+};
+
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const route = useRoute<RouteProp<{ Home: HomeScreenRouteParams }, 'Home'>>();
   // Default to true to prevent flash of "Resume" button before autoStartMonitoring() runs
@@ -1058,14 +1070,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const markFalsePositiveParking = useCallback(async () => {
     if (!lastParkingCheck) return;
     try {
-      try {
-        await ApiClient.authPost('/api/mobile/parking-feedback', {
-          confirmed_parking: false,
-          feedback_source: 'user_hero_false_positive',
-        }, { showErrorAlert: false });
-      } catch (feedbackErr) {
-        log.warn('Failed to persist false-positive feedback (non-fatal)', feedbackErr);
-      }
+      postParkingFeedback({
+        confirmed_parking: false,
+        feedback_source: 'user_hero_false_positive',
+      });
       await BackgroundLocationService.reportParkingFalsePositive(
         lastParkingCheck.coords.latitude,
         lastParkingCheck.coords.longitude
@@ -1088,15 +1096,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const confirmParkingHere = useCallback(async () => {
     if (!lastParkingCheck) return;
     try {
-      try {
-        await ApiClient.authPost('/api/mobile/parking-feedback', {
-          confirmed_parking: true,
-          confirmed_block: true,
-          feedback_source: 'user_hero_confirm',
-        }, { showErrorAlert: false });
-      } catch (feedbackErr) {
-        log.warn('Failed to persist confirm feedback (non-fatal)', feedbackErr);
-      }
+      postParkingFeedback({
+        confirmed_parking: true,
+        confirmed_block: true,
+        feedback_source: 'user_hero_confirm',
+      });
       await BackgroundLocationService.reportParkingConfirmed(
         lastParkingCheck.coords.latitude,
         lastParkingCheck.coords.longitude
@@ -1162,17 +1166,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // address, run autocomplete, or drop a pin on the map. The subsequent
   // applyStreetCorrection call (from any of those paths) overwrites the row
   // with corrected_address; if the user cancels, the No-tap stands alone.
-  const markWrongAddressFromBanner = useCallback(async () => {
+  const markWrongAddressFromBanner = useCallback(() => {
     if (!lastParkingCheck) return;
-    try {
-      await ApiClient.authPost('/api/mobile/parking-feedback', {
-        confirmed_parking: true,
-        confirmed_block: false,
-        feedback_source: 'user_hero_wrong_address_open',
-      }, { showErrorAlert: false });
-    } catch (feedbackErr) {
-      log.warn('Failed to persist wrong-address tap (non-fatal)', feedbackErr);
-    }
+    postParkingFeedback({
+      confirmed_parking: true,
+      confirmed_block: false,
+      feedback_source: 'user_hero_wrong_address_open',
+    });
     setShowGroundTruthBanner(false);
     openWrongStreetModal();
   }, [lastParkingCheck, openWrongStreetModal]);
@@ -1183,17 +1183,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   // handleMapMessage; confirming the dropped pin routes through
   // applyStreetCorrection('pin_drag', coords) which records corrected_address
   // and corrected lat/lng as ground truth.
-  const openMapForPinDrag = useCallback(async () => {
+  const openMapForPinDrag = useCallback(() => {
     if (!lastParkingCheck) return;
-    try {
-      await ApiClient.authPost('/api/mobile/parking-feedback', {
-        confirmed_parking: true,
-        confirmed_block: false,
-        feedback_source: 'user_wrong_street_open_map',
-      }, { showErrorAlert: false });
-    } catch (feedbackErr) {
-      log.warn('Failed to persist open-map tap (non-fatal)', feedbackErr);
-    }
+    postParkingFeedback({
+      confirmed_parking: true,
+      confirmed_block: false,
+      feedback_source: 'user_wrong_street_open_map',
+    });
     setShowWrongStreetModal(false);
     setShowParkingMap(true);
   }, [lastParkingCheck]);
@@ -1288,16 +1284,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           correction_source: source,
         },
       });
-      try {
-        await ApiClient.authPost('/api/mobile/parking-feedback', {
-          confirmed_parking: true,
-          confirmed_block: false,
-          feedback_source: `user_wrong_street_${source}`,
-          corrected_address: authoritativeAddress,
-        }, { showErrorAlert: false });
-      } catch (feedbackErr) {
-        log.warn('Failed to persist street-correction feedback (non-fatal)', feedbackErr);
-      }
+      postParkingFeedback({
+        confirmed_parking: true,
+        confirmed_block: false,
+        feedback_source: `user_wrong_street_${source}`,
+        corrected_address: authoritativeAddress,
+      });
       const optimistic: ParkingCheckResult = {
         ...lastParkingCheck,
         address: authoritativeAddress,
