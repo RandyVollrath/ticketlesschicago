@@ -27,7 +27,9 @@ import {
   getIssuingOfficerStats,
   getBlockStats,
 } from '../lib/contest-review/foia-enrichment';
-import type { AutopilotEnrichment } from '../lib/contest-review/beyond-template-arguments';
+import { SIGN_PHOTO_CODES, type AutopilotEnrichment } from '../lib/contest-review/beyond-template-arguments';
+import { findRecentSignComplaints } from '../lib/contest-review/cdot-311-enrichment';
+import { classifyPortalViolation } from '../lib/contest-review/violation-classifier';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -41,6 +43,18 @@ const WORKER_ID = process.env.WORKER_ID || `free-review-${os.hostname()}-${proce
 const STALE_CLAIM_MIN = 10;
 const POLL_INTERVAL_MS = 8000;
 const LOOP = process.env.LOOP === '1' || process.env.LOOP === 'true';
+
+/**
+ * FOIA dates come in "M/D/YYYY H:MM:SS AM/PM" format (e.g. "4/3/2024 11:29:46 AM").
+ * Convert to ISO yyyy-mm-dd for the 311 SODA query, which uses ISO timestamps.
+ */
+function foiaDateToIso(s: string | null | undefined): string | null {
+  if (!s) return null;
+  const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return null;
+  const [, mm, dd, yyyy] = m;
+  return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+}
 
 /**
  * If the user supplied an email and the review finished cleanly, send a
@@ -168,6 +182,53 @@ async function processOne(row: { id: string; plate: string; state: string; last_
       ? getIssuingOfficerStats(foia.officer, foia.violationDesc)
       : null;
     const block = getBlockStats(foia);
+
+    // 311 sign-repair enrichment for sign-based parking violations.
+    // We hit the public Chicago Open Data 311 dataset to find documented
+    // sign-repair work orders on the cited block face. Quiet failure —
+    // network blip should never break the analysis.
+    //
+    // Match against the CLASSIFIED violation code (dashed format like
+    // "9-64-010"), not the raw FOIA code ("0964010B"). The classifier
+    // normalizes — SIGN_PHOTO_CODES uses the same dashed format.
+    let signOpen = 0;
+    let signRecent = 0;
+    let signTop: string | null = null;
+    const classified = classifyPortalViolation(t.violation_description, t.ticket_type);
+    if (
+      classified.violationCode &&
+      SIGN_PHOTO_CODES[classified.violationCode] &&
+      foia.streetNum &&
+      foia.streetDir &&
+      foia.streetName &&
+      foia.issueDatetime
+    ) {
+      const iso = foiaDateToIso(foia.issueDatetime);
+      const num = parseInt(foia.streetNum, 10);
+      if (iso && Number.isFinite(num)) {
+        try {
+          const cdot = await findRecentSignComplaints({
+            streetNumber: num,
+            streetDirection: foia.streetDir,
+            streetName: foia.streetName,
+            ticketIsoDate: iso,
+          });
+          if (cdot) {
+            signOpen = cdot.signComplaints.filter(s => s.openAtTicketTime).length;
+            signRecent = cdot.signComplaints.filter(s => !s.openAtTicketTime).length;
+            const top =
+              cdot.signComplaints.find(s => s.openAtTicketTime) || cdot.signComplaints[0];
+            signTop = top?.srNumber ?? null;
+            if (signOpen + signRecent > 0) {
+              console.log(`[${row.id}] ${t.ticket_number}: 311 sign-repair hits — ${signOpen} open, ${signRecent} recent closed @ ${num} ${foia.streetDir} ${foia.streetName}`);
+            }
+          }
+        } catch (err: any) {
+          console.warn(`[${row.id}] ${t.ticket_number}: 311 lookup failed: ${err?.message || err}`);
+        }
+      }
+    }
+
     enrichmentByTicket.set(t.ticket_number, {
       foundInFoia: true,
       citedAddress: foia.fullAddress,
@@ -180,6 +241,9 @@ async function processOne(row: { id: string; plate: string; state: string; last_
       blockTotalContested: block?.ticketsAtBlock ?? null,
       blockNotLiable: block?.notLiableAtBlock ?? null,
       blockDismissalRate: block?.dismissalRateAtBlock ?? null,
+      signComplaintsOpenAtTicketTime: signOpen,
+      signComplaintsRecentClosed: signRecent,
+      signComplaintTopSrNumber: signTop,
     });
   }
 
