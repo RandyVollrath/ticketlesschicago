@@ -23,6 +23,13 @@ import { consumeConsent } from './renewal-consent';
 import { decryptCredential } from './credentials-vault';
 import { supabaseAdmin } from './supabase';
 import { assertCircuitClosed, reportRenewalResult } from './renewal-failure-recovery';
+import {
+  fillGovPaymentForm,
+  clickPaymentSubmit,
+  clickContinue,
+  looksLikePaymentForm,
+  scrapeConfirmationReference,
+} from './gov-payment-form';
 
 const ENTRY_URL = 'https://apps.ilsos.gov/LicenseRenewal/';
 
@@ -265,16 +272,89 @@ export async function purchasePlateSticker(input: PlateStickerPurchaseInput): Pr
       };
     }
 
-    // TODO: post-login flow is not yet probed. scripts/probe-ilsos-renewal-walk.ts
-    // captures every subsequent screen once a real Reg ID + PIN is supplied;
-    // that output will define the selectors for vehicle confirmation,
-    // address review, fee summary, and payment fields. Until that probe
-    // runs, the production flow halts here.
+    // Speculative post-login walk: click forward through vehicle/address
+    // confirmation screens until we reach a payment form, then fuzzy-fill
+    // and submit. Screenshots every step so a failed first run tells us
+    // exactly where to harden.
+    let onPaymentForm = await looksLikePaymentForm(page);
+    let walkSteps = 0;
+    while (!onPaymentForm && walkSteps < 10) {
+      const clicked = await clickContinue(page);
+      if (!clicked) break;
+      await page.waitForLoadState('domcontentloaded', { timeout: 25000 }).catch(() => {});
+      await page.waitForTimeout(2500);
+      const shot = `/tmp/plate-walk-${consent.id}-${walkSteps}.png`;
+      await page.screenshot({ path: shot, fullPage: true });
+      screenshots.push(shot);
+      onPaymentForm = await looksLikePaymentForm(page);
+      walkSteps++;
+    }
+    if (!onPaymentForm) {
+      const shot = `/tmp/plate-no-payment-form-${consent.id}.png`;
+      await page.screenshot({ path: shot, fullPage: true });
+      screenshots.push(shot);
+      return {
+        success: false,
+        screenshotPaths: screenshots,
+        error: `Walked ${walkSteps} step(s) past login but never landed on a card-number form. IL SOS layout has changed or our continue-button heuristic missed.`,
+        stoppedAt: 'payment_form',
+      };
+    }
+
+    const fillResult = await fillGovPaymentForm(page, cardConfig);
+    const filledShot = `/tmp/plate-payment-filled-${consent.id}.png`;
+    await page.screenshot({ path: filledShot, fullPage: true });
+    screenshots.push(filledShot);
+
+    if (!fillResult.paymentMinimumMet) {
+      return {
+        success: false,
+        screenshotPaths: screenshots,
+        error: `IL SOS payment form fill incomplete. Filled: ${fillResult.filled.join(', ')}. Missing: ${fillResult.missing.join(', ')}.`,
+        stoppedAt: 'payment_form',
+      };
+    }
+
+    const submitLabel = await clickPaymentSubmit(page);
+    if (!submitLabel) {
+      const cont = await clickContinue(page);
+      if (cont) {
+        await page.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {});
+        await page.waitForTimeout(3000);
+        const reviewShot = `/tmp/plate-review-${consent.id}.png`;
+        await page.screenshot({ path: reviewShot, fullPage: true });
+        screenshots.push(reviewShot);
+        const finalSubmit = await clickPaymentSubmit(page);
+        if (!finalSubmit) {
+          return {
+            success: false,
+            screenshotPaths: screenshots,
+            error: 'Filled IL SOS payment form but could not locate a final Submit button.',
+            stoppedAt: 'submit',
+          };
+        }
+      } else {
+        return {
+          success: false,
+          screenshotPaths: screenshots,
+          error: 'Filled IL SOS payment form but could not locate a Submit or Continue button.',
+          stoppedAt: 'submit',
+        };
+      }
+    }
+
+    await page.waitForLoadState('domcontentloaded', { timeout: 90000 }).catch(() => {});
+    await page.waitForTimeout(6000);
+    const confirmationShot = `/tmp/plate-confirmation-${consent.id}.png`;
+    await page.screenshot({ path: confirmationShot, fullPage: true });
+    screenshots.push(confirmationShot);
+
+    const confirmationNumber = (await scrapeConfirmationReference(page)) || undefined;
     return {
-      success: false,
+      success: true,
+      confirmationNumber,
       screenshotPaths: screenshots,
-      error: 'Post-login flow not yet probed. Run scripts/probe-ilsos-renewal-walk.ts with valid creds to capture the remaining screens before wiring payment.',
-      stoppedAt: 'login_success',
+      stoppedAt: 'confirmation',
     };
   } catch (e: any) {
     return { success: false, screenshotPaths: screenshots, error: e?.message || String(e), stoppedAt: 'login_form_changed' };

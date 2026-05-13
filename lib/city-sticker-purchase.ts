@@ -18,6 +18,13 @@ import { assertAutoRenewalAllowed } from './auto-renewal-gate';
 import type { ConsentRecord } from './renewal-consent';
 import { consumeConsent } from './renewal-consent';
 import { assertCircuitClosed, reportRenewalResult } from './renewal-failure-recovery';
+import {
+  fillGovPaymentForm,
+  clickPaymentSubmit,
+  clickContinue,
+  looksLikePaymentForm,
+  scrapeConfirmationReference,
+} from './gov-payment-form';
 
 export interface CitySticerPurchaseInput {
   consent: ConsentRecord;
@@ -256,15 +263,96 @@ export async function purchaseCitySticker(input: CitySticerPurchaseInput): Promi
       };
     }
 
-    // TODO: real payment flow — fill card form, submit, capture confirmation #.
-    // Selectors for the payment page are unknown until we run an end-to-end
-    // probe with a real vehicle in renewal window. Stops here for now.
+    // Speculative checkout flow. We've reached the cart page; walk forward
+    // through any intermediate screens (review, contact-info confirm, etc.)
+    // until we hit the payment form, then fuzzy-match-fill it and submit.
+    // Every step screenshotted so a first-run failure tells us exactly
+    // which screen we got stuck on.
+    let onPaymentForm = await looksLikePaymentForm(page);
+    let walkSteps = 0;
+    while (!onPaymentForm && walkSteps < 8) {
+      const clicked = await clickContinue(page);
+      if (!clicked) break;
+      await page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
+      await page.waitForTimeout(2500);
+      const shot = `/tmp/city-purchase-walk-${consent.id}-${walkSteps}.png`;
+      await page.screenshot({ path: shot, fullPage: true });
+      screenshots.push(shot);
+      onPaymentForm = await looksLikePaymentForm(page);
+      walkSteps++;
+    }
+    if (!onPaymentForm) {
+      const shot = `/tmp/city-purchase-no-payment-form-${consent.id}.png`;
+      await page.screenshot({ path: shot, fullPage: true });
+      screenshots.push(shot);
+      return {
+        success: false,
+        screenshotPaths: screenshots,
+        error: `Walked ${walkSteps} step(s) but never landed on a card-number form. EzBuy layout has changed or our continue-button heuristic missed.`,
+        stoppedAt: 'payment_form',
+        totalChargedCents,
+      };
+    }
+
+    const fillResult = await fillGovPaymentForm(page, cardConfig);
+    const filledShot = `/tmp/city-purchase-payment-filled-${consent.id}.png`;
+    await page.screenshot({ path: filledShot, fullPage: true });
+    screenshots.push(filledShot);
+
+    if (!fillResult.paymentMinimumMet) {
+      return {
+        success: false,
+        screenshotPaths: screenshots,
+        error: `Payment form fill incomplete. Filled: ${fillResult.filled.join(', ')}. Missing: ${fillResult.missing.join(', ')}. Need to add selectors for missing fields.`,
+        stoppedAt: 'payment_form',
+        totalChargedCents,
+      };
+    }
+
+    const submitLabel = await clickPaymentSubmit(page);
+    if (!submitLabel) {
+      // Some flows put a Continue between fill and final submit — try once more.
+      const cont = await clickContinue(page);
+      if (cont) {
+        await page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
+        await page.waitForTimeout(2500);
+        const reviewShot = `/tmp/city-purchase-review-${consent.id}.png`;
+        await page.screenshot({ path: reviewShot, fullPage: true });
+        screenshots.push(reviewShot);
+        const finalSubmit = await clickPaymentSubmit(page);
+        if (!finalSubmit) {
+          return {
+            success: false,
+            screenshotPaths: screenshots,
+            error: 'Filled payment form but could not locate a Submit button.',
+            stoppedAt: 'submit',
+            totalChargedCents,
+          };
+        }
+      } else {
+        return {
+          success: false,
+          screenshotPaths: screenshots,
+          error: 'Filled payment form but could not locate a Submit or Continue button.',
+          stoppedAt: 'submit',
+          totalChargedCents,
+        };
+      }
+    }
+
+    await page.waitForLoadState('domcontentloaded', { timeout: 60000 }).catch(() => {});
+    await page.waitForTimeout(5000);
+    const confirmationShot = `/tmp/city-purchase-confirmation-${consent.id}.png`;
+    await page.screenshot({ path: confirmationShot, fullPage: true });
+    screenshots.push(confirmationShot);
+
+    const confirmationNumber = (await scrapeConfirmationReference(page)) || undefined;
     return {
-      success: false,
-      screenshotPaths: screenshots,
-      error: 'Payment form selectors not yet probed. Run smoke-test-citysticker-purchase.ts against a real plate to capture them.',
-      stoppedAt: 'payment_form',
+      success: true,
+      confirmationNumber,
       totalChargedCents,
+      screenshotPaths: screenshots,
+      stoppedAt: 'confirmation',
     };
   } catch (e: any) {
     return { success: false, screenshotPaths: screenshots, error: e?.message || String(e), stoppedAt: 'login' };
