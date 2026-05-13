@@ -133,8 +133,25 @@ function classify(row: any): FailureSignature {
   if (row.walkaway_guard_fired) return 'walkaway_guard_fired';
   const al = row.native_meta?.auto_label;
   if (al && al.street_matched === false) return 'autolabel_disagreed';
-  if (row.heading_source === 'stale') return 'heading_stale';
-  if (!row.compass_heading && !row.gps_heading) return 'compass_missing';
+  // heading_stale: GPS heading was used but compass disagrees by >30° — classic
+  // "heading is from the previous street, before the turn" signature. The
+  // earlier `row.heading_source === 'stale'` literal never matched anything
+  // because check-parking.ts only writes 'gps' | 'compass' | 'none'.
+  const headingDisagreementDeg = row.native_meta?.headingDisagreementDeg;
+  if (row.heading_source === 'gps'
+      && typeof headingDisagreementDeg === 'number'
+      && headingDisagreementDeg > 30) {
+    return 'heading_stale';
+  }
+  // compass_missing: no heading at all. Suppress when snap + Mapbox-reverse
+  // independently name the same street — heading wasn't needed, the answer is
+  // confirmed by two geometry-independent sources, so it's not a "failure".
+  if (!row.compass_heading && !row.gps_heading) {
+    const mb = row.native_meta?.mapbox_reverse;
+    const snapConfirmedByMapbox =
+      row.snap_street_name && mb && mb.matched && mb.agrees_with_snap === true;
+    if (!snapConfirmedByMapbox) return 'compass_missing';
+  }
   if ((row.raw_accuracy_meters || 0) > 30) return 'low_accuracy';
   if (row.parity_forced) return 'parity_forced';
   return 'healthy';
