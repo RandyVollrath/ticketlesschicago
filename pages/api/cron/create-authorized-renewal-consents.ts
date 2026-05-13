@@ -77,16 +77,22 @@ function inWindow(dateStr: string | null): boolean {
   return days >= WINDOW_MIN_DAYS && days <= WINDOW_MAX_DAYS;
 }
 
-async function hasRecentConsent(userId: string, type: 'city_sticker' | 'license_plate'): Promise<boolean> {
+async function hasRecentConsent(
+  userId: string,
+  type: 'city_sticker' | 'license_plate',
+  plateId?: string | null,
+): Promise<boolean> {
   const since = new Date(Date.now() - DUPLICATE_LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const { data } = await supabaseAdmin
+  let q = supabaseAdmin
     .from('renewal_purchase_consents')
     .select('id')
     .eq('user_id', userId)
     .eq('renewal_type', type)
     .in('status', ['pending', 'granted', 'consumed'])
-    .gt('created_at', since)
-    .limit(1);
+    .gt('created_at', since);
+  // Scope by plate_id if provided, otherwise check for any (legacy primary).
+  q = plateId ? q.eq('plate_id', plateId) : q.is('plate_id', null);
+  const { data } = await q.limit(1);
   return Array.isArray(data) && data.length > 0;
 }
 
@@ -228,9 +234,97 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
+  // Second pass: monitored_plates rows with per-plate expiry data and IL creds.
+  // Each such plate becomes its own consent, linked via plate_id. Users with
+  // 0 multi-vehicle data on monitored_plates see no change from this pass.
+  const { data: plates } = await (supabaseAdmin as any)
+    .from('monitored_plates')
+    .select('id, user_id, plate, state, vin, last_name, city_sticker_expiry, license_plate_expiry, license_plate_type, license_plate_renewal_cost, il_pin_encrypted, il_registration_id_encrypted, il_credentials_invalid_at')
+    .eq('status', 'active')
+    .or('city_sticker_expiry.not.is.null,license_plate_expiry.not.is.null');
+
+  // Build a quick lookup of (user_id -> profile) so we can check auto_renewal_authorized + email.
+  const userMap = new Map<string, CandidateRow>();
+  for (const r of (rows as CandidateRow[]) ?? []) userMap.set(r.user_id, r);
+
+  for (const pl of (plates as any[]) ?? []) {
+    const parent = userMap.get(pl.user_id);
+    if (!parent || !parent.email) continue; // user not in the authorized set
+    // City sticker per-plate
+    if (inWindow(pl.city_sticker_expiry)) {
+      if (!pl.plate || !pl.vin || !pl.last_name) {
+        skipped.push({ user_id: pl.user_id, reason: `plate ${pl.id}: city missing plate/vin/last_name` });
+      } else if (await hasRecentConsent(pl.user_id, 'city_sticker', pl.id)) {
+        skipped.push({ user_id: pl.user_id, reason: `plate ${pl.id}: city recent consent` });
+      } else {
+        const govCents = estimateCityStickerCents(pl.license_plate_type);
+        const consent = await createConsentRequest({
+          userId: pl.user_id,
+          renewalType: 'city_sticker',
+          licensePlate: pl.plate,
+          licenseState: pl.state || 'IL',
+          govAmountCents: govCents,
+          serviceFeeCents: fee,
+          expiresInDays: 21,
+        });
+        await (supabaseAdmin as any)
+          .from('renewal_purchase_consents')
+          .update({ plate_id: pl.id, updated_at: new Date().toISOString() })
+          .eq('id', consent.id);
+        await sendAuthorizeEmail({
+          email: parent.email,
+          firstName: parent.first_name,
+          type: 'city_sticker',
+          plate: pl.plate,
+          totalCents: govCents + fee,
+          token: consent.consent_token,
+          expiryDate: pl.city_sticker_expiry,
+        });
+        created.push({ user_id: pl.user_id, type: 'city_sticker', token: consent.consent_token, total_cents: govCents + fee });
+      }
+    }
+
+    // Plate sticker per-plate
+    if (inWindow(pl.license_plate_expiry)) {
+      if (!pl.il_pin_encrypted || !pl.il_registration_id_encrypted) {
+        skipped.push({ user_id: pl.user_id, reason: `plate ${pl.id}: no IL creds on plate row` });
+      } else if (pl.il_credentials_invalid_at) {
+        skipped.push({ user_id: pl.user_id, reason: `plate ${pl.id}: IL creds marked invalid` });
+      } else if (await hasRecentConsent(pl.user_id, 'license_plate', pl.id)) {
+        skipped.push({ user_id: pl.user_id, reason: `plate ${pl.id}: plate recent consent` });
+      } else {
+        const govCents = estimatePlateStickerCents(pl.license_plate_renewal_cost, pl.license_plate_type);
+        const consent = await createConsentRequest({
+          userId: pl.user_id,
+          renewalType: 'license_plate',
+          licensePlate: pl.plate,
+          licenseState: pl.state || 'IL',
+          govAmountCents: govCents,
+          serviceFeeCents: fee,
+          expiresInDays: 21,
+        });
+        await (supabaseAdmin as any)
+          .from('renewal_purchase_consents')
+          .update({ plate_id: pl.id, updated_at: new Date().toISOString() })
+          .eq('id', consent.id);
+        await sendAuthorizeEmail({
+          email: parent.email,
+          firstName: parent.first_name,
+          type: 'license_plate',
+          plate: pl.plate,
+          totalCents: govCents + fee,
+          token: consent.consent_token,
+          expiryDate: pl.license_plate_expiry,
+        });
+        created.push({ user_id: pl.user_id, type: 'license_plate', token: consent.consent_token, total_cents: govCents + fee });
+      }
+    }
+  }
+
   return res.status(200).json({
     ok: true,
     eligible_users_seen: rows?.length || 0,
+    monitored_plates_seen: plates?.length || 0,
     created: created.length,
     skipped: skipped.length,
     created_detail: created,
