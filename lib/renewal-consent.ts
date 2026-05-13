@@ -129,6 +129,36 @@ export async function declineConsent(token: string): Promise<ConsentRecord> {
   return data as unknown as ConsentRecord;
 }
 
+/**
+ * Revoke a previously-granted consent before the worker picks it up. If the
+ * worker has already claimed the row, revocation fails because the
+ * automation may be mid-flight. Atomic — only succeeds if status='granted'
+ * AND claimed_at IS NULL.
+ */
+export async function revokeGrantedConsent(token: string): Promise<ConsentRecord> {
+  const existing = await getConsentByToken(token);
+  if (!existing) throw new Error('Consent record not found');
+  if (existing.status !== 'granted') throw new Error(`Cannot revoke — status is ${existing.status}`);
+  if ((existing as any).claimed_at) {
+    throw new Error('Cannot revoke — automation already in progress (contact support if you need a refund)');
+  }
+  const { data, error } = await supabaseAdmin
+    .from('renewal_purchase_consents')
+    .update({
+      status: 'declined',
+      declined_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as any)
+    .eq('id', existing.id)
+    .eq('status', 'granted')
+    .is('claimed_at', null)
+    .select()
+    .maybeSingle();
+  if (error) throw new Error(`revokeGrantedConsent: ${error.message}`);
+  if (!data) throw new Error('Cannot revoke — worker has just claimed this consent. Contact support.');
+  return data as unknown as ConsentRecord;
+}
+
 export async function consumeConsent(
   id: string,
   result: { success: boolean; data?: unknown; failureReason?: string }
