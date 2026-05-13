@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xxl,
-    fontFamily: typography.fontFamily.bodyBold,
+    fontFamily: typography.fontFamily.displayBold,
     color: colors.white,
     textAlign: 'center',
     marginBottom: spacing.md,

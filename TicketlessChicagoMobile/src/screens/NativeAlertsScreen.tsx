@@ -1364,7 +1364,7 @@ const ToggleRow: React.FC<{
       value={value}
       onValueChange={onValueChange}
       disabled={disabled}
-      trackColor={{ false: '#E2E8F0', true: '#0066FF' }}
+      trackColor={{ false: colors.border, true: colors.primary }}
       thumbColor="#fff"
     />
   </View>
@@ -1403,7 +1403,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xxl,
-    fontFamily: typography.fontFamily.bodyBold,
+    fontFamily: typography.fontFamily.displayBold,
     color: colors.textPrimary,
   },
   headerSubtitle: {

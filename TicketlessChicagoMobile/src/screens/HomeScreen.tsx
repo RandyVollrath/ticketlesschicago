@@ -3328,7 +3328,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xxxl,
-    fontFamily: typography.fontFamily.bodyBold,
+    fontFamily: typography.fontFamily.displayBold,
     color: colors.textPrimary,
   },
   debugToggle: {
@@ -3431,7 +3431,7 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontSize: typography.sizes.xl,
-    fontFamily: typography.fontFamily.bodyBold,
+    fontFamily: typography.fontFamily.displayBold,
     marginBottom: 4,
   },
   heroSubtitle: {

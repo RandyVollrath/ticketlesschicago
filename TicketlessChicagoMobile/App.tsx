@@ -565,7 +565,7 @@ function App(): React.JSX.Element {
                 },
                 headerTintColor: colors.primary,
                 headerTitleStyle: {
-                  fontWeight: typography.weights.semibold,
+                  fontFamily: typography.fontFamily.displayBold,
                 },
               }}
             />

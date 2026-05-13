@@ -105,13 +105,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryTint,
   },
   label: {
+    fontFamily: typography.fontFamily.bodyMedium,
     fontSize: 12,
     color: colors.textTertiary,
-    fontWeight: typography.weights.medium,
   },
   labelActive: {
+    fontFamily: typography.fontFamily.bodySemibold,
     color: colors.primary,
-    fontWeight: typography.weights.semibold,
   },
 });
 
