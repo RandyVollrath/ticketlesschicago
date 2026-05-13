@@ -4,6 +4,7 @@
 
 import { randomBytes } from 'crypto';
 import { supabaseAdmin as typedSupabase } from './supabase';
+import { logRenewalAudit } from './renewal-audit';
 
 // renewal_purchase_consents is a new table not yet in the generated types.
 // Cast at the supabase reference so all queries below skip the typegen.
@@ -71,7 +72,19 @@ export async function createConsentRequest(input: CreateConsentInput): Promise<C
     .single();
 
   if (error) throw new Error(`createConsentRequest: ${error.message}`);
-  return data as unknown as ConsentRecord;
+  const record = data as unknown as ConsentRecord;
+  await logRenewalAudit({
+    action: 'renewal_consent_created',
+    userId: record.user_id,
+    consentId: record.id,
+    details: {
+      renewal_type: record.renewal_type,
+      license_plate: record.license_plate,
+      total_amount_cents: record.total_amount_cents,
+      expires_at: record.expires_at,
+    },
+  });
+  return record;
 }
 
 export async function getConsentByToken(token: string): Promise<ConsentRecord | null> {
@@ -108,7 +121,16 @@ export async function grantConsent(token: string, meta: { ip?: string; userAgent
     .select()
     .single();
   if (error) throw new Error(`grantConsent: ${error.message}`);
-  return data as unknown as ConsentRecord;
+  const record = data as unknown as ConsentRecord;
+  await logRenewalAudit({
+    action: 'renewal_consent_granted',
+    userId: record.user_id,
+    consentId: record.id,
+    details: { renewal_type: record.renewal_type, total_amount_cents: record.total_amount_cents },
+    ip: meta.ip ?? null,
+    userAgent: meta.userAgent ?? null,
+  });
+  return record;
 }
 
 export async function declineConsent(token: string): Promise<ConsentRecord> {
@@ -126,7 +148,14 @@ export async function declineConsent(token: string): Promise<ConsentRecord> {
     .select()
     .single();
   if (error) throw new Error(`declineConsent: ${error.message}`);
-  return data as unknown as ConsentRecord;
+  const record = data as unknown as ConsentRecord;
+  await logRenewalAudit({
+    action: 'renewal_consent_declined',
+    userId: record.user_id,
+    consentId: record.id,
+    details: { renewal_type: record.renewal_type },
+  });
+  return record;
 }
 
 /**
@@ -156,7 +185,14 @@ export async function revokeGrantedConsent(token: string): Promise<ConsentRecord
     .maybeSingle();
   if (error) throw new Error(`revokeGrantedConsent: ${error.message}`);
   if (!data) throw new Error('Cannot revoke — worker has just claimed this consent. Contact support.');
-  return data as unknown as ConsentRecord;
+  const record = data as unknown as ConsentRecord;
+  await logRenewalAudit({
+    action: 'renewal_consent_revoked',
+    userId: record.user_id,
+    consentId: record.id,
+    details: { renewal_type: record.renewal_type },
+  });
+  return record;
 }
 
 export async function consumeConsent(
@@ -176,7 +212,19 @@ export async function consumeConsent(
     .select()
     .single();
   if (error) throw new Error(`consumeConsent: ${error.message}`);
-  return data as unknown as ConsentRecord;
+  const record = data as unknown as ConsentRecord;
+  await logRenewalAudit({
+    action: result.success ? 'renewal_consent_consumed_success' : 'renewal_consent_consumed_failure',
+    userId: record.user_id,
+    consentId: record.id,
+    details: {
+      renewal_type: record.renewal_type,
+      purchase_result: result.data ?? null,
+    },
+    status: result.success ? 'success' : 'failure',
+    errorMessage: result.failureReason ?? null,
+  });
+  return record;
 }
 
 /**

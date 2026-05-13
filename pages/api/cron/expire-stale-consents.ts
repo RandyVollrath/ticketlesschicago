@@ -6,6 +6,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin as typedSupabase } from '../../../lib/supabase';
+import { logRenewalAudit } from '../../../lib/renewal-audit';
 
 const supabaseAdmin = typedSupabase as any;
 
@@ -25,8 +26,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .update({ status: 'expired', updated_at: now })
     .eq('status', 'pending')
     .lt('expires_at', now)
-    .select('id');
+    .select('id, user_id, renewal_type');
 
   if (error) return res.status(500).json({ error: error.message });
+
+  for (const row of (data as Array<{ id: string; user_id: string; renewal_type: string }>) ?? []) {
+    await logRenewalAudit({
+      action: 'renewal_consent_expired',
+      userId: row.user_id,
+      consentId: row.id,
+      details: { renewal_type: row.renewal_type, reason: 'cleanup cron' },
+    });
+  }
+
   return res.status(200).json({ ok: true, expired: data?.length ?? 0 });
 }
