@@ -1149,34 +1149,58 @@ export async function integrateUserEvidence(
     console.error('integrateUserEvidence: kit re-evaluation failed (non-fatal):', err?.message);
   }
 
-  // ── 4. Update the TICKET row with evidence flags + new status ──
+  // ── 4. Run Claude Vision on photo attachments so the regenerator can
+  //    describe what they actually show (sign condition, receipt date, meter
+  //    screen, sticker visibility) instead of just saying "user has attachments."
+  //    We do this BEFORE the ticket update so the analyses get persisted on
+  //    user_evidence alongside the text. ──
+  const photoExtRe = /\.(jpe?g|png|gif|heic|webp)(\?|$)/i;
+  const photoUrls = attachments
+    .filter(a => photoExtRe.test(a.url) || /^image\//.test(a.content_type || ''))
+    .map(a => a.url);
+
+  let photoAnalyses: { url: string; filename: string; description: string }[] = [];
+  if (photoUrls.length > 0) {
+    try {
+      photoAnalyses = await analyzeEvidencePhotos(photoUrls, ticket);
+      console.log(`integrateUserEvidence: analyzed ${photoAnalyses.length}/${photoUrls.length} photos`);
+    } catch (err: any) {
+      // Photo analysis is best-effort; don't block letter regeneration.
+      console.error('integrateUserEvidence: photo analysis failed (non-fatal):', err?.message);
+    }
+  }
+
+  // ── 5. Persist evidence + status on the ticket row. We do this for every
+  //    branch (no letter, immutable letter, regenerated letter) because the
+  //    evidence ITSELF is always worth keeping, even if the letter can't be
+  //    updated. ──
   const evidenceReceivedAt = new Date().toISOString();
   const evidenceOnTime = ticket.evidence_deadline
     ? new Date(evidenceReceivedAt).getTime() <= new Date(ticket.evidence_deadline).getTime()
     : null;
+  const userEvidenceBlob = JSON.stringify({
+    text: evidenceText,
+    attachment_urls: attachments.map(a => a.url),
+    has_attachments: attachments.length > 0,
+    photo_analyses: photoAnalyses,
+    received_at: evidenceReceivedAt,
+  });
 
-  await supabaseAdmin
-    .from('detected_tickets')
-    .update({
-      user_evidence: JSON.stringify({
-        text: evidenceText,
-        attachment_urls: attachments.map(a => a.url),
-        has_attachments: attachments.length > 0,
-        received_at: evidenceReceivedAt,
-      }),
-      user_evidence_uploaded_at: evidenceReceivedAt,
-      evidence_received_at: evidenceReceivedAt,
-      evidence_on_time: evidenceOnTime,
-      status: newTicketStatus,
-    })
-    .eq('id', ticket.id);
-
-  // ── 5. Regenerate the LETTER (skip if already mailed). ──
+  // ── 6. Regenerate the LETTER (skip if already mailed). ──
   const IMMUTABLE_LETTER_STATUSES = ['sent', 'delivered', 'returned'];
+
   if (!letter) {
+    // No letter yet — leave it to the generate path, but still preserve the
+    // evidence on the ticket so the generator can see it on its next pass.
     await supabaseAdmin
       .from('detected_tickets')
-      .update({ status: 'found' })
+      .update({
+        user_evidence: userEvidenceBlob,
+        user_evidence_uploaded_at: evidenceReceivedAt,
+        evidence_received_at: evidenceReceivedAt,
+        evidence_on_time: evidenceOnTime,
+        status: 'found',
+      })
       .eq('id', ticket.id);
     return {
       letterId: null,
@@ -1191,12 +1215,24 @@ export async function integrateUserEvidence(
 
   if (IMMUTABLE_LETTER_STATUSES.includes(letter.status)) {
     console.log(`integrateUserEvidence: letter ${letter.id} is ${letter.status} — preserving content`);
+    // Letter is mailed/delivered/returned — we still record the evidence on
+    // the ticket so it shows up in the admin pipeline + audit log, but we
+    // don't promote the ticket status (the contest is already filed).
+    await supabaseAdmin
+      .from('detected_tickets')
+      .update({
+        user_evidence: userEvidenceBlob,
+        user_evidence_uploaded_at: evidenceReceivedAt,
+        evidence_received_at: evidenceReceivedAt,
+        evidence_on_time: evidenceOnTime,
+      })
+      .eq('id', ticket.id);
     return {
       letterId: letter.id,
       letterContent: letter.letter_content,
       letterRegenerated: false,
       newLetterStatus: letter.status,
-      newTicketStatus,
+      newTicketStatus: ticket.status as string,
       needsApproval,
       kitEval,
     };
@@ -1212,7 +1248,7 @@ export async function integrateUserEvidence(
       ticket,
       attachments.length > 0,
       kitEval,
-      [],
+      photoAnalyses,
     );
   } catch (err: any) {
     console.error('integrateUserEvidence: AI regeneration failed:', err?.message);
@@ -1231,6 +1267,18 @@ export async function integrateUserEvidence(
   // Both are loaded by autopilot-mail-letters.ts (its .or() filter includes
   // 'approved', 'ready', 'awaiting_consent', 'mailing').
   const newLetterStatus = needsApproval ? 'pending_approval' : 'ready';
+
+  // Update ticket + letter together.
+  await supabaseAdmin
+    .from('detected_tickets')
+    .update({
+      user_evidence: userEvidenceBlob,
+      user_evidence_uploaded_at: evidenceReceivedAt,
+      evidence_received_at: evidenceReceivedAt,
+      evidence_on_time: evidenceOnTime,
+      status: newTicketStatus,
+    })
+    .eq('id', ticket.id);
 
   await supabaseAdmin
     .from('contest_letters')
