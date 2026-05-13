@@ -3295,6 +3295,11 @@ class BackgroundTaskServiceClass {
     const meterAlertsEnabled = meterAlertsPref === null ? true : meterAlertsPref === 'true';
     if (meterAlertsEnabled && result.meteredParking?.inMeteredZone) {
       const rate = result.meteredParking.estimatedRate || '$2.50/hr';
+      // ParkChicago zone number — printed on the meter pole, also what
+      // the ParkChicago app prompts for. Include it in every meter
+      // notification so the user can pay/extend from their phone.
+      const meterId = result.meteredParking.meterId;
+      const payHint = meterId ? ` Pay/extend in ParkChicago app: Zone #${meterId}.` : '';
 
       if (result.meteredParking.isEnforcedNow) {
         const timeLimitMin = result.meteredParking.timeLimitMinutes || 120;
@@ -3325,7 +3330,7 @@ class BackgroundTaskServiceClass {
               type: 'metered_parking',
               restrictionStartTime: earlyWarningTime,
               address: result.address || '',
-              details: `Your ${limitDisplay} meter expires in 10 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car — the posted limit is how long you can park, not just pay. $50 ticket.`,
+              details: `Your ${limitDisplay} meter expires in 10 minutes at ${expiryTimeStr} (${rushHourNote}${rate}).${payHint} Move your car — the posted limit is how long you can park, not just pay. $50 ticket.`,
               latitude: coords.latitude,
               longitude: coords.longitude,
             });
@@ -3344,7 +3349,7 @@ class BackgroundTaskServiceClass {
             type: 'metered_parking',
             restrictionStartTime: meterExpiryWarningTime,
             address: result.address || '',
-            details: `Your ${limitDisplay} meter expires in 30 minutes at ${expiryTimeStr} (${rushHourNote}${rate}). Move your car or add time — $50 ticket if expired. The posted limit is how long you can park, not just pay.`,
+            details: `Your ${limitDisplay} meter expires in 30 minutes at ${expiryTimeStr} (${rushHourNote}${rate}).${payHint} Move your car or add time — $50 ticket if expired. The posted limit is how long you can park, not just pay.`,
             latitude: coords.latitude,
             longitude: coords.longitude,
           });
@@ -3364,7 +3369,7 @@ class BackgroundTaskServiceClass {
           type: 'metered_parking',
           restrictionStartTime: meterLimitReachedTime,
           address: result.address || '',
-          details: `Your ${limitDisplay} meter has expired (${expiryTimeStr}). The ${limitHours}-hour posted limit is a legal max — move your car now to avoid a $50 ticket.`,
+          details: `Your ${limitDisplay} meter has expired (${expiryTimeStr}). The ${limitHours}-hour posted limit is a legal max — move your car now to avoid a $50 ticket.${payHint}`,
           latitude: coords.latitude,
           longitude: coords.longitude,
         });
@@ -3462,7 +3467,7 @@ class BackgroundTaskServiceClass {
             // "activates" is the marker LocalNotificationService matches on
             // to pick the urgent "activates soon" title + iOS time-sensitive
             // interrupt level. Don't reword without updating both ends.
-            details: `Metered parking activates ${dayPrefix} at ${enfTimeStr} (${rate}, ${limitDisplay} max)${seasonalNote}. Pay or move before then — $50 ticket.`,
+            details: `Metered parking activates ${dayPrefix} at ${enfTimeStr} (${rate}, ${limitDisplay} max)${seasonalNote}.${payHint} Pay or move before then — $50 ticket.`,
             latitude: coords.latitude,
             longitude: coords.longitude,
           });
@@ -3698,19 +3703,24 @@ class BackgroundTaskServiceClass {
       const meterLimitMin = rawData.meteredParking.timeLimitMinutes || 120;
       const meterLimitHours = meterLimitMin / 60;
       const limitDisplay = meterLimitHours === 1 ? '1-hour' : `${meterLimitHours}-hour`;
+      // ParkChicago pay-zone — the number printed on the meter pole and
+      // used in the ParkChicago app. Surfacing it here lets the user pay
+      // from their phone without walking to the kiosk to read it.
+      const meterId = rawData.meteredParking.meterId;
+      const payHint = meterId ? ` Pay in ParkChicago app: Zone #${meterId}.` : '';
       if (rawData.meteredParking.isEnforcedNow) {
         const isRushHour = rawData.meteredParking.isRushHour || false;
         const rushTag = isRushHour ? ' RUSH HOUR' : '';
         const expiryTime = new Date(Date.now() + meterLimitMin * 60 * 1000);
         const expiryStr = expiryTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        parts.push(`⏰ Metered zone —${rushTag} ${rate}, ${limitDisplay} max (expires ~${expiryStr}). The posted limit is how long you can park, not just pay — move before it expires or risk a $50 ticket.`);
+        parts.push(`⏰ Metered zone —${rushTag} ${rate}, ${limitDisplay} max (expires ~${expiryStr}). The posted limit is how long you can park, not just pay — move before it expires or risk a $50 ticket.${payHint}`);
       } else {
         // Not enforced now — tell them when it activates so they know to
         // move or pay before then. scheduleText is the canonical hours
         // string (e.g., "Mon–Sat 8am–10pm, Sun 10am–8pm").
         const scheduleText = rawData.meteredParking.scheduleText;
         const schedSuffix = scheduleText ? ` Enforcement: ${scheduleText}.` : '';
-        parts.push(`⏰ Metered zone — free right now, but activates later. We'll alert you 15 min before. ${rate}, ${limitDisplay} max.${schedSuffix}`);
+        parts.push(`⏰ Metered zone — free right now, but activates later. We'll alert you 15 min before. ${rate}, ${limitDisplay} max.${schedSuffix}${payHint}`);
       }
     }
 

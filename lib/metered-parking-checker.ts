@@ -24,6 +24,14 @@ export interface MeteredParkingStatus {
   nearestMeterDistanceM: number | null;
   /** Address of matched meter */
   nearestMeterAddress: string | null;
+  /**
+   * Pay-box terminal ID — this is the number printed on the meter pole
+   * AND the "Zone Number" users enter in the ParkChicago app to pay.
+   * (chicagometers.com TerminalID; 4–6 digit integer.) Surfacing it in
+   * notifications lets the user pay from their phone instead of walking
+   * to the kiosk.
+   */
+  meterId: number | null;
   /** Total metered spaces on this block */
   nearestMeterSpaces: number | null;
   /** Meter type (CWT = standard, CLZ = commercial loading zone) */
@@ -530,7 +538,7 @@ export async function checkMeteredParking(
     // access becomes a TS error.
     let query = supabaseAdmin
       .from('metered_parking_locations')
-      .select('address, spaces, time_limit_hours, rate, rate_description, is_clz, block_start, block_end, latitude, longitude, rate_zone, is_seasonal, rush_hour_schedule, sunday_schedule, side_of_street')
+      .select('meter_id, address, spaces, time_limit_hours, rate, rate_description, is_clz, block_start, block_end, latitude, longitude, rate_zone, is_seasonal, rush_hour_schedule, sunday_schedule, side_of_street')
       .eq('status', 'Active')
       .eq('street_name', parsed.name);
 
@@ -663,6 +671,7 @@ export async function checkMeteredParking(
       nearestMeterDistanceM: null, // Street-based matching — distance not applicable
       nearestMeterAddress: meter.address,
       nearestMeterSpaces: totalSpaces,
+      meterId: meter.meter_id ?? null,
       meterType: meter.is_clz ? 'CLZ' : 'CWT',
       message,
       severity,
@@ -692,6 +701,7 @@ function makeNoMeterResult(): MeteredParkingStatus {
     nearestMeterDistanceM: null,
     nearestMeterAddress: null,
     nearestMeterSpaces: null,
+    meterId: null,
     meterType: null,
     message: 'Not in a metered parking zone',
     severity: 'none',
