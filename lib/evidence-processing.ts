@@ -1053,3 +1053,205 @@ export async function downloadAndUploadMedia(
 
   return results;
 }
+
+/**
+ * Post-evidence integration: regenerate the contest letter with the user's
+ * evidence and promote both the letter and ticket to statuses the mailing
+ * crons actually act on.
+ *
+ * Why this exists: prior to extraction, `resend-incoming-email.ts` set
+ * ticket.status='evidence_received' (an orphan status — no cron picks it up)
+ * and never promoted the letter. So a user could reply with photos / a
+ * receipt and the letter would silently sit in `pending_evidence` forever.
+ *
+ * Caller is responsible for having ALREADY:
+ *   - saved the raw evidence to the `ticket_evidence` table
+ *   - uploaded photo attachments to blob storage with public URLs
+ *
+ * This function then:
+ *   1. Loads the existing letter for the ticket (most recent).
+ *   2. Loads user's autopilot_settings to decide approval vs auto-mail.
+ *   3. Parses the evidence text + re-evaluates with the contest-kit policy
+ *      engine to pick the best argument given the new evidence.
+ *   4. Regenerates the letter via Claude using kit-guided strategy.
+ *   5. Updates the LETTER row with new content and proper status
+ *      ('ready' for auto-mail users, 'pending_approval' otherwise).
+ *   6. Updates the TICKET row with evidence flags + status
+ *      ('approved' or 'needs_approval').
+ */
+export async function integrateUserEvidence(
+  supabaseAdmin: any,
+  args: {
+    ticket: {
+      id: string;
+      user_id: string;
+      violation_type?: string | null;
+      violation_description?: string | null;
+      violation_date?: string | null;
+      issue_date?: string | null;
+      amount?: number | null;
+      total_amount?: number | null;
+      ticket_number?: string | null;
+      evidence_deadline?: string | null;
+      [key: string]: any;
+    };
+    evidenceText: string;
+    attachments: { url: string; filename: string; content_type?: string }[];
+  },
+): Promise<{
+  letterId: string | null;
+  letterContent: string | null;
+  letterRegenerated: boolean;
+  newLetterStatus: string | null;
+  newTicketStatus: string;
+  needsApproval: boolean;
+  kitEval: ContestEvaluation | null;
+}> {
+  const { ticket, evidenceText, attachments } = args;
+  const userId = ticket.user_id;
+
+  // ── 1. Load the most recent letter for this ticket ──
+  const { data: letter } = await supabaseAdmin
+    .from('contest_letters')
+    .select('id, status, letter_content, letter_text, defense_type')
+    .eq('ticket_id', ticket.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // ── 2. Load user settings — default to require_approval=false / auto-mail=true
+  //      because per autopilot-check-plates.ts and the rest of the active flow,
+  //      letters are auto-mailed unless explicitly held by the user. ──
+  const { data: userSettings } = await supabaseAdmin
+    .from('autopilot_settings')
+    .select('require_approval, auto_mail_enabled')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const requireApproval = userSettings?.require_approval ?? false;
+  const autoMailEnabled = userSettings?.auto_mail_enabled ?? true;
+  const needsApproval = requireApproval || !autoMailEnabled;
+  const newTicketStatus = needsApproval ? 'needs_approval' : 'approved';
+
+  // ── 3. Parse evidence + re-evaluate the contest kit ──
+  const attachmentFilenames = attachments.map(a => a.filename);
+  const parsedEvidence = parseUserEvidence(
+    evidenceText,
+    attachments.length > 0,
+    attachmentFilenames,
+    ticket.violation_type || '',
+  );
+
+  let kitEval: ContestEvaluation | null = null;
+  try {
+    kitEval = await reEvaluateWithKit(ticket as any, parsedEvidence);
+  } catch (err: any) {
+    console.error('integrateUserEvidence: kit re-evaluation failed (non-fatal):', err?.message);
+  }
+
+  // ── 4. Update the TICKET row with evidence flags + new status ──
+  const evidenceReceivedAt = new Date().toISOString();
+  const evidenceOnTime = ticket.evidence_deadline
+    ? new Date(evidenceReceivedAt).getTime() <= new Date(ticket.evidence_deadline).getTime()
+    : null;
+
+  await supabaseAdmin
+    .from('detected_tickets')
+    .update({
+      user_evidence: JSON.stringify({
+        text: evidenceText,
+        attachment_urls: attachments.map(a => a.url),
+        has_attachments: attachments.length > 0,
+        received_at: evidenceReceivedAt,
+      }),
+      user_evidence_uploaded_at: evidenceReceivedAt,
+      evidence_received_at: evidenceReceivedAt,
+      evidence_on_time: evidenceOnTime,
+      status: newTicketStatus,
+    })
+    .eq('id', ticket.id);
+
+  // ── 5. Regenerate the LETTER (skip if already mailed). ──
+  const IMMUTABLE_LETTER_STATUSES = ['sent', 'delivered', 'returned'];
+  if (!letter) {
+    await supabaseAdmin
+      .from('detected_tickets')
+      .update({ status: 'found' })
+      .eq('id', ticket.id);
+    return {
+      letterId: null,
+      letterContent: null,
+      letterRegenerated: false,
+      newLetterStatus: null,
+      newTicketStatus: 'found',
+      needsApproval,
+      kitEval,
+    };
+  }
+
+  if (IMMUTABLE_LETTER_STATUSES.includes(letter.status)) {
+    console.log(`integrateUserEvidence: letter ${letter.id} is ${letter.status} — preserving content`);
+    return {
+      letterId: letter.id,
+      letterContent: letter.letter_content,
+      letterRegenerated: false,
+      newLetterStatus: letter.status,
+      newTicketStatus,
+      needsApproval,
+      kitEval,
+    };
+  }
+
+  const originalLetter = letter.letter_content || letter.letter_text || '';
+
+  let regenerated = '';
+  try {
+    regenerated = await regenerateLetterWithAI(
+      originalLetter,
+      evidenceText,
+      ticket,
+      attachments.length > 0,
+      kitEval,
+      [],
+    );
+  } catch (err: any) {
+    console.error('integrateUserEvidence: AI regeneration failed:', err?.message);
+  }
+
+  if (!regenerated || regenerated.trim().length < 50) {
+    console.warn('integrateUserEvidence: regenerated letter too short, keeping original');
+    regenerated = originalLetter;
+  }
+
+  const newDefenseType = kitEval
+    ? `kit_${kitEval.selectedArgument.id}`
+    : letter.defense_type;
+
+  // Letter status: 'ready' if auto-mail, 'pending_approval' if user must approve.
+  // Both are loaded by autopilot-mail-letters.ts (its .or() filter includes
+  // 'approved', 'ready', 'awaiting_consent', 'mailing').
+  const newLetterStatus = needsApproval ? 'pending_approval' : 'ready';
+
+  await supabaseAdmin
+    .from('contest_letters')
+    .update({
+      letter_content: regenerated,
+      letter_text: regenerated,
+      defense_type: newDefenseType,
+      status: newLetterStatus,
+      evidence_integrated: true,
+      evidence_integrated_at: new Date().toISOString(),
+    })
+    .eq('id', letter.id)
+    .eq('user_id', userId);
+
+  return {
+    letterId: letter.id,
+    letterContent: regenerated,
+    letterRegenerated: regenerated !== originalLetter,
+    newLetterStatus,
+    newTicketStatus,
+    needsApproval,
+    kitEval,
+  };
+}
