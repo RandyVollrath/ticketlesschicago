@@ -97,24 +97,39 @@ async function main() {
   }));
 
   console.log('\n=== 2. Special Events permit-coverage check ===');
-  // We use a random suburban location with no permits to ensure the "no
-  // permit found" path fires. This is a real call to the real RPC.
-  assertFires('No permit at distant address — should fire', await checkSpecialEventsPermitCoverage({
-    issueDate: '2025-06-15',
-    issueDateTime: '2025-06-15T18:00:00',
-    latitude: 41.7000,  // South Side, away from any typical event
-    longitude: -87.6500,
+  // Use today's date — the freshness guard requires (a) ticket <30 days
+  // old AND (b) dot_permits table populated for that date. With an empty
+  // table the check should ABSTAIN (return null), which is the safe
+  // behavior. When the sync cron runs it will start firing on real
+  // mismatches.
+  const todayISO = new Date().toISOString().slice(0, 10);
+  // With table empty today the check is silent — that's the correct,
+  // non-false-positive behavior we want.
+  assertSilent('Empty dot_permits table — abstains (no false positive)', await checkSpecialEventsPermitCoverage({
+    issueDate: todayISO,
+    issueDateTime: `${todayISO}T18:00:00`,
+    latitude: 41.7000, longitude: -87.6500,
     ticketAddress: '6300 S WENTWORTH AVE',
-    violationCode: '9-64-041',
+    violationCode: '0964041B',
+    violationDescription: 'SPECIAL EVENTS RESTRICTION',
   }, { supabase }));
-  // Different violation code — must NOT fire
-  assertSilent('non-special-events code should not fire', await checkSpecialEventsPermitCoverage({
-    issueDate: '2025-06-15',
-    issueDateTime: '2025-06-15T18:00:00',
-    latitude: 41.8781,
-    longitude: -87.6298,
-    ticketAddress: '100 N STATE ST',
+  // Stale ticket (>30 days old) — always abstains regardless of table state
+  assertSilent('Stale ticket (>30 days) — abstains', await checkSpecialEventsPermitCoverage({
+    issueDate: '2024-06-15',
+    issueDateTime: '2024-06-15T18:00:00',
+    latitude: 41.7000, longitude: -87.6500,
+    ticketAddress: '6300 S WENTWORTH AVE',
+    violationCode: '0964041B',
+    violationDescription: 'SPECIAL EVENTS RESTRICTION',
+  }, { supabase }));
+  // Different violation type — must NOT fire
+  assertSilent('Parking-prohibited without special-event desc — silent', await checkSpecialEventsPermitCoverage({
+    issueDate: todayISO,
+    issueDateTime: `${todayISO}T18:00:00`,
+    latitude: 41.7000, longitude: -87.6500,
+    ticketAddress: '6300 S WENTWORTH AVE',
     violationCode: '9-64-040',
+    violationDescription: 'PARKING/STANDING PROHIBITED ANYTIME',
   }, { supabase }));
 
   console.log('\n=== 3. Winter Ban triple check ===');
@@ -152,70 +167,110 @@ async function main() {
   }, { supabase }));
 
   console.log('\n=== 4. 2-inch Snow Route check ===');
-  // Bad: ticket issued on a summer day with zero snowfall in prior 3 days
-  assertFires('July ticket — no snowfall', await checkTwoInchSnowRoute({
+  // Bad: 0964070 real code on a summer day at a non-snow-route address.
+  // Network check fires first; weather check is the fallback.
+  assertFires('0964070 random street + summer — fires', await checkTwoInchSnowRoute({
     issueDate: '2025-07-15',
     issueDateTime: '2025-07-15T08:00:00',
     latitude: 41.96, longitude: -87.66,
     ticketAddress: '1234 W BELMONT AVE',
-    violationCode: '9-64-100',
-  }));
-  // Wrong violation code — must NOT fire
-  assertSilent('non-snow-route code should not fire', await checkTwoInchSnowRoute({
+    violationCode: '0964070',
+    violationDescription: "SNOW ROUTE: 2'' OF SNOW OR MORE",
+  }, { supabase }));
+  // Wrong type — silent
+  assertSilent('Street cleaning ticket — silent', await checkTwoInchSnowRoute({
     issueDate: '2025-07-15',
     issueDateTime: '2025-07-15T08:00:00',
     latitude: 41.96, longitude: -87.66,
     ticketAddress: '1234 W BELMONT AVE',
     violationCode: '9-64-010',
-  }));
+    violationDescription: 'STREET CLEANING',
+  }, { supabase }));
 
   console.log('\n=== 5. No Parking in Loop check ===');
-  // Bad: a No-Loop ticket issued in Edison Park (per UIC, this happened)
-  assertFires('Edison Park location — outside the Loop', await checkNoParkingInLoop({
+  // Bad: FOIA real code 0964180A in Edison Park
+  assertFires('0964180A Edison Park — fires (real FOIA code)', await checkNoParkingInLoop({
     issueDate: '2025-06-15',
     issueDateTime: '2025-06-15T13:00:00',
-    latitude: 41.9929,  // Edison Park, far NW
-    longitude: -87.8146,
+    latitude: 41.9929, longitude: -87.8146,
     ticketAddress: '6800 N OLIPHANT AVE',
-    violationCode: '9-64-180',
+    violationCode: '0964180A',
+    violationDescription: 'NO PARKING IN LOOP',
   }));
-  // Good: a real Loop address
-  assertSilent('100 W Adams (in the Loop) — should be silent', await checkNoParkingInLoop({
+  // Bad: Description-only path (no FOIA code on a fresh portal ticket)
+  assertFires('Description "NO PARKING IN LOOP" without FOIA code — fires', await checkNoParkingInLoop({
     issueDate: '2025-06-15',
     issueDateTime: '2025-06-15T13:00:00',
-    latitude: 41.8794,
-    longitude: -87.6312,
+    latitude: 41.9929, longitude: -87.8146,
+    ticketAddress: '6800 N OLIPHANT AVE',
+    violationCode: '9-64-040',
+    violationDescription: 'NO PARKING IN LOOP',
+  }));
+  // Good: real Loop address with Loop ticket
+  assertSilent('Loop ticket at 100 W Adams (inside Loop) — silent', await checkNoParkingInLoop({
+    issueDate: '2025-06-15',
+    issueDateTime: '2025-06-15T13:00:00',
+    latitude: 41.8794, longitude: -87.6312,
     ticketAddress: '100 W ADAMS ST',
-    violationCode: '9-64-180',
+    violationCode: '0964180A',
+    violationDescription: 'NO PARKING IN LOOP',
   }));
-  // Wrong code — silent
-  assertSilent('non-loop code should not fire', await checkNoParkingInLoop({
+  // REGRESSION GUARD: our internal "9-64-180" = Handicapped Zone. Must NOT
+  // fire on a handicapped ticket even though the address is outside the Loop.
+  assertSilent('REGRESSION: 9-64-180 Handicapped ticket — silent (was bug)', await checkNoParkingInLoop({
     issueDate: '2025-06-15',
     issueDateTime: '2025-06-15T13:00:00',
-    latitude: 41.9929,
-    longitude: -87.8146,
+    latitude: 41.9929, longitude: -87.8146,
     ticketAddress: '6800 N OLIPHANT AVE',
-    violationCode: '9-64-010',
+    violationCode: '9-64-180',
+    violationDescription: 'DISABLED PARKING WITHOUT PERMIT',
   }));
 
   console.log('\n=== 6. Expired Meter in CBD check ===');
-  // Bad: CBD ticket issued in Hyde Park (south of Roosevelt Rd)
-  assertFires('Hyde Park CBD ticket — outside CBD', checkExpiredMeterCBD({
+  // Bad: FOIA real CBD code outside the CBD bounds
+  assertFires('0964190B Hyde Park — fires', checkExpiredMeterCBD({
     issueDate: '2025-06-15',
     issueDateTime: '2025-06-15T13:00:00',
-    latitude: 41.7886,
-    longitude: -87.5987,
+    latitude: 41.7886, longitude: -87.5987,
+    ticketAddress: '5300 S HYDE PARK BLVD',
+    violationCode: '0964190B',
+    violationDescription: 'EXPIRED METER CENTRAL BUSINESS DISTRICT',
+  }));
+  // Bad: Description path (portal scraper, no FOIA code yet)
+  assertFires('Description "CBD" outside CBD — fires', checkExpiredMeterCBD({
+    issueDate: '2025-06-15',
+    issueDateTime: '2025-06-15T13:00:00',
+    latitude: 41.7886, longitude: -87.5987,
+    ticketAddress: '5300 S HYDE PARK BLVD',
+    violationCode: '9-64-170',
+    violationDescription: 'EXP. METER CBD',
+  }));
+  // Good: CBD ticket inside the CBD
+  assertSilent('CBD ticket inside CBD — silent', checkExpiredMeterCBD({
+    issueDate: '2025-06-15',
+    issueDateTime: '2025-06-15T13:00:00',
+    latitude: 41.8800, longitude: -87.6280,
+    ticketAddress: '100 W ADAMS ST',
+    violationCode: '0964190B',
+    violationDescription: 'EXPIRED METER CENTRAL BUSINESS DISTRICT',
+  }));
+  // REGRESSION GUARD: our internal "9-64-190" = Rush Hour. Must NOT fire.
+  assertSilent('REGRESSION: 9-64-190 Rush Hour ticket — silent (was bug)', checkExpiredMeterCBD({
+    issueDate: '2025-06-15',
+    issueDateTime: '2025-06-15T08:00:00',
+    latitude: 41.7886, longitude: -87.5987,
     ticketAddress: '5300 S HYDE PARK BLVD',
     violationCode: '9-64-190',
+    violationDescription: 'RUSH HOUR PARKING',
   }));
-  // Good: CBD ticket issued inside CBD
-  assertSilent('Inside CBD bounds — silent', checkExpiredMeterCBD({
+  // REGRESSION: non-CBD expired meter (0964190A) outside CBD must NOT fire
+  assertSilent('REGRESSION: 0964190A non-CBD expired meter — silent', checkExpiredMeterCBD({
     issueDate: '2025-06-15',
     issueDateTime: '2025-06-15T13:00:00',
-    latitude: 41.8800,
-    longitude: -87.6280,
-    ticketAddress: '100 W ADAMS ST',
-    violationCode: '9-64-190',
+    latitude: 41.7886, longitude: -87.5987,
+    ticketAddress: '5300 S HYDE PARK BLVD',
+    violationCode: '0964190A',
+    violationDescription: 'EXP. METER NON-CENTRAL BUSINESS DISTRICT',
   }));
 
   console.log('\n=== 7. Address Transposition check ===');
@@ -248,20 +303,43 @@ async function main() {
   }));
 
   console.log('\n=== 8. End-to-end runAllUICChecks ===');
+  // Loop ticket in Edison Park: should fire no_parking_loop_outside_loop.
   const findings = await runAllUICChecks({
     issueDate: '2025-07-15',
-    issueDateTime: '2025-07-15T04:30:00',
-    latitude: 41.9929,
-    longitude: -87.8146,
+    issueDateTime: '2025-07-15T13:00:00',
+    latitude: 41.9929, longitude: -87.8146,
     ticketAddress: '6800 N OLIPHANT AVE',
-    violationCode: '9-64-180',
+    violationCode: '0964180A',
+    violationDescription: 'NO PARKING IN LOOP',
   }, { supabase });
-  console.log(`  ${findings.length} finding(s):`, findings.map(f => f.id).join(', '));
-  if (findings.length === 0) {
+  const ids = findings.map(f => f.id);
+  console.log(`  ${findings.length} finding(s):`, ids.join(', '));
+  if (!ids.includes('no_parking_loop_outside_loop')) {
     failures++;
-    console.error('  FAIL: expected at least 1 finding (the Loop-outside check)');
+    console.error('  FAIL: expected no_parking_loop_outside_loop in findings');
   } else {
-    console.log('  PASS: end-to-end aggregator returns findings');
+    console.log('  PASS: end-to-end aggregator includes Loop-outside finding');
+  }
+
+  // Cross-fire regression: a Handicapped ticket (9-64-180 in OUR system)
+  // should NOT trip the Loop check or any other UIC-style finding by code
+  // collision alone.
+  const cross = await runAllUICChecks({
+    issueDate: '2025-07-15',
+    issueDateTime: '2025-07-15T13:00:00',
+    latitude: 41.9929, longitude: -87.8146,
+    ticketAddress: '6800 N OLIPHANT AVE',
+    violationCode: '9-64-180',  // internal = handicapped
+    violationDescription: 'DISABLED PARKING WITHOUT PERMIT',
+  }, { supabase });
+  const crossIds = cross.map(f => f.id);
+  const badLoop = crossIds.includes('no_parking_loop_outside_loop');
+  const badCBD = crossIds.includes('expired_meter_cbd_outside_cbd');
+  if (badLoop || badCBD) {
+    failures++;
+    console.error('  FAIL: Handicapped ticket misfired UIC checks:', crossIds.join(', '));
+  } else {
+    console.log('  PASS: Handicapped ticket does not misfire (cross-collision guard)');
   }
 
   console.log('\n──────────────────────────────────');
