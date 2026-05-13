@@ -456,7 +456,19 @@ export async function checkAllParkingRestrictions(
       const chicagoToday = getChicagoDateISO();
       const cleaningDate = streetCleaningData.next_cleaning_date || null;
 
-      if (cleaningDate && cleaningDate === chicagoToday) {
+      // Chicago street cleaning runs 9am–3pm citywide (no per-zone hours in
+      // the schedule data). If we're on a cleaning street, on the cleaning
+      // day, during that window, the user is at active ticket risk — bump
+      // to critical so the hero turns red and the notification fires with
+      // a "ticket NOW" title instead of "heads up."
+      const chicagoHour = getChicagoTime().getHours();
+      const isInCleaningWindow = chicagoHour >= 9 && chicagoHour < 15;
+
+      if (cleaningDate && cleaningDate === chicagoToday && isInCleaningWindow) {
+        result.streetCleaning.isActiveNow = true;
+        result.streetCleaning.severity = 'critical';
+        result.streetCleaning.message = `STREET CLEANING ACTIVE NOW in Ward ${streetCleaningData.ward}, Section ${streetCleaningData.section}! 9 AM–3 PM today. Move now — $60 ticket.`;
+      } else if (cleaningDate && cleaningDate === chicagoToday) {
         result.streetCleaning.severity = 'warning';
         result.streetCleaning.message = `Street cleaning scheduled today in Ward ${streetCleaningData.ward}, Section ${streetCleaningData.section}`;
       } else if (cleaningDate && isTomorrow(cleaningDate)) {

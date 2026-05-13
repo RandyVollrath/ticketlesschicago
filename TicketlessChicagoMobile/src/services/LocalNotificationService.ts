@@ -166,6 +166,12 @@ class LocalNotificationServiceClass {
     let channelId: string;
     let title: string;
     let body: string;
+    // Urgent = the restriction is active NOW or within minutes, so the
+    // user needs to act before they get ticketed/towed. On iOS we set
+    // interruptionLevel='timeSensitive' to break through Focus modes.
+    // (Reserved for the act-now reminders, not the heads-ups — otherwise
+    // every reminder breaks Focus and the tier loses meaning.)
+    let isUrgent = false;
 
     switch (type) {
       case 'street_cleaning':
@@ -180,10 +186,12 @@ class LocalNotificationServiceClass {
           title = '⚠️ Still in Peak Enforcement Window';
           body = `${address}\n${details}`;
           channelId = 'parking-alerts'; // High priority
+          isUrgent = true;
         } else if (details?.includes('MOVE YOUR CAR NOW')) {
           title = '🧹 Street Cleaning Today — Move Now!';
           body = `${address}\n${details || 'Street cleaning starts at 9am. Move your car NOW — $60 ticket.'}`;
           channelId = 'parking-alerts'; // Higher priority for urgent morning alert
+          isUrgent = true;
         } else {
           title = '🧹 Street Cleaning Tomorrow';
           body = `${address}\n${details || 'Move your car tonight to avoid a $60 ticket.'}`;
@@ -199,12 +207,13 @@ class LocalNotificationServiceClass {
         break;
 
       case 'snow_ban':
-        // Snow ban is weather-dependent, immediate notification
+        // Snow ban is weather-dependent, immediate notification — tow risk now.
         notificationId = `${NOTIFICATION_PREFIX.SNOW_BAN}${Date.now()}`;
         channelId = 'parking-alerts';
         title = '🌨️ Snow Ban Alert!';
         body = `${address}\n${details || 'Snow ban may be active. Check conditions and move if needed.'}`;
         hoursBefore = 0;
+        isUrgent = true;
         break;
 
       case 'permit_zone':
@@ -213,6 +222,9 @@ class LocalNotificationServiceClass {
         channelId = 'parking-alerts';
         title = '🅿️ Permit Zone Alert';
         body = `${address}\n${details || 'You may be in a permit zone. Check posted signs for your specific zone number and hours, then move your car or display a valid permit to avoid a $75 ticket.'}`;
+        // Fires 30 min before enforcement starts — close enough that ticket
+        // risk is imminent. Bypass Focus.
+        isUrgent = true;
         break;
 
       case 'metered_parking':
@@ -222,10 +234,12 @@ class LocalNotificationServiceClass {
         // Detect subtype: 10-min warning, 30-min warning, expired, or enforcement activation
         if (details?.includes('expires in 10 minutes')) {
           title = '⏰ Meter Expiring in 10 Minutes!';
+          isUrgent = true;
         } else if (details?.includes('expires in 30 minutes')) {
           title = '⏰ Meter Expiring in 30 Minutes!';
         } else if (details?.includes('has expired')) {
           title = '⏰ Meter Expired — Move Now!';
+          isUrgent = true;
         } else {
           title = '⏰ Meter Enforcement Starting!';
         }
@@ -239,6 +253,7 @@ class LocalNotificationServiceClass {
         if (details?.includes('ACTIVE TODAY') || details?.includes('active on this block')) {
           title = '🚧 Block Event Active — Move Your Car!';
           channelId = 'parking-alerts';
+          isUrgent = true;
         } else if (details?.includes('starts tomorrow') || details?.includes('MOVE YOUR CAR')) {
           title = '🚧 Block Event Starts Tomorrow';
           channelId = 'parking-alerts';
@@ -287,6 +302,12 @@ class LocalNotificationServiceClass {
         },
         ios: {
           sound: channelId === 'parking-alerts' ? 'default' : undefined,
+          // timeSensitive breaks through Focus modes (iOS 15+) but still
+          // respects silent switch. Reserved for act-now reminders.
+          // Critical-tier (overrides silent + DND) needs Apple-approved
+          // entitlement that's hard to justify for a $50 ticket, so we
+          // stay at timeSensitive for ticket risk.
+          interruptionLevel: isUrgent ? 'timeSensitive' : undefined,
         },
       },
       trigger
