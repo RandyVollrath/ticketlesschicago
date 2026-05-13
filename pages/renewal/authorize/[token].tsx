@@ -53,7 +53,7 @@ export default function AuthorizePage() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  async function submit(action: 'grant' | 'decline') {
+  async function submit(action: 'grant' | 'decline' | 'revoke') {
     if (!token) return;
     setSubmitting(true);
     setError(null);
@@ -65,7 +65,8 @@ export default function AuthorizePage() {
       });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(body?.error || `HTTP ${r.status}`);
-      setOutcome(action === 'grant' ? 'granted' : 'declined');
+      if (action === 'grant') setOutcome('granted');
+      else setOutcome('declined');
     } catch (e: any) {
       setError(e?.message || 'Something went wrong');
     } finally {
@@ -143,9 +144,22 @@ export default function AuthorizePage() {
         )}
 
         {outcome === 'granted' && (
-          <div style={{ background: '#D1FAE5', border: '1px solid #A7F3D0', padding: 16, borderRadius: 8, color: '#065F46', marginTop: 16 }}>
-            Authorization recorded. We'll complete the renewal within the next 24 hours and email you the receipt.
-          </div>
+          <>
+            <div style={{ background: '#D1FAE5', border: '1px solid #A7F3D0', padding: 16, borderRadius: 8, color: '#065F46', marginTop: 16 }}>
+              Authorization recorded. We'll complete the renewal within the next 24 hours and email you the receipt.
+            </div>
+            <div style={{ marginTop: 16, fontSize: 13, color: '#475569' }}>
+              Changed your mind?{' '}
+              <button
+                onClick={() => submit('revoke')}
+                disabled={submitting}
+                style={{ background: 'none', border: 'none', color: '#DC2626', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: 13, fontFamily: 'inherit' }}
+              >
+                Cancel this authorization
+              </button>{' '}
+              — only works before we start processing.
+            </div>
+          </>
         )}
         {outcome === 'declined' && (
           <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: 16, borderRadius: 8, color: '#334155', marginTop: 16 }}>

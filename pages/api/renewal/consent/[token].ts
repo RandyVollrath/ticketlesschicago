@@ -4,10 +4,10 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod';
-import { getConsentByToken, grantConsent, declineConsent } from '../../../../lib/renewal-consent';
+import { getConsentByToken, grantConsent, declineConsent, revokeGrantedConsent } from '../../../../lib/renewal-consent';
 import { sanitizeErrorMessage } from '../../../../lib/error-utils';
 
-const actionSchema = z.object({ action: z.enum(['grant', 'decline']) });
+const actionSchema = z.object({ action: z.enum(['grant', 'decline', 'revoke']) });
 
 function extractIp(req: NextApiRequest): string | undefined {
   const xff = req.headers['x-forwarded-for'];
@@ -44,10 +44,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const ip = extractIp(req);
       const ua = req.headers['user-agent'] || undefined;
-      const updated =
-        parsed.data.action === 'grant'
-          ? await grantConsent(token, { ip, userAgent: typeof ua === 'string' ? ua : undefined })
-          : await declineConsent(token);
+      let updated;
+      if (parsed.data.action === 'grant') {
+        updated = await grantConsent(token, { ip, userAgent: typeof ua === 'string' ? ua : undefined });
+      } else if (parsed.data.action === 'decline') {
+        updated = await declineConsent(token);
+      } else {
+        updated = await revokeGrantedConsent(token);
+      }
       return res.status(200).json({ success: true, status: updated.status });
     }
 
