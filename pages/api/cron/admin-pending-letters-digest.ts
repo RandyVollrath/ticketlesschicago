@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { Resend } from 'resend';
 import { runContestPipelineSmokeTest, smokeResultAsHtml } from '../../../lib/contest-pipeline-smoke';
+import { signAppealLink } from '../../../lib/foia-appeal-drafter';
 
 /**
  * Cron Job: Daily Admin Digest — Pending Contest Letters
@@ -452,7 +453,21 @@ export default async function handler(
       });
     }
 
-    if ((!pendingLetters || pendingLetters.length === 0) && foiaWaiting.length === 0 && stuckRows.length === 0 && smoke.passed) {
+    // Fetch FOIA appeal drafts awaiting admin send. These are surfaced as
+    // magic-link "Send" buttons below so the appeal goes out in one click.
+    // Cast to any — generated Supabase types haven't picked up the new table yet.
+    const { data: draftAppeals } = await (supabaseAdmin as any)
+      .from('foia_history_appeals')
+      .select(`
+        id, draft_subject, created_at, regenerated_count,
+        foia_history_requests!inner ( id, license_state, license_plate, reference_id, name, email )
+      `)
+      .eq('status', 'draft')
+      .order('created_at', { ascending: true });
+
+    const draftAppealsList = (draftAppeals as any[]) || [];
+
+    if ((!pendingLetters || pendingLetters.length === 0) && foiaWaiting.length === 0 && stuckRows.length === 0 && draftAppealsList.length === 0 && smoke.passed) {
       console.log('No pending letters, no stuck rows, smoke test passed — skipping digest email');
       return res.status(200).json({
         success: true,
@@ -680,6 +695,53 @@ export default async function handler(
       html += `</table>`;
     }
 
+    // ── FOIA appeal drafts awaiting one-click send ──
+    if (draftAppealsList.length > 0) {
+      html += `
+        <h3 style="color: #b45309; margin-top: 32px;">
+          ${draftAppealsList.length} FOIA Appeal Draft${draftAppealsList.length === 1 ? '' : 's'} Awaiting Send
+        </h3>
+        <p style="color: #6b7280; font-size: 13px; margin: 0 0 12px;">
+          The City denied these history FOIAs. A PAC Request for Review (5 ILCS 140/9.5) is drafted below — click <strong>Send to PAC</strong> to fire the appeal as-is, or <strong>Regenerate</strong> to redraft.
+        </p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr style="background: #fef3c7;">
+            <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #fcd34d;">Plate</th>
+            <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #fcd34d;">Reference</th>
+            <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #fcd34d;">Drafted</th>
+            <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #fcd34d;">Subject</th>
+            <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #fcd34d;">Actions</th>
+          </tr>
+      `;
+      for (const a of draftAppealsList) {
+        const hr = a.foia_history_requests;
+        const ageHours = a.created_at
+          ? Math.round((Date.now() - new Date(a.created_at).getTime()) / 3.6e6)
+          : 0;
+        const sendQs = signAppealLink(a.id, 'send');
+        const regenQs = signAppealLink(a.id, 'regenerate');
+        const sendUrl = `https://www.autopilotamerica.com/api/foia-appeals/send?${sendQs}`;
+        const regenUrl = `https://www.autopilotamerica.com/api/foia-appeals/send?${regenQs}`;
+        const regenBadge = a.regenerated_count > 0
+          ? ` <span style="color:#6b7280;font-size:12px;">(regen ×${a.regenerated_count})</span>`
+          : '';
+        html += `
+          <tr style="border-bottom: 1px solid #fde68a;">
+            <td style="padding: 8px 12px;">${hr?.license_state || ''} ${hr?.license_plate || ''}</td>
+            <td style="padding: 8px 12px; font-family: monospace; font-size: 12px;">${hr?.reference_id || '—'}</td>
+            <td style="padding: 8px 12px;">${ageHours}h ago${regenBadge}</td>
+            <td style="padding: 8px 12px; max-width: 280px; font-size: 12px; color: #4b5563;">${(a.draft_subject || '').substring(0, 120)}</td>
+            <td style="padding: 8px 12px; white-space: nowrap;">
+              <a href="${sendUrl}" style="background:#b45309;color:white;padding:6px 12px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;">Send to PAC</a>
+              &nbsp;
+              <a href="${regenUrl}" style="color:#6b7280;text-decoration:underline;font-size:13px;">Regenerate</a>
+            </td>
+          </tr>
+        `;
+      }
+      html += `</table>`;
+    }
+
     // Summary action items
     html += `
         <div style="margin-top: 24px; padding: 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px;">
@@ -703,13 +765,19 @@ export default async function handler(
     // (state-machine breaks); always prioritize them in the subject.
     const totalReview = (pendingLetters?.length || 0) + foiaWaiting.length;
     const stuckCount = stuckRows.length;
+    const appealsCount = draftAppealsList.length;
+    const appealsSuffix = appealsCount > 0
+      ? ` + ${appealsCount} FOIA appeal${appealsCount === 1 ? '' : 's'} to send`
+      : '';
     let subject: string;
     if (!smoke.passed) {
-      subject = `[ALERT] Contest pipeline smoke test FAILED${stuckCount > 0 ? ` + ${stuckCount} stuck row${stuckCount === 1 ? '' : 's'}` : ''}${totalReview > 0 ? ` + ${totalReview} need review` : ''}`;
+      subject = `[ALERT] Contest pipeline smoke test FAILED${stuckCount > 0 ? ` + ${stuckCount} stuck row${stuckCount === 1 ? '' : 's'}` : ''}${totalReview > 0 ? ` + ${totalReview} need review` : ''}${appealsSuffix}`;
     } else if (stuckCount > 0) {
-      subject = `[ALERT] ${stuckCount} stuck row${stuckCount === 1 ? '' : 's'} — state-machine failure${totalReview > 0 ? ` + ${totalReview} need review` : ''}`;
+      subject = `[ALERT] ${stuckCount} stuck row${stuckCount === 1 ? '' : 's'} — state-machine failure${totalReview > 0 ? ` + ${totalReview} need review` : ''}${appealsSuffix}`;
+    } else if (totalReview === 0 && appealsCount > 0) {
+      subject = `[Admin] ${appealsCount} FOIA appeal${appealsCount === 1 ? '' : 's'} ready to send`;
     } else {
-      subject = `[Admin] ${totalReview} contest letter${totalReview === 1 ? '' : 's'} need${totalReview === 1 ? 's' : ''} review`;
+      subject = `[Admin] ${totalReview} contest letter${totalReview === 1 ? '' : 's'} need${totalReview === 1 ? 's' : ''} review${appealsSuffix}`;
     }
 
     const { error: sendError } = await resend.emails.send({
@@ -725,13 +793,14 @@ export default async function handler(
     }
 
     console.log(
-      `✅ Admin digest sent: ${pendingLetters?.length || 0} pending review, ${foiaWaiting.length} awaiting FOIA, ${stuckCount} stuck rows`
+      `✅ Admin digest sent: ${pendingLetters?.length || 0} pending review, ${foiaWaiting.length} awaiting FOIA, ${stuckCount} stuck rows, ${appealsCount} FOIA appeals to send`
     );
 
     return res.status(200).json({
       success: true,
       pendingReview: pendingLetters?.length || 0,
       foiaWaiting: foiaWaiting.length,
+      foiaAppealsAwaitingSend: appealsCount,
       stuckRows: stuckCount,
       stuckBreakdown: stuckRows.reduce<Record<string, number>>((acc, r) => {
         acc[r.kind] = (acc[r.kind] || 0) + 1;

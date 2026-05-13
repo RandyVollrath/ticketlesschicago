@@ -1751,6 +1751,36 @@ export async function processHistoryFoiaResponse(
     .update(updatePayload)
     .eq('id', requestId);
 
+  // ── Denial → draft a PAC appeal letter (fire-and-forget) ──
+  // The City sometimes invokes 5 ILCS 140/7(1)(b) to withhold plate-keyed
+  // ticket history. We auto-draft a Request for Review to the Public Access
+  // Counselor so the admin can one-click send it from the daily digest. We
+  // never auto-send; draft failures should not break the response handler.
+  if (resolvedStatus === 'fulfilled_denial') {
+    try {
+      const { draftHistoryFoiaAppeal } = await import('./foia-appeal-drafter');
+      const result = await draftHistoryFoiaAppeal(supabase, {
+        historyRequest: {
+          id: historyRequest.id,
+          license_state: historyRequest.license_state,
+          license_plate: historyRequest.license_plate,
+          name: historyRequest.name,
+          email: historyRequest.email,
+          reference_id: historyRequest.reference_id,
+          created_at: historyRequest.created_at,
+        },
+        denialBody: body,
+        denialFrom: fromEmail,
+        denialReceivedAt: new Date().toISOString(),
+      });
+      if (result) {
+        console.log(`  📝 PAC appeal drafted: appeal_id=${result.appealId}`);
+      }
+    } catch (draftErr: any) {
+      console.error(`  PAC appeal draft failed: ${draftErr?.message ?? draftErr}`);
+    }
+  }
+
   // Send results email to user
   try {
     const { sendFoiaHistoryResultsEmail, classifyCityResponse } = await import('./foia-history-service');
