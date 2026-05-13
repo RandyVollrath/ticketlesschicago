@@ -702,9 +702,15 @@ function findingCategory(arg: BeyondTemplateArgument): string {
   return FINDING_CATEGORY[arg.id] || 'a contest angle';
 }
 
+// Filing-path findings (like past_mail_deadline) describe HOW we file, not
+// what we argue. They're already disclosed in the past-window banner — listing
+// them here would inflate the apparent argument count.
+const FILING_PATH_ONLY_IDS = new Set(['past_mail_deadline']);
+
 function aggregateCategories(args: BeyondTemplateArgument[]): string {
-  if (args.length === 0) return '';
-  const phrases = Array.from(new Set(args.map(findingCategory)));
+  const substantive = args.filter(a => !FILING_PATH_ONLY_IDS.has(a.id));
+  if (substantive.length === 0) return '';
+  const phrases = Array.from(new Set(substantive.map(findingCategory)));
   if (phrases.length === 1) return phrases[0];
   if (phrases.length === 2) return `${phrases[0]} and ${phrases[1]}`;
   return `${phrases.slice(0, -1).join(', ')}, and ${phrases[phrases.length - 1]}`;
