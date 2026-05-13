@@ -236,8 +236,18 @@ export async function sendFoiaHistoryConfirmationEmail(params: {
 
 /**
  * Send the user their FOIA results when the city responds.
- * This is called when an admin manually enters the results.
+ *
+ * Three variants depending on how the City of Chicago answered:
+ *   has_records      — city sent the ticket list (most Chicago plates)
+ *   no_records_found — city searched and found nothing on file
+ *   withheld_records — city refused to release records (most often: out-of-state plate
+ *                      where DOF cites a privacy/exemption to deny non-Illinois requesters)
+ *
+ * Picked by `cityResponseType`. If omitted, falls back to has_records vs no_records_found
+ * based on ticketCount, which preserves prior behavior.
  */
+export type CityResponseType = 'has_records' | 'no_records_found' | 'withheld_records';
+
 export async function sendFoiaHistoryResultsEmail(params: {
   email: string;
   name: string;
@@ -246,14 +256,74 @@ export async function sendFoiaHistoryResultsEmail(params: {
   ticketCount: number;
   totalFines: number;
   resultsUrl: string;
+  cityResponseType?: CityResponseType;
+  withheldExplanation?: string; // optional human-readable reason from the AI summary
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) return;
+
+  const responseType: CityResponseType =
+    params.cityResponseType ??
+    (params.ticketCount > 0 ? 'has_records' : 'no_records_found');
 
   const potentialSavings = Math.round(params.totalFines * 0.59);
   const avgPerTicket = params.ticketCount > 0 ? Math.round(params.totalFines / params.ticketCount) : 75;
   const safePlate = esc(params.licensePlate);
   const safeState = esc(params.licenseState);
+  const isOutOfState = (params.licenseState || 'IL').toUpperCase() !== 'IL';
 
+  // ── Variant: city withheld records (most often out-of-state plate) ──
+  if (responseType === 'withheld_records') {
+    const html = quickEmail({
+      preheader: `Chicago DOF received your FOIA but declined to release records for plate ${params.licenseState} ${params.licensePlate}.`,
+      headerTitle: 'The City declined to release your records.',
+      headerSubtitle: `FOIA response for plate ${safeState} ${safePlate}`,
+      body: [
+        greet(params.name || undefined),
+        p(`Chicago's Department of Finance responded to our FOIA request for plate <strong>${safeState} ${safePlate}</strong>, but they declined to hand over the records.`),
+        params.withheldExplanation
+          ? callout('warning', 'What the city said', esc(params.withheldExplanation))
+          : '',
+        isOutOfState
+          ? p(`Here's the most likely reason — and the City rarely explains this clearly: <strong>Chicago DOF treats parking-citation records for out-of-state plates as protected under personal-information exemptions.</strong> For Illinois plates they typically release the full history. For plates registered in another state (yours: ${safeState}), they often refuse to release them unless the requester is also the registered owner with proof of identity.`)
+          : p("This is unusual for Illinois plates. The City has limited statutory grounds to withhold these records under 5 ILCS 140 — and they didn't cite a specific exemption that survives scrutiny."),
+        isOutOfState
+          ? section('What you can do', bulletList([
+              `<strong>File the FOIA yourself</strong> as the registered owner from a ${safeState} address, attaching a copy of your ${safeState} title or registration. The City usually releases records when the requester is also the owner.`,
+              `<strong>Ask the City to clarify the exemption</strong> — under 5 ILCS 140/3(g) the City has to cite the specific provision they used to deny, in writing. If they didn't, the response is incomplete.`,
+              `<strong>If you got tickets in Chicago</strong>, you can look them up directly at <a href="https://webapps1.chicago.gov/eparkingticket/findTicket.do" style="color:#2563EB;">webapps1.chicago.gov/eparkingticket</a> using your plate + state.`,
+            ]))
+          : section('What you can do', bulletList([
+              '<strong>Appeal the denial</strong> by writing back to DOFfoia@cityofchicago.org asking them to cite the specific 5 ILCS 140 exemption they used.',
+              '<strong>File a Request for Review</strong> with the Public Access Counselor at the Illinois Attorney General\'s office (5 ILCS 140/9.5).',
+              `<strong>Or look up your tickets directly</strong> at <a href="https://webapps1.chicago.gov/eparkingticket/findTicket.do" style="color:#2563EB;">webapps1.chicago.gov/eparkingticket</a> using your plate.`,
+            ])),
+        // Soft mention of Autopilot — but honestly, since we couldn't help here, keep it light.
+        p(`Autopilot America monitors Chicago parking tickets and automatically contests them by mail. ${isOutOfState ? 'It\'s built around Illinois plates, but ' : ''}if you park in Chicago regularly with a plate registered there, it can stop most of your ticket cost before it happens.`, { size: '14px', color: '#475569' }),
+        button('Learn how Autopilot works', 'https://autopilotamerica.com'),
+      ].join(''),
+    });
+
+    try {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'Autopilot America <alerts@autopilotamerica.com>',
+          to: [params.email],
+          subject: `Chicago declined to release records for plate ${params.licenseState} ${params.licensePlate} — here's why`,
+          html,
+        }),
+      });
+    } catch (err: any) {
+      console.error(`Failed to send FOIA history results email: ${err.message}`);
+    }
+    return;
+  }
+
+  // ── Variants: has_records or no_records_found ──
   const html = quickEmail({
     preheader: params.ticketCount > 0
       ? `${params.ticketCount} tickets. $${params.totalFines.toLocaleString()} in fines. Up to $${potentialSavings.toLocaleString()} you could have saved.`
@@ -281,13 +351,13 @@ export async function sendFoiaHistoryResultsEmail(params: {
         : p("But here's the reality: Chicago writes <strong>4.5 million tickets a year</strong>. It's not a matter of if — it's when. And when it happens, most people just pay because contesting feels like too much work."),
       callout('success', params.ticketCount > 0 ? 'Never pay full price again' : 'Be ready when it happens',
         "Autopilot monitors your plate twice a week. New ticket? We generate a custom contest letter with the specific legal defense for that violation and mail it before the deadline. <strong>59% of mail-contested tickets get dismissed.</strong> You don't do anything."),
-      section('What $79/year gets you', bulletList([
+      section('What $99/year gets you', bulletList([
         '<strong>Twice-weekly plate monitoring</strong> — we catch tickets within days, not months',
         '<strong>Automatic contest letters</strong> — custom legal defense for each violation, mailed for you',
         '<strong>Street cleaning, snow ban, and sticker alerts</strong> — stop tickets before they happen',
         '<strong>First Dismissal Guarantee</strong> — if your first contest isn\'t dismissed, full refund',
       ])),
-      button('Start Autopilot Protection — $79/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
+      button('Start Autopilot Protection — $99/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
       p(params.ticketCount > 0
         ? `That's less than a single $${avgPerTicket} ticket. One dismissal pays for itself.`
         : 'Less than the cost of a single parking ticket. One dismissal pays for itself.',
@@ -314,4 +384,28 @@ export async function sendFoiaHistoryResultsEmail(params: {
   } catch (err: any) {
     console.error(`Failed to send FOIA history results email: ${err.message}`);
   }
+}
+
+/**
+ * Classify the city's FOIA response by inspecting the AI summary.
+ * Used by processHistoryFoiaResponse to pick the right email variant.
+ */
+export function classifyCityResponse(
+  ticketCount: number,
+  aiSummary: string | null | undefined,
+): CityResponseType {
+  if (ticketCount > 0) return 'has_records';
+  const s = (aiSummary || '').toLowerCase();
+  const withheldKeywords = [
+    'withheld', 'withhold',
+    'exemp', // exemption, exempt
+    'denied', 'denial',
+    'cannot release', 'will not release', 'refuse',
+    'redacted',
+    'privacy', 'personal information',
+    '7(1)(b)', '7(1)(c)', // common Illinois FOIA private-info exemptions
+    'out-of-state', 'out of state',
+  ];
+  if (withheldKeywords.some(k => s.includes(k))) return 'withheld_records';
+  return 'no_records_found';
 }
