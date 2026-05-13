@@ -520,6 +520,25 @@ const FoiaListItem = ({ foia, isSelected, onSelect }: { foia: FoiaItem; isSelect
               <span style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{foia.ticket.violation_type}</span>
             </div>
           )}
+          {foia.foia_type === 'history' && (
+            <div style={{ marginTop: 4, fontSize: 13, color: C.textSecondary, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {typeof foia.ticket_count === 'number' && (
+                <span><strong style={{ color: C.text }}>{foia.ticket_count}</strong> ticket{foia.ticket_count === 1 ? '' : 's'}</span>
+              )}
+              {typeof foia.total_fines === 'number' && foia.total_fines > 0 && (
+                <span>· <strong style={{ color: C.text }}>${foia.total_fines.toLocaleString()}</strong> in fines</span>
+              )}
+              {foia.source && (
+                <span style={{
+                  padding: '1px 6px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                  backgroundColor: foia.source === 'public_lookup' ? '#EFF6FF' : '#F1F5F9',
+                  color: foia.source === 'public_lookup' ? '#1D4ED8' : '#475569',
+                }}>
+                  {foia.source === 'public_lookup' ? 'flyer/QR' : foia.source}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div style={{
           fontSize: 14, fontWeight: 700, fontFamily: 'monospace', color: C.text,

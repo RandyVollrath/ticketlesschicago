@@ -1753,7 +1753,8 @@ export async function processHistoryFoiaResponse(
 
   // Send results email to user
   try {
-    const { sendFoiaHistoryResultsEmail } = await import('./foia-history-service');
+    const { sendFoiaHistoryResultsEmail, classifyCityResponse } = await import('./foia-history-service');
+    const cityResponseType = classifyCityResponse(ticketCount, parsedResult?.summary);
     await sendFoiaHistoryResultsEmail({
       email: historyRequest.email,
       name: historyRequest.name,
@@ -1762,6 +1763,8 @@ export async function processHistoryFoiaResponse(
       ticketCount,
       totalFines,
       resultsUrl: `https://autopilotamerica.com/my-tickets?plate=${encodeURIComponent(historyRequest.license_plate)}&state=${encodeURIComponent(historyRequest.license_state)}`,
+      cityResponseType,
+      withheldExplanation: cityResponseType === 'withheld_records' ? parsedResult?.summary : undefined,
     });
   } catch (emailErr: any) {
     console.error(`  Failed to send results email: ${emailErr.message}`);
