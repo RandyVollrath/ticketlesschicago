@@ -56,13 +56,34 @@ interface UserVehicle {
   last_name: string | null;
 }
 
-async function loadUserVehicle(userId: string): Promise<UserVehicle | null> {
-  const { data } = await supabaseAdmin
+async function loadUserVehicle(userId: string, plateId?: string | null): Promise<UserVehicle | null> {
+  // Always need the user's email (no email column on monitored_plates).
+  const { data: profile } = await supabaseAdmin
     .from('user_profiles')
     .select('email, license_plate, license_state, vin, last_name')
     .eq('user_id', userId)
     .maybeSingle();
-  return (data as UserVehicle) ?? null;
+  if (!profile) return null;
+  const u = profile as UserVehicle;
+
+  // No plate_id: legacy path, use the user_profiles primary plate.
+  if (!plateId) return u;
+
+  // plate_id set: pull plate-specific data from monitored_plates and
+  // fall back to user_profiles fields when monitored_plates didn't set them.
+  const { data: plate } = await supabaseAdmin
+    .from('monitored_plates')
+    .select('plate, state, vin, last_name')
+    .eq('id', plateId)
+    .maybeSingle();
+  const p = (plate as { plate: string | null; state: string | null; vin: string | null; last_name: string | null }) ?? null;
+  return {
+    email: u.email,
+    license_plate: p?.plate ?? u.license_plate,
+    license_state: p?.state ?? u.license_state,
+    vin: p?.vin ?? u.vin,
+    last_name: p?.last_name ?? u.last_name,
+  };
 }
 
 /**
@@ -119,7 +140,7 @@ export interface ProcessOutcome {
 
 export async function processConsent(consent: ConsentRecord): Promise<ProcessOutcome> {
   const dryRun = isDryRun();
-  const user = await loadUserVehicle(consent.user_id);
+  const user = await loadUserVehicle(consent.user_id, (consent as any).plate_id || null);
   if (!user || !user.email) {
     return { outcome: 'skipped_no_user', detail: 'user_profiles row missing' };
   }

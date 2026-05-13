@@ -100,7 +100,30 @@ async function newStealthBrowser(headed: boolean): Promise<{ browser: Browser; p
   return { browser, page };
 }
 
-async function loadDecryptedCredentials(userId: string): Promise<{ regId: string; pin: string } | { error: string }> {
+async function loadDecryptedCredentials(
+  userId: string,
+  plateId?: string | null,
+): Promise<{ regId: string; pin: string } | { error: string }> {
+  // Per-plate credentials live on monitored_plates when plate_id is set; the
+  // legacy single-plate path reads user_profiles.
+  if (plateId) {
+    const { data, error } = await (supabaseAdmin as any)
+      .from('monitored_plates')
+      .select('il_registration_id_encrypted, il_pin_encrypted')
+      .eq('id', plateId)
+      .maybeSingle();
+    if (error) return { error: `monitored_plates read failed: ${error.message}` };
+    const row = data as unknown as { il_registration_id_encrypted: string | null; il_pin_encrypted: string | null } | null;
+    if (!row?.il_pin_encrypted || !row.il_registration_id_encrypted) {
+      return { error: 'IL credentials not on file for this plate' };
+    }
+    try {
+      return { regId: decryptCredential(row.il_registration_id_encrypted), pin: decryptCredential(row.il_pin_encrypted) };
+    } catch (e: any) {
+      return { error: `credential decrypt failed: ${e?.message || String(e)}` };
+    }
+  }
+
   const { data, error } = await supabaseAdmin
     .from('user_profiles')
     .select('il_registration_id_encrypted, il_pin_encrypted' as any)
@@ -112,20 +135,25 @@ async function loadDecryptedCredentials(userId: string): Promise<{ regId: string
     return { error: 'IL credentials not on file' };
   }
   try {
-    const regId = decryptCredential(row.il_registration_id_encrypted);
-    const pin = decryptCredential(row.il_pin_encrypted);
-    return { regId, pin };
+    return { regId: decryptCredential(row.il_registration_id_encrypted), pin: decryptCredential(row.il_pin_encrypted) };
   } catch (e: any) {
     return { error: `credential decrypt failed: ${e?.message || String(e)}` };
   }
 }
 
-async function markCredentialsInvalid(userId: string) {
+async function markCredentialsInvalid(userId: string, plateId?: string | null) {
   try {
-    await supabaseAdmin
-      .from('user_profiles')
-      .update({ il_credentials_invalid_at: new Date().toISOString() } as any)
-      .eq('user_id', userId);
+    if (plateId) {
+      await (supabaseAdmin as any)
+        .from('monitored_plates')
+        .update({ il_credentials_invalid_at: new Date().toISOString() })
+        .eq('id', plateId);
+    } else {
+      await supabaseAdmin
+        .from('user_profiles')
+        .update({ il_credentials_invalid_at: new Date().toISOString() } as any)
+        .eq('user_id', userId);
+    }
   } catch (e) {
     console.error('[plate-sticker] failed to mark credentials invalid', e);
   }
@@ -151,7 +179,7 @@ export async function purchasePlateSticker(input: PlateStickerPurchaseInput): Pr
     return { success: false, screenshotPaths: [], error: `Consent not granted (status=${consent.status})`, stoppedAt: 'consent' };
   }
 
-  const creds = await loadDecryptedCredentials(consent.user_id);
+  const creds = await loadDecryptedCredentials(consent.user_id, (consent as any).plate_id || null);
   if ('error' in creds) {
     return { success: false, screenshotPaths: [], error: creds.error, stoppedAt: 'missing_credentials' };
   }
@@ -209,7 +237,7 @@ export async function purchasePlateSticker(input: PlateStickerPurchaseInput): Pr
       const shot = `/tmp/plate-invalid-creds-${consent.id}.png`;
       await page.screenshot({ path: shot, fullPage: true });
       screenshots.push(shot);
-      await markCredentialsInvalid(consent.user_id);
+      await markCredentialsInvalid(consent.user_id, (consent as any).plate_id || null);
       return {
         success: false,
         screenshotPaths: screenshots,
