@@ -3547,13 +3547,27 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
             // Accelerometer engine-idle detection: if the accel buffer shows ongoing
             // vibration consistent with engine idling, block the longNoWalkingStop path.
             // Walking evidence and BT disconnect are unaffected — those are strong signals.
+            //
+            // Scope: only apply this blocker near camera-tagged signalized intersections.
+            // That's where long red phases produce false-positive parking detections
+            // (the original failure mode at Fullerton/Damen, Lincoln/Belmont/Ashland).
+            // On residential side streets / parking-only blocks (no camera within 95m),
+            // high accel stddev is far more likely to be the user handling their phone
+            // post-park than an idling engine — and there's no red-light false-positive
+            // risk to protect against. Real-world data: stddev ≥ 0.030 while parked is
+            // common when the user is reading texts in the car (well above the 0.015
+            // "strong engine idle" threshold). Gating engine-idle on intersection
+            // proximity unblocks those parks without weakening any of the per-camera
+            // intersection guards above the line.
             let accelAnalysis = self.analyzeAccelForEngineIdle(lastSeconds: 10)
             let engineIdleDetected = accelAnalysis.idleLikelihood >= 0.5
+            let nearIntersectionForGate = self.isNearSignalizedIntersection(self.locationManager.location)
+            let engineIdleBlocks = engineIdleDetected && nearIntersectionForGate
 
             if zeroDuration >= self.minZeroSpeedForAgreeSec &&
                coreMotionStableDuration >= self.coreMotionStabilitySec &&
                gpsSpeedOk &&
-               (hasWalkingEvidence || (longNoWalkingStop && !engineIdleDetected) || hasCarDisconnectEvidence) {
+               (hasWalkingEvidence || (longNoWalkingStop && !engineIdleBlocks) || hasCarDisconnectEvidence) {
               self.log("Parking confirmed: GPS speed≈0 for \(String(format: "%.0f", zeroDuration))s + CoreMotion non-automotive for \(String(format: "%.0f", coreMotionStableDuration))s + GPS speed \(String(format: "%.1f", currentSpeedCheck)) m/s")
               self.tripSummaryGatePassCount += 1
               self.decision("gps_coremotion_gate_passed", [
@@ -3571,6 +3585,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
                 "accelStddev": accelAnalysis.stddev,
                 "accelSampleCount": accelAnalysis.sampleCount,
                 "engineIdleDetected": engineIdleDetected,
+                "nearIntersectionForGate": nearIntersectionForGate,
+                "engineIdleBlocks": engineIdleBlocks,
               ])
               timer.invalidate()
               self.speedZeroTimer = nil
@@ -3589,8 +3605,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
               if !hasWalkingEvidence && !longNoWalkingStop && !hasCarDisconnectEvidence {
                 waitReasons.append("no walk/car-disconnect evidence and stop<\(String(format: "%.0f", self.minZeroSpeedNoWalkingSec))s")
               }
-              if longNoWalkingStop && engineIdleDetected {
-                waitReasons.append("engine idle detected (accel stddev=\(String(format: "%.4f", accelAnalysis.stddev)), likelihood=\(String(format: "%.1f", accelAnalysis.idleLikelihood)))")
+              if longNoWalkingStop && engineIdleBlocks {
+                waitReasons.append("engine idle detected near intersection (accel stddev=\(String(format: "%.4f", accelAnalysis.stddev)), likelihood=\(String(format: "%.1f", accelAnalysis.idleLikelihood)))")
               }
               self.log("CoreMotion agrees (not automotive) but guards not met: \(waitReasons.joined(separator: ", "))")
               self.tripSummaryGateWaitCount += 1
@@ -3609,6 +3625,8 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
                 "accelStddev": accelAnalysis.stddev,
                 "accelSampleCount": accelAnalysis.sampleCount,
                 "engineIdleDetected": engineIdleDetected,
+                "nearIntersectionForGate": nearIntersectionForGate,
+                "engineIdleBlocks": engineIdleBlocks,
                 "reasons": waitReasons.joined(separator: "; "),
               ])
             }
