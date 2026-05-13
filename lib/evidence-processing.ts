@@ -423,7 +423,10 @@ export async function analyzeEvidencePhotos(
   for (const photoUrl of photoUrls.slice(0, maxPhotos)) {
     try {
       const imgResponse = await fetch(photoUrl);
-      if (!imgResponse.ok) continue;
+      if (!imgResponse.ok) {
+        console.error(`  Photo fetch ${imgResponse.status} for ${photoUrl} — skipping Vision`);
+        continue;
+      }
       const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
       const base64 = imgBuffer.toString('base64');
       const ext = photoUrl.match(/\.(jpg|jpeg|png|gif|webp)/i)?.[1]?.toLowerCase() || 'jpeg';
@@ -471,7 +474,12 @@ Be specific and factual. Do NOT speculate or add legal analysis.`,
           const filename = photoUrl.split('/').pop() || 'photo';
           results.push({ url: photoUrl, filename, description });
           console.log(`  Photo analysis: ${description.substring(0, 80)}...`);
+        } else {
+          console.error(`  Vision returned empty description for ${photoUrl}`);
         }
+      } else {
+        const errBody = await visionResponse.text().catch(() => '');
+        console.error(`  Vision API ${visionResponse.status} for ${photoUrl}: ${errBody.slice(0, 200)}`);
       }
     } catch (photoErr: any) {
       console.error(`  Photo analysis failed for ${photoUrl}:`, photoErr.message || photoErr);
