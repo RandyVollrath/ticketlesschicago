@@ -1007,10 +1007,16 @@ class LocationServiceClass {
     const data = response.data;
     const rules: ParkingRule[] = [];
 
-    // Street cleaning - only show as active restriction if it's NOW or TODAY
-    // Don't show UPCOMING as it means it's off-season (like January, before April 1)
+    // Street cleaning - show as active restriction for NOW, TODAY, or TOMORROW.
+    // TOMORROW catches the common late-night park-tonight-cleaning-9am case:
+    // server bumps severity to 'warning' so the rule survives the home-screen
+    // info filter and the hero turns orange "upcoming". UPCOMING (further out)
+    // is intentionally suppressed — in off-season the next cleaning could be
+    // months away and we don't want to alarm.
     if (data?.streetCleaning?.hasRestriction &&
-        (data.streetCleaning.timing === 'NOW' || data.streetCleaning.timing === 'TODAY')) {
+        (data.streetCleaning.timing === 'NOW' ||
+         data.streetCleaning.timing === 'TODAY' ||
+         data.streetCleaning.timing === 'TOMORROW')) {
       const severity = data.streetCleaning.timing === 'NOW' ? 'critical' : 'warning';
       rules.push({
         type: 'street_cleaning',

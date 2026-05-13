@@ -13,7 +13,7 @@ import { checkAllParkingRestrictions, UnifiedParkingResult } from '../../../lib/
 import { checkMeteredParking, MeteredParkingStatus } from '../../../lib/metered-parking-checker';
 import type { SnapGeometry } from '../../../lib/chicago-grid-estimator';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
-import { getChicagoDateISO } from '../../../lib/chicago-timezone-utils';
+import { getChicagoDateISO, isTomorrow } from '../../../lib/chicago-timezone-utils';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { parseChicagoAddress } from '../../../lib/address-parser';
 
@@ -67,7 +67,7 @@ interface MobileCheckParkingResponse {
   streetCleaning: {
     hasRestriction: boolean;
     message: string;
-    timing?: 'NOW' | 'TODAY' | 'UPCOMING' | 'NONE';
+    timing?: 'NOW' | 'TODAY' | 'TOMORROW' | 'UPCOMING' | 'NONE';
     nextDate?: string;
     schedule?: string;
     severity?: 'critical' | 'warning' | 'info' | 'none';
@@ -3065,14 +3065,16 @@ export default async function handler(
     };
 
     // Transform to mobile API response format
-    const streetCleaningTiming: 'NOW' | 'TODAY' | 'UPCOMING' | 'NONE' =
+    const streetCleaningTiming: 'NOW' | 'TODAY' | 'TOMORROW' | 'UPCOMING' | 'NONE' =
       result.streetCleaning.isActiveNow || result.streetCleaning.severity === 'critical'
         ? 'NOW'
         : result.streetCleaning.nextCleaningDate === getChicagoDateISO()
           ? 'TODAY'
-          : result.streetCleaning.found
-            ? 'UPCOMING'
-            : 'NONE';
+          : result.streetCleaning.nextCleaningDate && isTomorrow(result.streetCleaning.nextCleaningDate)
+            ? 'TOMORROW'
+            : result.streetCleaning.found
+              ? 'UPCOMING'
+              : 'NONE';
 
     const response: MobileCheckParkingResponse = {
       success: true,
