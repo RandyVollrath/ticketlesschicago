@@ -204,7 +204,7 @@ export function FilterPanel({
                 value={filters[item.key]}
                 onValueChange={() => toggleFilter(item.key)}
                 trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor="#fff"
+                thumbColor={colors.white}
               />
             </View>
           ))}
@@ -266,7 +266,7 @@ export function FilterPanel({
                   value={userContext.hasDisabledPlacard}
                   onValueChange={toggleDisabledPlacard}
                   trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor="#fff"
+                  thumbColor={colors.white}
                 />
               </View>
               {userContext.hasDisabledPlacard && (
@@ -315,7 +315,7 @@ export function FilterPanel({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 16,
     maxHeight: 500,
     shadowColor: '#000',
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.bodyMedium,
   },
   disclaimer: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.warningBg,
     padding: 12,
     borderRadius: 8,
     marginTop: 8,

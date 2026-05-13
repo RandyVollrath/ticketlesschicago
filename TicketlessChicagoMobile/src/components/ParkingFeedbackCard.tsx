@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   skip: {
-    color: '#666',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   question: {

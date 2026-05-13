@@ -69,7 +69,7 @@ export function SegmentPopup({
           icon: '✕',
           text: 'No parking',
           color: LAYER_COLORS.restricted,
-          bgColor: '#fee2e2',
+          bgColor: colors.criticalBg,
         };
       case 'warning':
         return {
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     bottom: 140,
     left: 16,
     right: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   reminderButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 15,
     fontFamily: typography.fontFamily.bodySemibold,
   },

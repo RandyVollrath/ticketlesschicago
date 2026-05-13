@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   filterTextActive: {
-    color: '#fff',
+    color: colors.white,
   },
   listContent: {
     padding: 12,
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   retryText: {
-    color: '#fff',
+    color: colors.white,
     fontFamily: typography.fontFamily.bodyMedium,
   },
   emptyContainer: {
@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scoreText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 14,
     fontFamily: typography.fontFamily.bodyBold,
   },

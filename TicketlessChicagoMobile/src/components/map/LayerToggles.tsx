@@ -97,7 +97,7 @@ export function LayerToggles({ layers, onToggle, style }: LayerTogglesProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   checkmark: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 12,
     fontFamily: typography.fontFamily.bodySemibold,
   },

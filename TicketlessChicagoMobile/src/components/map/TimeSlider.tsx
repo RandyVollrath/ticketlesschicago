@@ -110,7 +110,7 @@ export function TimeSlider({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',

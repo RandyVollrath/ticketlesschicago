@@ -720,7 +720,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>Subscription</Text>
-              <View style={[styles.badge, { backgroundColor: '#D1FAE5' }]}>
+              <View style={[styles.badge, { backgroundColor: colors.successBg }]}>
                 <Text style={[styles.badgeText, { color: colors.success }]}>
                   {autopilotSubscription.status.toUpperCase()}
                 </Text>
@@ -738,7 +738,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* Missing profile warning */}
         {(!hasActivePlates || !lastName.trim() || !mailingAddress1.trim()) && (
-          <View style={[styles.card, { borderColor: colors.error, borderWidth: 1, backgroundColor: '#FEF2F2' }]}>
+          <View style={[styles.card, { borderColor: colors.error, borderWidth: 1, backgroundColor: colors.criticalBg }]}>
             <View style={styles.cardBody}>
               <Text style={[styles.cardTitle, { color: '#991B1B', marginBottom: 4 }]}>
                 Action Required: Complete Your Profile
@@ -865,7 +865,7 @@ const NativeAlertsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 onPress={() => showStatePicker('plate')}
               >
                 <Text style={styles.plateStateText}>{plateState}</Text>
-                <MaterialCommunityIcons name="chevron-down" size={14} color="#fff" />
+                <MaterialCommunityIcons name="chevron-down" size={14} color={colors.white} />
               </TouchableOpacity>
               <TextInput
                 style={styles.plateInput}
@@ -1365,7 +1365,7 @@ const ToggleRow: React.FC<{
       onValueChange={onValueChange}
       disabled={disabled}
       trackColor={{ false: colors.border, true: colors.primary }}
-      thumbColor="#fff"
+      thumbColor={colors.white}
     />
   </View>
 );
@@ -1436,7 +1436,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   activeTab: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     ...shadows.sm,
   },
   tabText: {
@@ -1490,13 +1490,13 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   primaryButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: typography.sizes.md,
     fontFamily: typography.fontFamily.bodySemibold,
   },
   // Cards
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 12,
     marginBottom: 12,
     ...shadows.sm,
@@ -1558,7 +1558,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
@@ -1669,7 +1669,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
   },
   plateStateButton: {
     backgroundColor: colors.primary,
@@ -1680,7 +1680,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   plateStateText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 12,
     fontFamily: typography.fontFamily.bodyBold,
   },
@@ -1808,7 +1808,7 @@ const styles = StyleSheet.create({
 
   // Warning
   warningBox: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.warningBg,
     borderWidth: 1,
     borderColor: '#F59E0B',
     borderRadius: 6,
