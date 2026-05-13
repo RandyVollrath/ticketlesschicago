@@ -58,39 +58,90 @@ async function getRandyAccessToken(): Promise<string> {
   return verified.session.access_token;
 }
 
-// Seed coords known to fall on a real street centerline inside a
-// street_cleaning_schedule polygon. Polygon centroids alone don't work —
-// they may land off-street and trip the snap/sameStreet suppression in
-// unified-parking-checker. These come from intersecting Chicago centerlines
-// with cleaning zones. We probe each via the same spatial RPC the API
-// uses and pick the first whose next_cleaning_date is tomorrow Chicago time.
-// If none match, the smoke flags it loudly rather than green-lighting on
-// stale data.
-const SEED_COORDS: Array<{ lat: number; lng: number; label: string }> = [
-  { lat: 41.9435025379354, lng: -87.6449251699459, label: '3350 N Broadway (Ward 44 Sec 7)' },
-  { lat: 41.9454437766665, lng: -87.6486628881052, label: '750 W Cornelia (Ward 44 Sec 7)' },
-  { lat: 41.9436667526267, lng: -87.6461880008013, label: '625 W Roscoe (Ward 44 Sec 7)' },
-];
-
+// Dynamically discover a seed coord whose cleaning date is tomorrow.
+// We intersect every tomorrow-cleaning polygon with Chicago street
+// centerlines (class 3/4 = residential/collector) and pick the midpoint
+// of the intersection — a coord that's guaranteed to land on a real
+// street inside an active cleaning zone. This keeps the test green as
+// cleaning dates rotate weekly.
+//
+// Polygon centroids alone don't work: they may land off-street and trip
+// the snap/sameStreet check elsewhere in the pipeline. Real-street
+// coords don't.
 async function findTomorrowCleaningCoord(): Promise<{ lat: number; lng: number; label: string }> {
   const tomorrow = chicagoTomorrowISO();
-  for (const seed of SEED_COORDS) {
-    const { data, error } = await sb.rpc('get_street_cleaning_at_location_enhanced', {
+  const sql = `
+    WITH tomorrow_zones AS (
+      SELECT ward, section, geom FROM street_cleaning_schedule
+      WHERE cleaning_date = '${tomorrow}' LIMIT 5
+    )
+    SELECT z.ward, z.section, sc.pre_dir, sc.street_base_name,
+           ST_Y(ST_LineInterpolatePoint(ST_Intersection(sc.geom, z.geom), 0.5)) AS lat,
+           ST_X(ST_LineInterpolatePoint(ST_Intersection(sc.geom, z.geom), 0.5)) AS lng
+    FROM tomorrow_zones z, street_centerlines sc
+    WHERE ST_Intersects(sc.geom, z.geom)
+      AND sc.class IN ('3','4')
+      AND sc.street_base_name IS NOT NULL
+    LIMIT 3;
+  `;
+  // Use a generic RPC for ad-hoc SQL. If the project doesn't expose one,
+  // fall back to a static seed list.
+  let data: any = null;
+  try {
+    const result = await sb.rpc('execute_sql_smoke', { sql_query: sql });
+    data = result.data;
+  } catch {
+    data = null;
+  }
+  if (data && Array.isArray(data) && data.length > 0) {
+    const r = data[0] as any;
+    return {
+      lat: r.lat,
+      lng: r.lng,
+      label: `${r.pre_dir} ${r.street_base_name} (Ward ${r.ward} Sec ${r.section})`,
+    };
+  }
+
+  // Fallback: probe via the spatial RPC over a tight seed grid. Each row
+  // here is a known Chicago intersection that has fallen inside a
+  // cleaning polygon in past weeks. Refresh by running:
+  //   SELECT ST_Y(ST_LineInterpolatePoint(ST_Intersection(sc.geom, z.geom), 0.5)),
+  //          ST_X(...) FROM street_cleaning_schedule z, street_centerlines sc
+  //   WHERE z.cleaning_date='<tomorrow>' AND ST_Intersects(sc.geom, z.geom)
+  //         AND sc.class IN ('3','4') AND sc.street_base_name IS NOT NULL LIMIT 5;
+  // Sections from the centerline-intersect query above. Refresh when the
+  // smoke fails — pick a section that cleans ONLY tomorrow (not today),
+  // otherwise the RPC returns today as next_cleaning_date and the test
+  // can't distinguish today-only from tomorrow-only behavior:
+  //   WITH tomorrow AS (SELECT ward,section FROM street_cleaning_schedule WHERE cleaning_date='<tomorrow>'),
+  //        today    AS (SELECT ward,section FROM street_cleaning_schedule WHERE cleaning_date='<today>')
+  //   SELECT t.ward, t.section FROM tomorrow t LEFT JOIN today td USING (ward,section)
+  //   WHERE td.ward IS NULL LIMIT 5;
+  const SEED_GRID: Array<{ lat: number; lng: number; label: string }> = [
+    // Ward 44 Section 1 — Lakeview, cleans May 14 but not May 13
+    { lat: 41.9452324795062, lng: -87.664577885605, label: 'W Cornelia (Ward 44 Sec 1)' },
+    { lat: 41.9415866260544, lng: -87.6641762162928, label: 'W School (Ward 44 Sec 1)' },
+    { lat: 41.944423775752, lng: -87.6651597735277, label: 'N Janssen (Ward 44 Sec 1)' },
+    { lat: 41.9470393915766, lng: -87.6658345003811, label: 'W Addison (Ward 44 Sec 1)' },
+    // Older seeds — kept so the test self-heals when zones rotate
+    { lat: 41.9435025379354, lng: -87.6449251699459, label: '3350 N Broadway (Lakeview)' },
+    { lat: 41.9078894361407, lng: -87.6272644757966, label: 'Ward 43 anchor (Lincoln Park)' },
+    { lat: 41.8585741789793, lng: -87.6760009036582, label: 'W 17th & Damen (Pilsen)' },
+  ];
+  for (const seed of SEED_GRID) {
+    const { data: rpcData, error: rpcErr } = await sb.rpc('get_street_cleaning_at_location_enhanced', {
       user_lat: seed.lat,
       user_lng: seed.lng,
       distance_meters: 30,
     });
-    if (error) {
-      console.warn(`[smoke] RPC error at ${seed.label}: ${error.message}`);
-      continue;
-    }
-    const row = (data as any)?.[0];
+    if (rpcErr) continue;
+    const row = (rpcData as any)?.[0];
     if (row && row.next_cleaning_date === tomorrow) {
-      console.log(`[smoke] Matched seed ${seed.label} — next_cleaning_date=${row.next_cleaning_date}`);
+      console.log(`[smoke] Matched fallback seed ${seed.label} — next_cleaning_date=${row.next_cleaning_date}`);
       return seed;
     }
   }
-  throw new Error(`No seed coord has next_cleaning_date=${tomorrow}; add a fresh seed (DB query: SELECT ward, section, ST_AsText(ST_Centroid(geom)) FROM street_cleaning_schedule WHERE cleaning_date='${tomorrow}' LIMIT 5).`);
+  throw new Error(`No seed coord has next_cleaning_date=${tomorrow}. Run the centerline-intersect query above and add a fresh seed.`);
 }
 
 async function main() {
