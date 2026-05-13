@@ -3789,10 +3789,38 @@ class BackgroundTaskServiceClass {
     }
   }
 
+  /**
+   * Build a restriction-specific notification title for single-warning
+   * cases. Returning `null` falls back to the generic "Parked — Heads Up".
+   * Pattern-matches the rule message rather than rebuilding from rawData so
+   * "tomorrow" vs "today" stays consistent with the server-rendered body.
+   */
+  private distinctiveWarningTitle(rule: { type?: string; message?: string }): string | null {
+    const msg = String(rule.message || '');
+    switch (rule.type) {
+      case 'street_cleaning':
+        if (/tomorrow/i.test(msg)) return '🧹 Cleaning tomorrow — move tonight';
+        return '🧹 Cleaning today — move soon';
+      case 'dot_permit':
+        if (/active.*today|today/i.test(msg)) return '🚧 Block event active — check signs';
+        return '🚧 Block event tomorrow — plan to move';
+      case 'permit_zone':
+        return '🅿️ Permit enforcement starts soon';
+      case 'winter_ban':
+        return '❄️ Winter ban starts tonight at 3 AM';
+      case 'metered_parking':
+        return '⏰ Meter time running out';
+      case 'snow_route':
+        return '🌨️ Snow ban risk on this street';
+      default:
+        return null;
+    }
+  }
+
   private async sendParkingNotification(
     result: {
       address: string;
-      rules: Array<{ message: string; severity: string }>;
+      rules: Array<{ type?: string; message: string; severity: string }>;
     },
     accuracy?: number,
     rawData?: any
@@ -3846,13 +3874,22 @@ class BackgroundTaskServiceClass {
       }
     }
 
-    // Determine urgency-aware title
+    // Determine urgency-aware title.
+    //
+    // Alert-fatigue guard: the All Clear notification ("✅ Parked — All
+    // Clear") fires often, and the prior warning title ("⚠️ Parked —
+    // Heads Up") shared the same "Parked —" prefix. On a glance, users
+    // trained to dismiss the All Clear template would tune the warning
+    // out too. When there's exactly one warning rule, lead the title
+    // with the restriction-specific verb so it breaks the pattern.
     const riskUrgency = rawData?.enforcementRisk?.urgency;
     let title: string;
     if (hasCritical) {
       title = '⚠️ Parked — Restriction Active!';
     } else if (riskUrgency === 'high') {
       title = '⚠️ Parked — Peak Enforcement Window';
+    } else if (result.rules.length === 1) {
+      title = this.distinctiveWarningTitle(result.rules[0]) || '⚠️ Parked — Heads Up';
     } else {
       title = '⚠️ Parked — Heads Up';
     }
