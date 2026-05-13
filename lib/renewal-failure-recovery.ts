@@ -8,6 +8,7 @@
 // and surfacing the warning banner in Settings UI.
 
 import { supabaseAdmin as typedSupabase } from './supabase';
+import { logRenewalAudit } from './renewal-audit';
 
 const supabaseAdmin = typedSupabase as any;
 
@@ -101,6 +102,16 @@ export async function recordRenewalFailure(
     })
     .eq('renewal_type', type);
 
+  if (willTrip) {
+    await logRenewalAudit({
+      action: 'renewal_circuit_breaker_tripped',
+      userId: null,
+      consentId: null,
+      details: { renewal_type: type, consecutive_failures: next, reason: reason.slice(0, 200) },
+      status: 'failure',
+    });
+  }
+
   return { tripped: willTrip, consecutive: next };
 }
 
@@ -116,6 +127,13 @@ export async function resetCircuitBreaker(type: RenewalType, by: string): Promis
       updated_at: new Date().toISOString(),
     })
     .eq('renewal_type', type);
+
+  await logRenewalAudit({
+    action: 'renewal_circuit_breaker_reset',
+    userId: null,
+    consentId: null,
+    details: { renewal_type: type, reset_by: by },
+  });
 }
 
 /**
