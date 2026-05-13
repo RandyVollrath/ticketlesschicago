@@ -71,7 +71,7 @@ export async function sendFoiaDripDay3(params: {
       p('That works out to roughly <strong>4.5 tickets per registered vehicle, every year.</strong> The City <strong>issues around $420 million</strong> annually in parking and traffic ticket charges — that includes both the original fines and the late fees that pile on when tickets go unpaid.'),
       callout('info', 'The number nobody hears about',
         `Per FOIA data from 2023–2025, the City dismisses <strong>59% of parking tickets that get mail-contested</strong>. But only about 1 in 10 people actually contest. Most pay because the process is a hassle — figure out the defense, write the letter, mail it before the deadline, hope you got it right.`),
-      p(`So the average Chicago driver pays around <strong>$234/year</strong> in tickets and late fees they could have either avoided (with better info) or dismissed (by contesting). The City counts on it — that's how $420M in charges gets issued every year.`),
+      p(`So the average Chicago driver sees a bill of around <strong>$234/year</strong> in tickets and late fees they could have either avoided (with better info) or contested. <strong>People accepting it is why the City can keep charging $420 million a year.</strong>`),
       p("Once your FOIA results come back from the City, we'll email you the full breakdown. Usually takes a couple more business days."),
       p('— The Autopilot team', { size: '13px', color: '#6B7280' }),
     ].join(''),
