@@ -99,6 +99,8 @@ interface Mission {
   reason: string
   walkInstructions?: string  // for ticket corridors: "Walk Hubbard from State to Franklin"
   driveMinFromPrev: number
+  flyerTag: 'TOMORROW' | 'JUST TICKETED' | '$ ZONE' | 'STOP THE BOOT' | 'CLEANING'
+  flyerMessage: string  // what to actually say on the flyer
 }
 
 function distKm(a: {lat:number;lng:number}, b: {lat:number;lng:number}): number {
@@ -138,9 +140,10 @@ function buildMissions(
       }
     }
     const streets = cluster.map(b => ({ name: b.block, tickets: b.tickets }))
-    const totalTickets = streets.reduce((s, st) => s + st.tickets, 0)
+    // hotBlocks ticket counts are 2-year totals (2023-2024). Convert to annual.
+    const ticketsPerYear = Math.round(streets.reduce((s, st) => s + st.tickets, 0) / 2)
     const walkMin = cluster.length * 5
-    const roiPerHour = walkMin > 0 ? Math.round(totalTickets / (walkMin / 60)) : 0
+    const roiPerHour = walkMin > 0 ? Math.round(ticketsPerYear / (walkMin / 60)) : 0
     const centerLat = cluster.reduce((s, b) => s + b.lat, 0) / cluster.length
     const centerLng = cluster.reduce((s, b) => s + b.lng, 0) / cluster.length
 
@@ -148,15 +151,32 @@ function buildMissions(
     const wasJustCleaned = justTicketedZones.some(z => distKm(z, { lat: centerLat, lng: centerLng }) < 1.5)
     const hasTowData = towBlocks.some(t => distKm(t, { lat: centerLat, lng: centerLng }) < CLUSTER_KM)
 
-    let reason = `${totalTickets.toLocaleString()} cleaning tix on ${cluster.length} block${cluster.length > 1 ? 's' : ''}`
+    let reason = `${ticketsPerYear.toLocaleString()} cleaning tix/yr on ${cluster.length} block${cluster.length > 1 ? 's' : ''}`
     if (hasScheduleTomorrow) reason += ' — CLEANING TOMORROW'
     else if (wasJustCleaned) reason += ' — just cleaned, fresh tickets'
     if (hasTowData) reason += ' — cars get towed here'
 
-    let boostedRoi = roiPerHour
-    if (hasScheduleTomorrow) boostedRoi = Math.round(roiPerHour * 2.0)
-    else if (wasJustCleaned) boostedRoi = Math.round(roiPerHour * 1.5)
-    if (hasTowData) boostedRoi = Math.round(boostedRoi * 1.3)
+    // Boost cleaning missions hard so they compete with ticket corridors.
+    // Cleaning hits once per cycle, but the cycle is predictable & visible.
+    let boostedRoi = roiPerHour * 4  // base multiplier — cleaning blocks reward flyer-recipient quickly
+    if (hasScheduleTomorrow) boostedRoi *= 2.0  // event tomorrow = peak urgency
+    else if (wasJustCleaned) boostedRoi *= 1.5  // fresh anger
+    if (hasTowData) boostedRoi *= 1.3
+
+    // Flyer messaging
+    let flyerTag: Mission['flyerTag'] = 'CLEANING'
+    let flyerMessage = `Street cleaning hits this block. Free reminders → autopilotamerica.com`
+    if (hasScheduleTomorrow) {
+      flyerTag = 'TOMORROW'
+      flyerMessage = `Your car will be ticketed $75 TOMORROW MORNING when the cleaners come. Free reminders → autopilotamerica.com`
+    } else if (wasJustCleaned) {
+      flyerTag = 'JUST TICKETED'
+      flyerMessage = `If your car was here this morning, you just got a $75 ticket. Avoid the next one → autopilotamerica.com`
+    }
+    if (hasTowData) {
+      flyerTag = 'STOP THE BOOT'
+      flyerMessage = `This block boots cars regularly. Stop the boot — we contest every ticket → autopilotamerica.com`
+    }
 
     missions.push({
       id: `clean-${block.neighborhood}-${block.block}`.replace(/\s+/g,'_'),
@@ -165,9 +185,10 @@ function buildMissions(
         ? `${block.neighborhood} — ${cluster.length} cleaning blocks`
         : `${block.neighborhood} — ${block.block}`,
       lat: centerLat, lng: centerLng,
-      streets, totalTickets, walkMinutes: walkMin,
-      roiPerHour: boostedRoi, reason,
+      streets, totalTickets: ticketsPerYear, walkMinutes: walkMin,
+      roiPerHour: Math.round(boostedRoi), reason,
       driveMinFromPrev: 0,
+      flyerTag, flyerMessage,
     })
   }
 
@@ -188,15 +209,22 @@ function buildMissions(
       reason: `$${(c.fines2024/1000).toFixed(0)}k in 2024 fines &middot; ${c.pitch}`,
       walkInstructions: c.walk,
       driveMinFromPrev: 0,
+      flyerTag: '$ ZONE',
+      flyerMessage: `This block ticketed cars $${(c.fines2024/1000).toFixed(0)}k in 2024. We contest tickets — 57% mail-in win → autopilotamerica.com`,
     })
   }
 
-  // ---- Sort by ROI, then NN reorder for drive efficiency ----
-  missions.sort((a, b) => b.roiPerHour - a.roiPerHour)
-
-  // Keep top ~14 by ROI (enough headroom for a 4h budget at ~30min/stop)
-  const candidates = missions.slice(0, 14)
-  const tail = missions.slice(14)
+  // ---- Force a MIX: take top K of each kind, then NN order. ----
+  const cleaningMissions = missions.filter(m => m.kind === 'cleaning').sort((a, b) => b.roiPerHour - a.roiPerHour)
+  const ticketMissions = missions.filter(m => m.kind === 'ticket').sort((a, b) => b.roiPerHour - a.roiPerHour)
+  // Interleave top 7 of each so the candidate pool is half-and-half.
+  const candidates: Mission[] = []
+  for (let i = 0; i < 7; i++) {
+    if (cleaningMissions[i]) candidates.push(cleaningMissions[i])
+    if (ticketMissions[i]) candidates.push(ticketMissions[i])
+  }
+  const candidateSet = new Set(candidates.map(c => c.id))
+  const tail = missions.filter(m => !candidateSet.has(m.id))
 
   // Nearest-neighbor among the top candidates
   const ordered: Mission[] = []
@@ -468,12 +496,20 @@ export default function FlyerRoutes() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             <span style={{
-                              fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                              background: m.kind === 'cleaning' ? '#DBEAFE' : '#FEF3C7',
-                              color: m.kind === 'cleaning' ? '#1D4ED8' : '#92400E',
-                              textTransform: 'uppercase', letterSpacing: '0.04em',
+                              fontSize: 10, fontWeight: 800, padding: '3px 7px', borderRadius: 4,
+                              background:
+                                m.flyerTag === 'TOMORROW' ? '#FEE2E2' :
+                                m.flyerTag === 'JUST TICKETED' ? '#FEF3C7' :
+                                m.flyerTag === 'STOP THE BOOT' ? '#1E293B' :
+                                m.flyerTag === '$ ZONE' ? '#D1FAE5' : '#DBEAFE',
+                              color:
+                                m.flyerTag === 'TOMORROW' ? '#B91C1C' :
+                                m.flyerTag === 'JUST TICKETED' ? '#92400E' :
+                                m.flyerTag === 'STOP THE BOOT' ? '#FBBF24' :
+                                m.flyerTag === '$ ZONE' ? '#065F46' : '#1D4ED8',
+                              textTransform: 'uppercase', letterSpacing: '0.05em',
                             }}>
-                              {m.kind === 'cleaning' ? 'Cleaning' : '$ Ticket'}
+                              {m.flyerTag}
                             </span>
                             <div style={{ fontWeight: 700, fontSize: 15, color: C.dark }}>{m.name}</div>
                           </div>
@@ -487,6 +523,9 @@ export default function FlyerRoutes() {
                           )}
                           <div style={{ fontSize: 11, color: m.reason.includes('TOMORROW') ? C.red : m.reason.includes('just cleaned') ? C.yellow : C.slate, fontWeight: m.reason.includes('TOMORROW') || m.reason.includes('towed') ? 700 : 400, marginTop: 2 }}
                             dangerouslySetInnerHTML={{ __html: m.reason }} />
+                          <div style={{ fontSize: 11, color: C.dark, marginTop: 6, padding: '6px 8px', background: '#F8FAFC', borderRadius: 4, border: `1px solid ${C.border}`, fontStyle: 'italic' }}>
+                            <strong>Flyer says:</strong> {m.flyerMessage}
+                          </div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'stretch' }}>
                           <a href={mapsUrl(m.lat, m.lng)} target="_blank" rel="noopener noreferrer"
