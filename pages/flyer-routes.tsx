@@ -22,13 +22,64 @@ interface Neighborhood {
   name: string; totalTickets: number; blocks: number; avgPerBlock: number
   topStreets: string[]; strategy: string
 }
+interface TicketCorridor {
+  id: string; name: string; neighborhood: string; walk: string
+  blocks: string[]; centerLat: number; centerLng: number
+  walkMinutes: number; fines2024: number; finesPerYearAvg: number
+  fines8yrTotal: number; pitch: string
+}
 interface RouteData {
   chicagoDate: string; chicagoDateTomorrow: string; tomorrowDayOfWeek: string
   isPeakTicketDay: boolean
   justCleanedZones: Zone[]; justCleanedCount: number
   tomorrowZones: Zone[]; tomorrowCount: number
   hotBlocks: HotBlock[]; towBlocks: HotBlock[]; neighborhoods: Neighborhood[]
+  ticketCorridors: TicketCorridor[]
   startingPoint: { lat: number; lng: number }
+}
+
+// ============================================================================
+// Mark-done tracking (localStorage)
+// Pre-seeds the two corridors the user has already flyered.
+// ============================================================================
+const DONE_KEY = 'flyer_done_v1'
+
+const PRESEED_DONE_BLOCKS = [
+  // 18th St 1400-2300W (Pilsen — Loomis to Western, done)
+  '1400 W 18th St', '1500 W 18th St', '1600 W 18th St', '1700 W 18th St',
+  '1800 W 18th St', '1900 W 18th St', '2000 W 18th St', '2100 W 18th St',
+  '2200 W 18th St', '2300 W 18th St',
+  // Ashland 4400-5500N (Uptown — Montrose to Bryn Mawr, done)
+  '4400 N Ashland Ave', '4500 N Ashland Ave', '4600 N Ashland Ave',
+  '4700 N Ashland Ave', '4800 N Ashland Ave', '4900 N Ashland Ave',
+  '5000 N Ashland Ave', '5100 N Ashland Ave', '5200 N Ashland Ave',
+  '5300 N Ashland Ave', '5400 N Ashland Ave', '5500 N Ashland Ave',
+]
+
+function loadDone(): { blocks: Set<string>; corridors: Set<string> } {
+  if (typeof window === 'undefined') return { blocks: new Set(), corridors: new Set() }
+  try {
+    const raw = localStorage.getItem(DONE_KEY)
+    if (!raw) {
+      // First load: seed the two corridors Randy already completed.
+      const seeded = { blocks: PRESEED_DONE_BLOCKS, corridors: [] as string[] }
+      localStorage.setItem(DONE_KEY, JSON.stringify(seeded))
+      return { blocks: new Set(seeded.blocks), corridors: new Set() }
+    }
+    const parsed = JSON.parse(raw)
+    return {
+      blocks: new Set(parsed.blocks || []),
+      corridors: new Set(parsed.corridors || []),
+    }
+  } catch { return { blocks: new Set(), corridors: new Set() } }
+}
+
+function saveDone(state: { blocks: Set<string>; corridors: Set<string> }) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(DONE_KEY, JSON.stringify({
+    blocks: Array.from(state.blocks),
+    corridors: Array.from(state.corridors),
+  }))
 }
 
 // ============================================================================
@@ -154,11 +205,32 @@ export default function FlyerRoutes() {
   const [startCoords, setStartCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [timeBudget, setTimeBudget] = useState(3) // hours
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [activeView, setActiveView] = useState<'plan' | 'all-blocks' | 'strategy'>('plan')
+  const [activeView, setActiveView] = useState<'plan' | 'tickets' | 'all-blocks' | 'strategy'>('plan')
+  const [doneState, setDoneState] = useState<{ blocks: Set<string>; corridors: Set<string> }>({ blocks: new Set(), corridors: new Set() })
+  const [hideDone, setHideDone] = useState(true)
+
+  useEffect(() => { setDoneState(loadDone()) }, [])
 
   const toggle = (k: string) => setExpanded(p => {
     const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n
   })
+
+  const toggleDoneCorridor = (id: string) => {
+    setDoneState(prev => {
+      const next = { blocks: new Set(prev.blocks), corridors: new Set(prev.corridors) }
+      next.corridors.has(id) ? next.corridors.delete(id) : next.corridors.add(id)
+      saveDone(next)
+      return next
+    })
+  }
+  const toggleDoneBlock = (block: string) => {
+    setDoneState(prev => {
+      const next = { blocks: new Set(prev.blocks), corridors: new Set(prev.corridors) }
+      next.blocks.has(block) ? next.blocks.delete(block) : next.blocks.add(block)
+      saveDone(next)
+      return next
+    })
+  }
 
   const fetchRoutes = useCallback(async (lat?: number, lng?: number) => {
     setLoading(true); setError(null)
@@ -269,9 +341,10 @@ export default function FlyerRoutes() {
           {/* View tabs */}
           <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}` }}>
             {([
-              { id: 'plan' as const, label: 'Tonight\'s Plan' },
-              { id: 'all-blocks' as const, label: 'All Hot Blocks' },
-              { id: 'strategy' as const, label: 'Strategy Guide' },
+              { id: 'plan' as const, label: 'Cleaning Plan' },
+              { id: 'tickets' as const, label: '$ Tickets' },
+              { id: 'all-blocks' as const, label: 'All Blocks' },
+              { id: 'strategy' as const, label: 'Strategy' },
             ]).map(t => (
               <button key={t.id} onClick={() => setActiveView(t.id)} style={{
                 flex: 1, padding: '10px 4px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
@@ -394,52 +467,184 @@ export default function FlyerRoutes() {
           )}
 
           {/* ================================================================ */}
+          {/* $ TICKETS — general parking corridors (Loop / Mag Mile / etc)   */}
+          {/* ================================================================ */}
+          {!loading && !error && data && activeView === 'tickets' && (() => {
+            const corridors = data.ticketCorridors || []
+            const visible = hideDone
+              ? corridors.filter(c => !doneState.corridors.has(c.id))
+              : corridors
+            const sorted = [...visible].sort((a, b) => b.finesPerYearAvg - a.finesPerYearAvg)
+            const totalAvgPerYr = sorted.reduce((s, c) => s + c.finesPerYearAvg, 0)
+            const doneCount = corridors.length - visible.length
+            return (
+              <>
+                <div style={{ background: C.navy, borderRadius: 10, padding: 14, marginBottom: 10, color: 'white' }}>
+                  <div style={{ fontSize: 17, fontWeight: 700 }}>{sorted.length} ticket corridors</div>
+                  <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>
+                    These blocks rack up tickets EVERY day, not just cleaning days.
+                    Total <strong>${(totalAvgPerYr/1e6).toFixed(1)}M/year</strong> in fines across these corridors.
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10, fontSize: 12, alignItems: 'center' }}>
+                  <button onClick={() => setHideDone(h => !h)} style={{
+                    padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.border}`, background: hideDone ? C.navy : C.white,
+                    color: hideDone ? 'white' : C.dark, fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                  }}>
+                    {hideDone ? 'Hiding' : 'Showing'} completed
+                  </button>
+                  {doneCount > 0 && (
+                    <span style={{ color: C.slate, fontSize: 11 }}>
+                      {doneCount} corridor{doneCount !== 1 ? 's' : ''} marked done
+                    </span>
+                  )}
+                </div>
+
+                {sorted.length === 0 && (
+                  <div style={{ background: C.white, borderRadius: 10, padding: 20, border: `1px solid ${C.border}`, textAlign: 'center', color: C.slate, fontSize: 13 }}>
+                    All corridors marked done. Toggle "Showing completed" above to see them.
+                  </div>
+                )}
+
+                {sorted.map((c, idx) => {
+                  const isDone = doneState.corridors.has(c.id)
+                  const isOpen = expanded.has(c.id)
+                  return (
+                    <div key={c.id} style={{
+                      background: C.white, borderRadius: 10, border: `1px solid ${C.border}`,
+                      marginBottom: 8, overflow: 'hidden', opacity: isDone ? 0.55 : 1,
+                    }}>
+                      <div onClick={() => toggle(c.id)} style={{ padding: '12px 14px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: isDone ? C.slate : idx < 3 ? C.red : idx < 6 ? C.yellow : C.navy,
+                          color: 'white', fontWeight: 800, fontSize: 14, flexShrink: 0,
+                        }}>
+                          {isDone ? '✓' : idx + 1}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 15, color: C.dark, textDecoration: isDone ? 'line-through' : 'none' }}>{c.name}</div>
+                          <div style={{ fontSize: 12, color: C.slate, marginTop: 2 }}>
+                            <strong style={{ color: C.red }}>${(c.fines2024/1000).toFixed(0)}k</strong> in 2024 &middot;{' '}
+                            ${(c.finesPerYearAvg/1000).toFixed(0)}k/yr avg &middot; ~{c.walkMinutes} min walk
+                          </div>
+                          <div style={{ fontSize: 12, color: C.dark, marginTop: 4, fontWeight: 500 }}>{c.walk}</div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'stretch' }}>
+                          <a href={mapsUrl(c.centerLat, c.centerLng)} target="_blank" rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            style={{ padding: '7px 12px', borderRadius: 6, background: C.green, color: 'white', fontSize: 11, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                            Park Here
+                          </a>
+                          <button onClick={e => { e.stopPropagation(); toggleDoneCorridor(c.id) }}
+                            style={{ padding: '6px 10px', borderRadius: 6, background: isDone ? C.navy : '#F1F5F9', color: isDone ? 'white' : C.dark, border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            {isDone ? 'Undo' : 'Mark done'}
+                          </button>
+                        </div>
+                      </div>
+                      {isOpen && (
+                        <div style={{ padding: '0 14px 12px 60px' }}>
+                          <div style={{ background: '#F0FDF4', borderRadius: 8, padding: '10px 12px', border: '1px solid #BBF7D0' }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                              Why this corridor
+                            </div>
+                            <div style={{ fontSize: 12, color: C.dark, lineHeight: 1.5 }}>{c.pitch}</div>
+                            <div style={{ marginTop: 8, fontSize: 11, color: C.slate }}>
+                              <strong>Blocks:</strong> {c.blocks.join(' &middot; ').replace(/&middot;/g,'·')}
+                            </div>
+                            <div style={{ marginTop: 4, fontSize: 11, color: C.slate }}>
+                              <strong>8-year total:</strong> ${(c.fines8yrTotal/1e6).toFixed(1)}M issued at this corridor (2018-2025)
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                <div style={{ background: '#F1F5F9', borderRadius: 8, padding: 12, marginTop: 12, fontSize: 11, color: C.slate, lineHeight: 1.5 }}>
+                  Source: 35.7M FOIA ticket records, 2018-2025.
+                  Excludes speed/red-light cameras and street-cleaning tickets — those are on the Cleaning tab.
+                </div>
+              </>
+            )
+          })()}
+
+          {/* ================================================================ */}
           {/* ALL HOT BLOCKS — the raw ranked list                            */}
           {/* ================================================================ */}
-          {!loading && !error && data && activeView === 'all-blocks' && (
+          {!loading && !error && data && activeView === 'all-blocks' && (() => {
+            const visibleHot = hideDone ? data.hotBlocks.filter(b => !doneState.blocks.has(b.block)) : data.hotBlocks
+            const doneHotCount = data.hotBlocks.length - visibleHot.length
+            return (
             <>
               <div style={{ background: C.white, borderRadius: 10, padding: 14, marginBottom: 10, border: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>
-                  {data.hotBlocks.length} highest-ticket blocks + {(data.towBlocks || []).length} highest-tow blocks
+                  {visibleHot.length} street-cleaning hot blocks + {(data.towBlocks || []).length} tow blocks
                 </div>
                 <p style={{ fontSize: 12, color: C.slate, margin: '4px 0 0' }}>
-                  Every block ranked by raw ticket count. Good any day — not tied to the cleaning schedule.
+                  Each block ranked by street-cleaning tickets. Pair with the Cleaning Plan tab to know when to hit them.
                 </p>
               </div>
 
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, padding: '8px 0 4px', borderBottom: `2px solid ${C.red}`, marginBottom: 6 }}>
-                Top Ticket Blocks
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8, fontSize: 12, alignItems: 'center' }}>
+                <button onClick={() => setHideDone(h => !h)} style={{
+                  padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.border}`, background: hideDone ? C.navy : C.white,
+                  color: hideDone ? 'white' : C.dark, fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                }}>
+                  {hideDone ? 'Hiding' : 'Showing'} completed
+                </button>
+                {doneHotCount > 0 && (
+                  <span style={{ color: C.slate, fontSize: 11 }}>{doneHotCount} blocks marked done</span>
+                )}
               </div>
-              {data.hotBlocks.map((b, i) => (
-                <div key={b.block} style={{ background: C.white, borderRadius: 8, padding: '8px 12px', marginBottom: 4, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: i < 5 ? C.red : i < 15 ? C.yellow : '#E2E8F0', color: i < 15 ? 'white' : C.dark, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i+1}</span>
+
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, padding: '8px 0 4px', borderBottom: `2px solid ${C.red}`, marginBottom: 6 }}>
+                Top Street-Cleaning Blocks
+              </div>
+              {visibleHot.map((b, i) => {
+                const isDone = doneState.blocks.has(b.block)
+                return (
+                <div key={b.block} style={{ background: C.white, borderRadius: 8, padding: '8px 12px', marginBottom: 4, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, opacity: isDone ? 0.55 : 1 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: isDone ? C.slate : i < 5 ? C.red : i < 15 ? C.yellow : '#E2E8F0', color: isDone || i < 15 ? 'white' : C.dark, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{isDone ? '✓' : i+1}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: C.dark }}>{b.block}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: C.dark, textDecoration: isDone ? 'line-through' : 'none' }}>{b.block}</div>
                     <div style={{ fontSize: 11, color: C.slate }}>{b.neighborhood} &middot; Ward {b.ward} &middot; {b.daysTicketed > 0 ? `${b.daysTicketed} days ticketed` : ''}</div>
                   </div>
                   <span style={{ fontWeight: 700, fontSize: 13, color: C.red, whiteSpace: 'nowrap' }}>{b.tickets}</span>
+                  <button onClick={() => toggleDoneBlock(b.block)}
+                    style={{ padding: '4px 8px', borderRadius: 6, background: isDone ? C.navy : '#F1F5F9', color: isDone ? 'white' : C.dark, border: 'none', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+                    {isDone ? 'Undo' : 'Done'}
+                  </button>
                   <a href={mapsUrl(b.lat, b.lng)} target="_blank" rel="noopener noreferrer"
                     style={{ padding: '4px 8px', borderRadius: 6, background: C.blue, color: 'white', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Go</a>
                 </div>
-              ))}
+              )})}
 
               <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, padding: '16px 0 4px', borderBottom: `2px solid ${C.navy}`, marginBottom: 6 }}>
                 Top Tow/Boot Blocks (seizure-level)
               </div>
-              {(data.towBlocks || []).map((b, i) => (
-                <div key={b.block} style={{ background: C.white, borderRadius: 8, padding: '8px 12px', marginBottom: 4, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: i < 5 ? C.navy : '#E2E8F0', color: i < 5 ? 'white' : C.dark, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i+1}</span>
+              {(data.towBlocks || []).map((b, i) => {
+                const isDone = doneState.blocks.has(b.block)
+                return (
+                <div key={b.block} style={{ background: C.white, borderRadius: 8, padding: '8px 12px', marginBottom: 4, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, opacity: isDone ? 0.55 : 1 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: isDone ? C.slate : i < 5 ? C.navy : '#E2E8F0', color: isDone || i < 5 ? 'white' : C.dark, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{isDone ? '✓' : i+1}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: C.dark }}>{b.block}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: C.dark, textDecoration: isDone ? 'line-through' : 'none' }}>{b.block}</div>
                     <div style={{ fontSize: 11, color: C.slate }}>{b.neighborhood} &middot; Ward {b.ward}</div>
                   </div>
                   <span style={{ fontWeight: 700, fontSize: 13, color: C.navy, whiteSpace: 'nowrap' }}>{b.tickets} seiz</span>
+                  <button onClick={() => toggleDoneBlock(b.block)}
+                    style={{ padding: '4px 8px', borderRadius: 6, background: isDone ? C.navy : '#F1F5F9', color: isDone ? 'white' : C.dark, border: 'none', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+                    {isDone ? 'Undo' : 'Done'}
+                  </button>
                   <a href={mapsUrl(b.lat, b.lng)} target="_blank" rel="noopener noreferrer"
                     style={{ padding: '4px 8px', borderRadius: 6, background: C.blue, color: 'white', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Go</a>
                 </div>
-              ))}
+              )})}
             </>
-          )}
+          )})()}
 
           {/* ================================================================ */}
           {/* STRATEGY GUIDE                                                   */}
