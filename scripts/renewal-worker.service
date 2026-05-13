@@ -1,0 +1,59 @@
+# Sticker renewal worker — runs the long-poll daemon that processes granted
+# renewal_purchase_consents rows and pays the gov sites with the ops card.
+#
+# This worker MUST live on the same machine as scripts/run-city-payment-queue.ts
+# (the ticket-autopay queue worker) so the CITY_PAYMENT_CARD_* env vars are
+# already available in the runtime environment.
+#
+# Install on the ops box:
+#   1. Copy this file:  cp scripts/renewal-worker.service ~/.config/systemd/user/
+#   2. Reload:          systemctl --user daemon-reload
+#   3. Enable+start:    systemctl --user enable --now renewal-worker
+#   4. Tail logs:       journalctl --user -u renewal-worker -f
+#   5. Status:          systemctl --user status renewal-worker
+#
+# Required env vars must be in the user's shell or in an EnvironmentFile
+# (a private file like ~/.config/renewal-worker.env, mode 600):
+#   AUTO_RENEWAL_GLOBALLY_ENABLED=true     <-- the global kill switch
+#   CREDENTIALS_ENCRYPTION_KEY=...         <-- 64-hex chars
+#   CITY_PAYMENT_CARD_NUMBER=...           <-- shared with ticket autopay
+#   CITY_PAYMENT_CARD_EXP=MM/YYYY
+#   CITY_PAYMENT_CARD_CVV=...
+#   CITY_PAYMENT_BILLING_FIRST_NAME=...
+#   CITY_PAYMENT_BILLING_LAST_NAME=...
+#   CITY_PAYMENT_BILLING_ADDRESS1=...
+#   CITY_PAYMENT_BILLING_CITY=...
+#   CITY_PAYMENT_BILLING_STATE=...
+#   CITY_PAYMENT_BILLING_ZIP=...
+#   CITY_PAYMENT_BILLING_EMAIL=...
+#   NEXT_PUBLIC_SUPABASE_URL=...
+#   SUPABASE_SERVICE_ROLE_KEY=...
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+#   STRIPE_SECRET_KEY=...
+#   RESEND_API_KEY=...
+#
+# To dry-run on the ops box (safe — no Stripe charge, no real gov submit):
+#   Add to EnvironmentFile:  RENEWAL_DRY_RUN=true
+#   Restart:                 systemctl --user restart renewal-worker
+
+[Unit]
+Description=Autopilot America sticker renewal worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/randy-vollrath/ticketless-chicago
+EnvironmentFile=-%h/.config/renewal-worker.env
+ExecStart=/usr/bin/env npx tsx scripts/run-renewal-queue.ts
+Restart=on-failure
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+# Resource guards — Playwright + Chromium can spike memory.
+MemoryMax=2G
+TasksMax=200
+
+[Install]
+WantedBy=default.target
