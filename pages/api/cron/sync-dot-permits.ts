@@ -126,10 +126,23 @@ export default async function handler(
       return res.status(200).json({ success: true, message: 'No permits found', stats: { fetched: 0 } });
     }
 
-    // Transform to database format
+    // Transform to database format.
+    // The SODA endpoint returns one row per affected segment of a permit,
+    // so a single permit (= one application_number) can appear many times.
+    // PostgreSQL upsert with ON CONFLICT cannot affect the same row twice
+    // in one statement — without dedup, every batch errors out with
+    // 21000 "ON CONFLICT DO UPDATE command cannot affect row a second time".
+    // Keep the first occurrence; segments are duplicative for our purposes
+    // (proximity lookup) since the location is roughly the same for each.
+    const seenAppNumbers = new Set<string>();
     const now = new Date().toISOString();
     const dbRecords = allRecords
       .filter(r => r.applicationnumber && r.applicationstartdate && r.applicationenddate)
+      .filter(r => {
+        if (seenAppNumbers.has(r.applicationnumber!)) return false;
+        seenAppNumbers.add(r.applicationnumber!);
+        return true;
+      })
       .map(r => {
         const lat = parseFloat(r.latitude || '');
         const lng = parseFloat(r.longitude || '');
@@ -165,6 +178,7 @@ export default async function handler(
     // Upsert in batches of 100
     let upserted = 0;
     let errors = 0;
+    const errorMessages: string[] = [];
     const batchSize = 100;
 
     for (let i = 0; i < dbRecords.length; i += batchSize) {
@@ -178,8 +192,10 @@ export default async function handler(
         });
 
       if (upsertError) {
-        console.error(`[sync-dot-permits] Upsert error (batch ${i / batchSize + 1}):`, upsertError.message);
+        const msg = `batch ${i / batchSize + 1}: ${upsertError.message}`;
+        console.error(`[sync-dot-permits] Upsert error (${msg})`);
         errors++;
+        if (errorMessages.length < 3) errorMessages.push(msg);
       } else {
         upserted += batch.length;
       }
@@ -201,8 +217,10 @@ export default async function handler(
 
     const stats = {
       fetched: allRecords.length,
+      deduplicated: dbRecords.length,
       upserted,
       errors,
+      errorSamples: errorMessages,
       expiredDeleted: deleted,
     };
 
