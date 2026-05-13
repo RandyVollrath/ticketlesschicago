@@ -112,38 +112,42 @@ export const spacing = {
   xxxl: 40,
 };
 
-// Border Radius - Modern but not overly bubbly
+// Border Radius — matched to web (Tailwind rounded-md/lg/xl = 6/8/12px;
+// the larger steps stay above web because mobile primitives are bigger,
+// but the whole scale is tightened so cards/sheets stop feeling bubbly.
 export const borderRadius = {
   sm: 6,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  xxl: 24,
+  md: 8,
+  lg: 12,
+  xl: 16,
+  xxl: 20,
   full: 9999,
 };
 
-// Shadows - Modern "Soft Depth" shadows (Gemini 3 recommended)
+// Shadows — matched to web's box-shadow stack (subtle, not floaty).
+// Web uses 0 2px 4px rgba(0,0,0,0.05) for light cards and ~0 10px 25px -5px
+// rgba(0,0,0,0.1) for modals. Mobile's previous shadow scale was 2-3x heavier.
 export const shadows = {
   sm: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowRadius: 2,
+    elevation: 1,
   },
   md: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.06,
-    shadowRadius: 24,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   lg: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.08,
-    shadowRadius: 32,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.10,
+    shadowRadius: 15,
+    elevation: 6,
   },
   // Primary button shadow — subtle depth, no colored glow
   primaryGlow: {
@@ -184,10 +188,10 @@ export const commonStyles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Cards - Modern floating cards with soft shadows
+  // Cards — borderRadius matched to web login formCard (16px)
   card: {
     backgroundColor: colors.cardBg,
-    borderRadius: borderRadius.xxl,
+    borderRadius: borderRadius.xl,
     padding: spacing.xl,
     marginBottom: spacing.lg,
     ...shadows.md,
@@ -228,30 +232,30 @@ export const commonStyles = StyleSheet.create({
     color: colors.textTertiary,
   },
 
-  // Buttons - Modern with depth (Gemini 3 recommended)
+  // Buttons — proportions matched to web (padding ~12x24, height ~44-48)
   primaryButton: {
     backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.base,
-    paddingHorizontal: spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 64,
-    ...shadows.primaryGlow,
-  },
-  primaryButtonText: {
-    fontFamily: typography.fontFamily.bodyBold,
-    color: colors.textInverse,
-    fontSize: 18,
-  },
-  secondaryButton: {
-    backgroundColor: colors.primaryTint,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 52,
+    minHeight: 48,
+    ...shadows.primaryGlow,
+  },
+  primaryButtonText: {
+    fontFamily: typography.fontFamily.bodySemibold,
+    color: colors.textInverse,
+    fontSize: typography.sizes.md,
+  },
+  secondaryButton: {
+    backgroundColor: colors.primaryTint,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
   },
   secondaryButtonText: {
     fontFamily: typography.fontFamily.bodySemibold,
@@ -260,12 +264,12 @@ export const commonStyles = StyleSheet.create({
   },
   dangerButton: {
     backgroundColor: colors.error,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 52,
+    minHeight: 44,
   },
   dangerButtonText: {
     fontFamily: typography.fontFamily.bodySemibold,
