@@ -164,12 +164,11 @@ export default async function handler(
               <div style="background: #fff7ed; border: 1px solid #fed7aa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h3 style="margin: 0 0 10px 0; color: #92400e;">📋 Program Terms:</h3>
                 <ul style="margin: 0; padding-left: 20px; color: #78350f; line-height: 1.6;">
-                  <li>Share your link with friends who might benefit from Autopilot America</li>
+                  <li>Your friend gets <strong>$10 off</strong> their first year automatically when they use your link</li>
+                  <li>You earn <strong>$10</strong> for each friend who joins on an annual plan</li>
                   <li>Your referral credit lasts <strong>60 days</strong> after someone clicks your link</li>
-                  <li>Earn <strong>$2/month</strong> for each monthly subscriber you refer, as long as they remain subscribed</li>
-                  <li>Earn <strong>$20 one-time</strong> for each annual subscriber</li>
                   <li>Rewards are paid out monthly via PayPal or bank transfer</li>
-                  <li>If a referred customer cancels, monthly payments will stop</li>
+                  <li>If a referred customer cancels, payouts stop</li>
                   <li>Program terms may be modified with notice to participants</li>
                 </ul>
               </div>

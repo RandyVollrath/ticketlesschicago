@@ -104,6 +104,12 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
     }
   };
 
+  const smsHref = referralData?.referral_link
+    ? `sms:?&body=${encodeURIComponent(
+        `Hey — I use Autopilot to contest my Chicago parking tickets automatically. Use my link for $10 off your first year: ${referralData.referral_link}`,
+      )}`
+    : '#';
+
   if (loading) {
     return (
       <div style={{
@@ -147,8 +153,11 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
         </h2>
       </div>
 
-      <p style={{ fontSize: '15px', color: '#6b7280', lineHeight: '1.6', marginBottom: '24px' }}>
-        Share Autopilot America with friends and earn rewards when they subscribe!
+      <p style={{ fontSize: '15px', color: '#374151', lineHeight: '1.6', marginBottom: '8px' }}>
+        Give a friend <strong>$10 off</strong> their first year. You earn <strong>$10</strong> when they join.
+      </p>
+      <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6', marginBottom: '24px', fontStyle: 'italic' }}>
+        Know another Chicago driver who hates tickets? Text them now while you're thinking of it.
       </p>
 
       {error && (
@@ -175,8 +184,8 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
           }}>
             <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e40af' }}>$16</div>
-                <div style={{ fontSize: '13px', color: '#3b82f6' }}>per referral (20% of $80)</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e40af' }}>$10 / $10</div>
+                <div style={{ fontSize: '13px', color: '#3b82f6' }}>friend saves $10, you earn $10</div>
               </div>
             </div>
             <p style={{ fontSize: '14px', color: '#1e40af', margin: 0 }}>
@@ -195,11 +204,11 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
               <strong>📋 Program Terms:</strong>
             </p>
             <ul style={{ fontSize: '13px', color: '#78350f', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
-              <li>Share your link with friends who might benefit from Autopilot</li>
+              <li>Your friend gets <strong>$10 off</strong> their first year automatically when they use your link</li>
+              <li>You earn <strong>$10</strong> for each friend who joins on an annual plan</li>
               <li>Your referral credit lasts <strong>60 days</strong> after someone clicks your link</li>
-              <li>Earn <strong>$16</strong> for each annual subscriber you refer (20% of $80)</li>
               <li>Rewards are paid out monthly via PayPal or bank transfer</li>
-              <li>If a referred customer cancels, monthly payments will stop</li>
+              <li>If a referred customer cancels, payouts stop</li>
               <li>Program terms may be modified with notice to participants</li>
             </ul>
           </div>
@@ -245,13 +254,31 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
             </p>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#166534' }}>
-                $16
+                $10 / $10
               </div>
               <div style={{ fontSize: '13px', color: '#15803d' }}>
-                per referral (20% of $80)
+                friend saves $10, you earn $10
               </div>
             </div>
           </div>
+
+          <a
+            href={smsHref}
+            style={{
+              display: 'block',
+              textAlign: 'center',
+              padding: '14px 20px',
+              backgroundColor: '#111827',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 700,
+              marginBottom: '12px',
+            }}
+          >
+            📱 Text it to a friend
+          </a>
 
           <div style={{ marginBottom: '12px' }}>
             <label style={{
@@ -261,7 +288,7 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
               color: '#374151',
               marginBottom: '8px'
             }}>
-              Your Referral Link
+              Or copy your link
             </label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
@@ -309,11 +336,11 @@ export default function ReferralLink({ userId }: ReferralLinkProps) {
           }}>
             <strong>📋 Program Terms:</strong>
             <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
-              <li>Share your link with friends who might benefit from Autopilot</li>
+              <li>Your friend gets <strong>$10 off</strong> their first year automatically when they use your link</li>
+              <li>You earn <strong>$10</strong> for each friend who joins on an annual plan</li>
               <li>Your referral credit lasts <strong>60 days</strong> after someone clicks your link</li>
-              <li>You earn <strong>$16</strong> for each annual subscriber (20% of $80)</li>
               <li>Rewards are paid out monthly via PayPal or bank transfer</li>
-              <li>If a referred customer cancels, monthly payments will stop</li>
+              <li>If a referred customer cancels, payouts stop</li>
               <li>Program terms may be modified with notice to participants</li>
             </ul>
           </div>

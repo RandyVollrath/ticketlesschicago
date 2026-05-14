@@ -105,23 +105,12 @@ export default function AuthSuccess() {
     }
   }
 
-  const shareReferralLink = async () => {
-    if (!referralLink) return
-    const shareData = {
-      title: 'Autopilot America',
-      text: 'I just joined Autopilot — it contests Chicago parking tickets for you. Check it out:',
-      url: referralLink,
-    }
-    if (typeof navigator !== 'undefined' && (navigator as any).share) {
-      try {
-        await (navigator as any).share(shareData)
-        return
-      } catch {
-        // user cancelled — fall through to copy
-      }
-    }
-    copyReferralLink()
-  }
+  const referralSmsBody = (link: string) =>
+    `Hey — I just signed up for Autopilot. It contests my Chicago parking tickets automatically. Use my link for $10 off your first year: ${link}`
+
+  const referralSmsHref = referralLink
+    ? `sms:?&body=${encodeURIComponent(referralSmsBody(referralLink))}`
+    : '#'
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -306,7 +295,7 @@ export default function AuthSuccess() {
                     marginBottom: '24px',
                   }}>
                     <h3 style={{
-                      fontSize: '17px',
+                      fontSize: '18px',
                       fontWeight: 700,
                       color: '#78350F',
                       margin: '0 0 6px 0',
@@ -316,11 +305,37 @@ export default function AuthSuccess() {
                     <p style={{
                       fontSize: '14px',
                       color: '#92400E',
-                      margin: '0 0 14px 0',
+                      margin: '0 0 6px 0',
                       lineHeight: 1.5,
                     }}>
-                      Share your link and earn <strong>$16</strong> for every friend who joins (20% of their first year).
+                      Give a friend <strong>$10 off</strong> their first year. You earn <strong>$10</strong> when they join.
                     </p>
+                    <p style={{
+                      fontSize: '13px',
+                      color: '#92400E',
+                      margin: '0 0 14px 0',
+                      lineHeight: 1.5,
+                      fontStyle: 'italic',
+                    }}>
+                      Takes 5 seconds — text it to one friend right now while you're thinking of it.
+                    </p>
+                    <a
+                      href={referralSmsHref}
+                      style={{
+                        display: 'block',
+                        textAlign: 'center',
+                        padding: '14px 20px',
+                        backgroundColor: '#111827',
+                        color: 'white',
+                        textDecoration: 'none',
+                        borderRadius: '8px',
+                        fontSize: '15px',
+                        fontWeight: 700,
+                        marginBottom: '10px',
+                      }}
+                    >
+                      📱 Text it to a friend
+                    </a>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <input
                         type="text"
@@ -342,7 +357,7 @@ export default function AuthSuccess() {
                         onClick={copyReferralLink}
                         style={{
                           padding: '10px 16px',
-                          backgroundColor: referralCopied ? '#10B981' : '#111827',
+                          backgroundColor: referralCopied ? '#10B981' : '#F59E0B',
                           color: 'white',
                           border: 'none',
                           borderRadius: '6px',
@@ -352,23 +367,7 @@ export default function AuthSuccess() {
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {referralCopied ? '✓ Copied' : 'Copy'}
-                      </button>
-                      <button
-                        onClick={shareReferralLink}
-                        style={{
-                          padding: '10px 16px',
-                          backgroundColor: '#F59E0B',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        Share
+                        {referralCopied ? '✓ Copied' : 'Copy link'}
                       </button>
                     </div>
                   </div>
