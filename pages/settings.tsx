@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import RegistrationForwardingSetup from '../components/RegistrationForwardingSetup';
 import AddressAutocomplete from '../components/AddressAutocomplete';
+import ReferralLink from '../components/ReferralLink';
 
 // ─── Error Boundary ─────────────────────────────────────────
 // Catches React render crashes so the user sees a clean fallback
@@ -3362,6 +3363,13 @@ function SettingsPageInner() {
             </Link>
           </div>
         </CollapsibleCard>
+
+        {/* Refer Friends & Earn */}
+        {userId && (
+          <div style={{ marginBottom: 16 }}>
+            <ReferralLink userId={userId} />
+          </div>
+        )}
 
         {/* Autopilot Settings */}
         <Card title="Contesting Settings" badge={
