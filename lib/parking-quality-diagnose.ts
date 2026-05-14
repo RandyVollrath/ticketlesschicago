@@ -146,7 +146,12 @@ function classify(row: any): FailureSignature {
   // compass_missing: no heading at all. Suppress when snap + Mapbox-reverse
   // independently name the same street — heading wasn't needed, the answer is
   // confirmed by two geometry-independent sources, so it's not a "failure".
-  if (!row.compass_heading && !row.gps_heading) {
+  // compass_missing: no heading of any kind. Guard on heading_source so that
+  // trajectory-based rows (heading_source='gps', gps_heading=null) are not
+  // mislabeled — check-parking.ts sets heading_source='gps' for trajectory
+  // median heading even though gps_heading column stays null.
+  if (!row.compass_heading && !row.gps_heading
+      && (!row.heading_source || row.heading_source === 'none')) {
     const mb = row.native_meta?.mapbox_reverse;
     const snapConfirmedByMapbox =
       row.snap_street_name && mb && mb.matched && mb.agrees_with_snap === true;
