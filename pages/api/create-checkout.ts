@@ -63,6 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/auth/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://autopilotamerica.com'}/`,
       customer_email: email,
+      allow_promotion_codes: true,
       metadata: {
         email,
         licensePlate,

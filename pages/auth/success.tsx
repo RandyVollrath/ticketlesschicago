@@ -7,6 +7,8 @@ export default function AuthSuccess() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [magicLinkSent, setMagicLinkSent] = useState(false)
+  const [referralLink, setReferralLink] = useState<string | null>(null)
+  const [referralCopied, setReferralCopied] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -62,6 +64,64 @@ export default function AuthSuccess() {
       handleAuthSuccess()
     }
   }, [router])
+
+  // Fetch the customer's Rewardful referral link as soon as session_id is on the URL.
+  // The Stripe webhook usually mints the affiliate before the redirect lands here,
+  // but the API also lazy-creates on a race. Retry once after a short delay if not ready.
+  useEffect(() => {
+    if (!router.isReady) return
+    const sessionId = router.query.session_id
+    if (typeof sessionId !== 'string' || !sessionId) return
+
+    let cancelled = false
+    const load = async (attempt = 1): Promise<void> => {
+      try {
+        const r = await fetch(`/api/post-checkout/referral-link?session_id=${encodeURIComponent(sessionId)}`)
+        if (!r.ok) {
+          if (attempt < 3 && (r.status === 503 || r.status === 404 || r.status === 402)) {
+            await new Promise((resolve) => setTimeout(resolve, 1500 * attempt))
+            if (!cancelled) return load(attempt + 1)
+          }
+          return
+        }
+        const data = await r.json()
+        if (!cancelled && data?.referral_link) setReferralLink(data.referral_link)
+      } catch (e) {
+        console.error('Failed to load referral link:', e)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [router])
+
+  const copyReferralLink = async () => {
+    if (!referralLink) return
+    try {
+      await navigator.clipboard.writeText(referralLink)
+      setReferralCopied(true)
+      setTimeout(() => setReferralCopied(false), 2000)
+    } catch (e) {
+      console.error('Copy failed:', e)
+    }
+  }
+
+  const shareReferralLink = async () => {
+    if (!referralLink) return
+    const shareData = {
+      title: 'Autopilot America',
+      text: 'I just joined Autopilot — it contests Chicago parking tickets for you. Check it out:',
+      url: referralLink,
+    }
+    if (typeof navigator !== 'undefined' && (navigator as any).share) {
+      try {
+        await (navigator as any).share(shareData)
+        return
+      } catch {
+        // user cancelled — fall through to copy
+      }
+    }
+    copyReferralLink()
+  }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -235,6 +295,84 @@ export default function AuthSuccess() {
                     We just sent you a one-tap sign-in link. Tap it on your phone to open the app — or on your laptop to open the web dashboard.
                   </p>
                 </div>
+
+                {/* Referral CTA — "Give $10, get $10" */}
+                {referralLink && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+                    border: '1px solid #F59E0B',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    marginBottom: '24px',
+                  }}>
+                    <h3 style={{
+                      fontSize: '17px',
+                      fontWeight: 700,
+                      color: '#78350F',
+                      margin: '0 0 6px 0',
+                    }}>
+                      Know another Chicago driver who hates tickets?
+                    </h3>
+                    <p style={{
+                      fontSize: '14px',
+                      color: '#92400E',
+                      margin: '0 0 14px 0',
+                      lineHeight: 1.5,
+                    }}>
+                      Share your link and earn <strong>$16</strong> for every friend who joins (20% of their first year).
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <input
+                        type="text"
+                        value={referralLink}
+                        readOnly
+                        onFocus={(e) => e.currentTarget.select()}
+                        style={{
+                          flex: '1 1 200px',
+                          minWidth: 0,
+                          padding: '10px 12px',
+                          border: '1px solid #FBBF24',
+                          borderRadius: '6px',
+                          backgroundColor: 'white',
+                          fontSize: '13px',
+                          color: '#111827',
+                        }}
+                      />
+                      <button
+                        onClick={copyReferralLink}
+                        style={{
+                          padding: '10px 16px',
+                          backgroundColor: referralCopied ? '#10B981' : '#111827',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {referralCopied ? '✓ Copied' : 'Copy'}
+                      </button>
+                      <button
+                        onClick={shareReferralLink}
+                        style={{
+                          padding: '10px 16px',
+                          backgroundColor: '#F59E0B',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Share
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* App store buttons */}
                 <div style={{ marginBottom: '28px' }}>
