@@ -706,6 +706,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
         }
 
+        // ── Acknowledgment — logged but not actionable, no admin alert ──
+        if (foiaResult.isAcknowledgement) {
+          console.log(`  Acknowledgment recorded (GovQA ref: ${foiaResult.govqaReference || 'unknown'}) — skipping admin alert`);
+          return res.status(200).json({
+            message: 'FOIA acknowledgment recorded',
+            ...foiaResult,
+          });
+        }
+
         // ── Unmatched FOIA — already queued by processFoiaResponse ──
         if (!foiaResult.matched) {
           // Notify admin of unmatched FOIA
