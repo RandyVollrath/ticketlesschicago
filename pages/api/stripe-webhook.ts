@@ -1624,20 +1624,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           console.log('🤖 Checking for Autopilot subscription:', { supabaseUserId, subscriptionId });
 
-          // IDEMPOTENCY: Check if this session was already processed by checking user_profiles.
-          // Note: user_profiles has no stripe_session_id column; this check has
-          // always been a runtime no-op. Downstream operations are upserts so
-          // duplicate webhook delivery is safe.
-          const { data: existingProfile } = await (supabaseAdmin as any)
-            .from('user_profiles')
-            .select('has_contesting, is_paid, stripe_session_id')
-            .eq('user_id', supabaseUserId)
-            .maybeSingle();
-
-          if (existingProfile?.stripe_session_id === session.id) {
-            console.log('🤖 Autopilot checkout already processed for this session (idempotent skip)');
-            break;
-          }
+          // Idempotency for duplicate webhook delivery is handled by the
+          // autopilot_subscriptions check below (existing active row with the
+          // same stripe_subscription_id) plus the user_profiles upsert being
+          // keyed on user_id. Don't add a stripe_session_id check here —
+          // user_profiles has no such column (42703).
 
           // Update autopilot_subscriptions to active
           const { data: existingSub, error: subCheckError } = await supabaseAdmin
@@ -1705,7 +1696,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 user_id: supabaseUserId,
                 has_contesting: true,
                 is_paid: true,
-                stripe_session_id: session.id, // IDEMPOTENCY: Track which session activated this user
                 updated_at: new Date().toISOString(),
               };
               if (autopilotPlate) autopilotProfileData.license_plate = autopilotPlate;
