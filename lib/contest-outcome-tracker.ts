@@ -1031,6 +1031,56 @@ export function extractReferenceId(subject: string, body: string): string | null
 }
 
 /**
+ * Extract a GovQA tracking reference (e.g. F139363-051426) from subject/body.
+ * GovQA assigns these when the City receives a FOIA via its portal — they appear
+ * in submission acknowledgments and in later substantive responses. Capturing
+ * the ref lets us correlate the eventual response back to the ack.
+ */
+export function extractGovqaReference(subject: string, body: string): string | null {
+  const subjectMatch = subject.match(/\bF\d{6}-\d{6}\b/);
+  if (subjectMatch) return subjectMatch[0];
+  const bodyMatch = body.match(/\bF\d{6}-\d{6}\b/);
+  if (bodyMatch) return bodyMatch[0];
+  return null;
+}
+
+/**
+ * Detect GovQA submission acknowledgments — the City's automated "we received
+ * your FOIA" emails. These contain no records and shouldn't trigger admin
+ * alerts. We still log them (status='acknowledgment') for audit trail.
+ *
+ * Pattern: from chicagoil@govqa.us with subject "Department of X :: F######-######"
+ * and body containing "received and is being processed".
+ */
+export function isFoiaAcknowledgement(subject: string, body: string): boolean {
+  const subj = (subject || '').toLowerCase();
+  const text = (body || '').toLowerCase();
+  const combined = `${subj} ${text}`;
+
+  // GovQA tracking ref is the strongest signal — only ever appears in city-portal mail.
+  const hasGovqaRef = /\bf\d{6}-\d{6}\b/i.test(subj) || /\bf\d{6}-\d{6}\b/i.test(text);
+
+  const ackPhrases = [
+    'has been received and is being processed',
+    'your foia request has been received',
+    'thank you for your foia request',
+    'thank you for your public records request',
+    'your reference number for tracking purposes',
+    'track and view responses at public records center',
+  ];
+  const hasAckPhrase = ackPhrases.some(p => combined.includes(p));
+
+  // Strong signal: GovQA ref + at least one ack phrase
+  if (hasGovqaRef && hasAckPhrase) return true;
+
+  // Fallback: two ack phrases together (covers ref-less acks if they exist)
+  const ackPhraseCount = ackPhrases.reduce((n, p) => n + (combined.includes(p) ? 1 : 0), 0);
+  if (ackPhraseCount >= 2) return true;
+
+  return false;
+}
+
+/**
  * Layer 4: AI-powered fuzzy matching for FOIA responses.
  *
  * When layers 1-3 fail, we ask Gemini to extract identifying info from the email
@@ -1192,11 +1242,50 @@ export async function processFoiaResponse(
   action: string;
   isExtension?: boolean;
   isDuplicateExtension?: boolean;
+  isAcknowledgement?: boolean;
+  govqaReference?: string | null;
 }> {
   const foiaType = classifyFoiaResponseType(subject, body);
   const referenceId = extractReferenceId(subject, body);
 
   console.log(`  FOIA type: ${foiaType}, Reference ID: ${referenceId || 'none'}`);
+
+  // ── Acknowledgment short-circuit ──
+  // GovQA sends an auto-receipt with no records every time we file a FOIA.
+  // These shouldn't trigger admin alerts — log them and bail.
+  if (isFoiaAcknowledgement(subject, body)) {
+    const govqaRef = extractGovqaReference(subject, body);
+    console.log(`  Acknowledgment detected (GovQA ref: ${govqaRef || 'unknown'}) — logging without match attempt`);
+    try {
+      await supabase
+        .from('foia_unmatched_responses' as any)
+        .insert({
+          from_email: fromEmail,
+          to_email: 'foia@autopilotamerica.com',
+          subject,
+          body_preview: body.substring(0, 500),
+          full_body: body,
+          attachment_count: attachments.length,
+          attachment_metadata: attachments.map(a => ({ filename: a.filename, type: a.content_type })),
+          email_headers: emailHeaders || null,
+          extracted_reference_id: govqaRef,
+          match_attempts: { acknowledgment: true, govqa_reference: govqaRef || 'none' },
+          status: 'acknowledgment',
+          notes: 'Auto-classified as GovQA submission acknowledgment — no admin action required.',
+        });
+    } catch (err: any) {
+      console.error(`  Failed to log acknowledgment: ${err.message}`);
+    }
+    return {
+      matched: false,
+      requestId: null,
+      ticketNumber: null,
+      foiaType,
+      action: 'acknowledgment_recorded',
+      isAcknowledgement: true,
+      govqaReference: govqaRef,
+    };
+  }
 
   // ── Layer 1: Match by reference ID ──
   if (referenceId) {

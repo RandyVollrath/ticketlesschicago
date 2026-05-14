@@ -453,6 +453,40 @@ export default async function handler(
       });
     }
 
+    // ── FOIA activity in the last 24h ──
+    // Surfaces (a) user-initiated history FOIAs, (b) auto-sent evidence FOIAs,
+    // (c) GovQA submission acknowledgments received. Each is a healthy-loop
+    // signal — visibility into the FOIA pipeline without per-event paging.
+    const foiaWindowIso = oneDayAgoIso;
+    const [
+      { data: recentHistoryFoias },
+      { data: recentEvidenceFoias },
+      { data: recentAcks },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from('foia_history_requests')
+        .select('id, license_state, license_plate, name, email, source, foia_sent_at, created_at, reference_id')
+        .gte('foia_sent_at', foiaWindowIso)
+        .order('foia_sent_at', { ascending: false })
+        .limit(50),
+      supabaseAdmin
+        .from('ticket_foia_requests')
+        .select('id, reference_id, sent_at, status, request_payload, detected_tickets!inner(ticket_number, violation_type, plate)')
+        .gte('sent_at', foiaWindowIso)
+        .order('sent_at', { ascending: false })
+        .limit(50),
+      (supabaseAdmin as any)
+        .from('foia_unmatched_responses')
+        .select('id, subject, extracted_reference_id, created_at, from_email')
+        .eq('status', 'acknowledgment')
+        .gte('created_at', foiaWindowIso)
+        .order('created_at', { ascending: false })
+        .limit(50),
+    ]);
+    const historyFoiaList = (recentHistoryFoias as any[]) || [];
+    const evidenceFoiaList = (recentEvidenceFoias as any[]) || [];
+    const ackList = (recentAcks as any[]) || [];
+
     // Fetch FOIA appeal drafts awaiting admin send. These are surfaced as
     // magic-link "Send" buttons below so the appeal goes out in one click.
     // Cast to any — generated Supabase types haven't picked up the new table yet.
@@ -467,8 +501,9 @@ export default async function handler(
 
     const draftAppealsList = (draftAppeals as any[]) || [];
 
-    if ((!pendingLetters || pendingLetters.length === 0) && foiaWaiting.length === 0 && stuckRows.length === 0 && draftAppealsList.length === 0 && smoke.passed) {
-      console.log('No pending letters, no stuck rows, smoke test passed — skipping digest email');
+    const hasFoiaActivity = historyFoiaList.length > 0 || evidenceFoiaList.length > 0 || ackList.length > 0;
+    if ((!pendingLetters || pendingLetters.length === 0) && foiaWaiting.length === 0 && stuckRows.length === 0 && draftAppealsList.length === 0 && !hasFoiaActivity && smoke.passed) {
+      console.log('No pending letters, no stuck rows, no FOIA activity, smoke test passed — skipping digest email');
       return res.status(200).json({
         success: true,
         message: 'No pending letters or stuck rows, smoke passed, no email sent',
@@ -742,6 +777,90 @@ export default async function handler(
       html += `</table>`;
     }
 
+    // ── FOIA activity (last 24h) ──
+    if (hasFoiaActivity) {
+      html += `
+        <h3 style="color: #0f766e; margin-top: 32px;">
+          FOIA Activity (Last 24h)
+        </h3>
+        <p style="color: #6b7280; font-size: 13px; margin: 0 0 12px;">
+          ${historyFoiaList.length} user history FOIA${historyFoiaList.length === 1 ? '' : 's'} submitted ·
+          ${evidenceFoiaList.length} evidence FOIA${evidenceFoiaList.length === 1 ? '' : 's'} auto-sent ·
+          ${ackList.length} City acknowledgment${ackList.length === 1 ? '' : 's'} received
+        </p>
+      `;
+
+      if (historyFoiaList.length > 0) {
+        html += `
+          <h4 style="color: #0f766e; margin: 16px 0 8px; font-size: 14px;">Users who filed history FOIAs</h4>
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr style="background: #f0fdfa;">
+              <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #99f6e4;">When</th>
+              <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #99f6e4;">Plate</th>
+              <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #99f6e4;">Name</th>
+              <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #99f6e4;">Email</th>
+              <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #99f6e4;">Source</th>
+              <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #99f6e4;">Ref</th>
+            </tr>
+        `;
+        for (const r of historyFoiaList) {
+          const when = r.foia_sent_at || r.created_at;
+          const ageHours = when ? Math.round((Date.now() - new Date(when).getTime()) / 3.6e6) : 0;
+          html += `
+            <tr style="border-bottom: 1px solid #ccfbf1;">
+              <td style="padding: 8px 12px;">${ageHours}h ago</td>
+              <td style="padding: 8px 12px;">${r.license_state || ''} ${r.license_plate || ''}</td>
+              <td style="padding: 8px 12px;">${r.name || '—'}</td>
+              <td style="padding: 8px 12px; font-size: 12px;">${r.email || '—'}</td>
+              <td style="padding: 8px 12px; font-size: 12px; color: #6b7280;">${r.source || '—'}</td>
+              <td style="padding: 8px 12px; font-family: monospace; font-size: 12px;">${r.reference_id || '—'}</td>
+            </tr>
+          `;
+        }
+        html += `</table>`;
+      }
+
+      if (evidenceFoiaList.length > 0) {
+        html += `
+          <h4 style="color: #0f766e; margin: 16px 0 8px; font-size: 14px;">Evidence FOIAs auto-sent</h4>
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr style="background: #f0fdfa;">
+              <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #99f6e4;">When</th>
+              <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #99f6e4;">Ticket</th>
+              <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #99f6e4;">Type</th>
+              <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #99f6e4;">Plate</th>
+              <th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid #99f6e4;">Ref</th>
+            </tr>
+        `;
+        for (const r of evidenceFoiaList) {
+          const t = r.detected_tickets;
+          const ageHours = r.sent_at ? Math.round((Date.now() - new Date(r.sent_at).getTime()) / 3.6e6) : 0;
+          const violationType = (t?.violation_type || 'unknown')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (c: string) => c.toUpperCase());
+          html += `
+            <tr style="border-bottom: 1px solid #ccfbf1;">
+              <td style="padding: 8px 12px;">${ageHours}h ago</td>
+              <td style="padding: 8px 12px;">${t?.ticket_number || '—'}</td>
+              <td style="padding: 8px 12px;">${violationType}</td>
+              <td style="padding: 8px 12px;">${t?.plate || '—'}</td>
+              <td style="padding: 8px 12px; font-family: monospace; font-size: 12px;">${r.reference_id || '—'}</td>
+            </tr>
+          `;
+        }
+        html += `</table>`;
+      }
+
+      if (ackList.length > 0) {
+        html += `
+          <p style="color: #6b7280; font-size: 12px; margin: 12px 0 0;">
+            ${ackList.length} GovQA submission acknowledgment${ackList.length === 1 ? '' : 's'} received and logged
+            (no admin action required — these confirm the City got our requests).
+          </p>
+        `;
+      }
+    }
+
     // Summary action items
     html += `
         <div style="margin-top: 24px; padding: 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px;">
@@ -793,7 +912,7 @@ export default async function handler(
     }
 
     console.log(
-      `✅ Admin digest sent: ${pendingLetters?.length || 0} pending review, ${foiaWaiting.length} awaiting FOIA, ${stuckCount} stuck rows, ${appealsCount} FOIA appeals to send`
+      `✅ Admin digest sent: ${pendingLetters?.length || 0} pending review, ${foiaWaiting.length} awaiting FOIA, ${stuckCount} stuck rows, ${appealsCount} FOIA appeals to send, ${historyFoiaList.length} history FOIAs/24h, ${evidenceFoiaList.length} evidence FOIAs/24h, ${ackList.length} acks/24h`
     );
 
     return res.status(200).json({
@@ -801,6 +920,9 @@ export default async function handler(
       pendingReview: pendingLetters?.length || 0,
       foiaWaiting: foiaWaiting.length,
       foiaAppealsAwaitingSend: appealsCount,
+      foiaHistorySubmissions24h: historyFoiaList.length,
+      foiaEvidenceSent24h: evidenceFoiaList.length,
+      foiaAcknowledgments24h: ackList.length,
       stuckRows: stuckCount,
       stuckBreakdown: stuckRows.reduce<Record<string, number>>((acc, r) => {
         acc[r.kind] = (acc[r.kind] || 0) + 1;
