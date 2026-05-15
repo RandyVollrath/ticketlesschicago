@@ -29,7 +29,7 @@ import CameraAlertService from './CameraAlertService';
 import RedLightReceiptService from './RedLightReceiptService';
 import GroundTruthService from './GroundTruthService';
 import { triggerAutoDebugReport } from './DebugReportService';
-import { fetchCameraLocations } from '../data/chicago-cameras';
+import { fetchCameraLocations, CHICAGO_CAMERAS } from '../data/chicago-cameras';
 import AppEvents from './AppEvents';
 import AnalyticsService from './AnalyticsService';
 import ApiClient from '../utils/ApiClient';
@@ -107,30 +107,58 @@ const SNOW_FORECAST_CHECK_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours
 // "high" matches the legacy 1 Hz / 5 m setting and is used whenever we're near
 // a camera or moving fast enough that 1 Hz lookahead matters. "medium" and
 // "low" relax both rate and distance filter for the long stretches between
-// cameras at city speeds, which is most of the actual drive time.
-type AndroidGpsTier = 'high' | 'medium' | 'low';
+// cameras at city speeds, "idle" handles long red lights / traffic jams where
+// the car is stopped, far from any camera, and rate would otherwise be wasted.
+type AndroidGpsTier = 'high' | 'medium' | 'low' | 'idle';
 interface AndroidGpsTierConfig {
   intervalMs: number;
   fastestIntervalMs: number;
   distanceFilterM: number;
 }
 const ANDROID_GPS_TIERS: Record<AndroidGpsTier, AndroidGpsTierConfig> = {
-  high:   { intervalMs: 1000, fastestIntervalMs: 500,  distanceFilterM: 5 },
-  medium: { intervalMs: 2000, fastestIntervalMs: 1000, distanceFilterM: 10 },
-  low:    { intervalMs: 5000, fastestIntervalMs: 2000, distanceFilterM: 25 },
+  high:   { intervalMs: 1000,  fastestIntervalMs: 500,   distanceFilterM: 5 },
+  medium: { intervalMs: 2000,  fastestIntervalMs: 1000,  distanceFilterM: 10 },
+  low:    { intervalMs: 5000,  fastestIntervalMs: 2000,  distanceFilterM: 25 },
+  // 'idle' deliberately drops to a 30 s sample / 100 m filter. The watch
+  // handle stays alive (so departure resumes the tier picker on first
+  // motion fix), but the GPS chip is essentially idle. Any motion of
+  // 100m+ will produce a fix; otherwise we wake roughly every 30s.
+  idle:   { intervalMs: 30000, fastestIntervalMs: 10000, distanceFilterM: 100 },
+};
+// Tier ranking — used by the hysteresis check below. Higher number = more
+// frequent polling. Downgrades require sustained reason; upgrades happen on
+// any single qualifying fix (lookahead-first policy).
+const ANDROID_GPS_TIER_RANK: Record<AndroidGpsTier, number> = {
+  high: 3, medium: 2, low: 1, idle: 0,
 };
 // Camera proximity radii. 500m = "inside the alert range" (alerts fire at
 // ~200m of approach, so 500m gives the watcher warm-up). 1500m = "approaching
 // a camera neighborhood" — drop to medium rather than low.
 const CAMERA_PROXIMITY_HIGH_M = 500;
 const CAMERA_PROXIMITY_MEDIUM_M = 1500;
+// 'idle' tier also requires being clearly outside any camera neighborhood.
+// 1000m is conservative — we'd rather burn a little extra battery than miss
+// a camera 800m away that we're about to drive past in 40s at 25mph.
+const CAMERA_PROXIMITY_IDLE_MIN_M = 1000;
 // Speed thresholds (m/s). 25mph ≈ 11.18 m/s, 10mph ≈ 4.47 m/s. Above the high
 // threshold we want 1 Hz regardless of camera proximity (highway driving).
 const SPEED_HIGH_MPS = 11.18;
 const SPEED_MEDIUM_MPS = 4.47;
+// 'idle' tier requires the car to be effectively stopped for this long.
+// 90s is "this is a real red light or traffic jam, not a brief slowdown."
+// Cars roll forward in stop-and-go traffic every 20-40s, so 90s of pure
+// zero is a strong signal we're parked-in-traffic, not creeping.
+const IDLE_TIER_SPEED_ZERO_HOLD_MS = 90 * 1000;
+// Speed below which we treat the car as "effectively stopped" for idle
+// purposes. Not exactly 0 because GPS jitter at standstill can show noise.
+const IDLE_TIER_SPEED_EPSILON_MPS = 0.3;
 // Re-evaluate the tier at most this often. Tearing down and rebuilding the
 // watchPosition handle has cost, so we don't want to flap every tick.
 const ANDROID_GPS_TIER_REEVAL_MS = 5000;
+// Hysteresis: a *downgrade* (e.g. high→medium) requires the new tier to be
+// the recommended choice for at least this long. Upgrades skip this — if a
+// camera or highway speed appears we want the watch tightened immediately.
+const ANDROID_GPS_TIER_DOWNGRADE_HOLD_MS = 15 * 1000;
 // OpenWeatherMap-compatible API for Chicago snow forecast (free tier)
 const CHICAGO_WEATHER_LAT = 41.8781;
 const CHICAGO_WEATHER_LNG = -87.6298;
@@ -174,6 +202,20 @@ class BackgroundTaskServiceClass {
   private gpsCacheInterval: ReturnType<typeof setInterval> | null = null;
   private cameraLocationUnsubscribe: (() => void) | null = null;
   private androidDrivingGpsWatchId: number | null = null;
+  // Tier currently applied to the Android driving GPS watch.
+  private androidGpsTier: AndroidGpsTier = 'high';
+  // Throttle the tier evaluator so we don't recompute on every single fix.
+  private androidGpsTierLastEvalAt: number = 0;
+  // Tier we'd LIKE to be on right now (per pickAndroidGpsTier) — used by the
+  // downgrade hysteresis. If the recommendation has been a downgrade for >=
+  // ANDROID_GPS_TIER_DOWNGRADE_HOLD_MS, we apply it; otherwise we ride out
+  // the current tier so brief slowdowns don't tear down the watch handle.
+  private androidGpsTierRecommended: AndroidGpsTier = 'high';
+  private androidGpsTierRecommendedSince: number = 0;
+  // Wall-clock when the car most recently transitioned to "effectively
+  // stopped" (speed < IDLE_TIER_SPEED_EPSILON_MPS). Reset to 0 whenever the
+  // car moves. Used to gate entry into the 'idle' tier.
+  private androidGpsSpeedZeroSince: number = 0;
   /** Last valid driving heading from Android GPS watcher. Used as fallback when
    *  the parked GPS fix has no heading (speed ≈ 0 → heading unreliable).
    *  iOS native already captures last driving heading in ParkingDetectedEvent. */
@@ -1607,7 +1649,7 @@ class BackgroundTaskServiceClass {
           `session=${diag.driveSessionId || 'n/a'} active=true gpsDelta=0 audioFail=${diag.audioSpeakFailures} fallback=${diag.audioFallbackNotifications}`
         );
       }
-    }, 60000);
+    }, 120000); // 120s (was 60s) — diagnostic ping, halves wake-ups without losing stall detection
   }
 
   private stopCameraHeartbeat(): void {
@@ -1818,17 +1860,150 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Start continuous GPS on Android while driving (BT connected).
-   * Interval set to 1s so alerts fire as close to 200m as possible —
-   * at 30mph you cover ~13m/s, so 1s means ±13m accuracy on trigger distance.
+   * Distance in meters from (lat,lng) to the nearest known Chicago camera.
+   * Flat-earth approximation calibrated for Chicago latitude — accurate to
+   * <0.1% inside the city and avoids 510 trig calls per fix. Returns
+   * Infinity if the camera list hasn't loaded yet so we conservatively
+   * default to the high tier in that case.
    */
-  private startAndroidDrivingGps(): void {
+  private nearestCameraMeters(lat: number, lng: number): number {
+    const cams = CHICAGO_CAMERAS;
+    if (!cams || cams.length === 0) return Infinity;
+    const LAT_TO_METERS = 111000;
+    const LNG_TO_METERS = 82800; // cos(41.88°) * 111000
+    let minSq = Infinity;
+    for (let i = 0; i < cams.length; i++) {
+      const c = cams[i];
+      if (!c) continue;
+      const dLat = (c.latitude - lat) * LAT_TO_METERS;
+      const dLng = (c.longitude - lng) * LNG_TO_METERS;
+      const sq = dLat * dLat + dLng * dLng;
+      if (sq < minSq) minSq = sq;
+    }
+    return Math.sqrt(minSq);
+  }
+
+  /**
+   * Recommend a driving-GPS tier for the current speed + nearest-camera
+   * distance + speed-zero hold time. Pure function — no side effects.
+   *   - 'idle'  : speed has been ~zero for IDLE_TIER_SPEED_ZERO_HOLD_MS AND
+   *               nearest camera is > CAMERA_PROXIMITY_IDLE_MIN_M
+   *   - 'high'  : within CAMERA_PROXIMITY_HIGH_M of a camera, OR speed >= SPEED_HIGH_MPS
+   *   - 'medium': within CAMERA_PROXIMITY_MEDIUM_M, OR speed >= SPEED_MEDIUM_MPS
+   *   - 'low'   : otherwise
+   */
+  private pickAndroidGpsTier(
+    speedMps: number,
+    lat: number,
+    lng: number,
+    speedZeroForMs: number,
+  ): AndroidGpsTier {
+    const dist = this.nearestCameraMeters(lat, lng);
+    // Highway speed or camera proximity always wins — those need 1 Hz.
+    if (dist < CAMERA_PROXIMITY_HIGH_M) return 'high';
+    if (speedMps >= SPEED_HIGH_MPS) return 'high';
+    // Idle tier: must be both stopped-long-enough AND clearly away from
+    // any camera, otherwise fall through to the standard ladder.
+    if (
+      speedZeroForMs >= IDLE_TIER_SPEED_ZERO_HOLD_MS &&
+      dist >= CAMERA_PROXIMITY_IDLE_MIN_M
+    ) {
+      return 'idle';
+    }
+    if (dist < CAMERA_PROXIMITY_MEDIUM_M || speedMps >= SPEED_MEDIUM_MPS) return 'medium';
+    return 'low';
+  }
+
+  /**
+   * Re-evaluate the optimal driving-GPS tier and, if the recommendation
+   * differs from the currently-applied tier, decide whether to switch.
+   *
+   * Upgrades (e.g. low→high because we just got near a camera) apply
+   * immediately — lookahead matters and the watch restart is cheap relative
+   * to a missed alert. Downgrades apply only after the recommendation has
+   * held for ANDROID_GPS_TIER_DOWNGRADE_HOLD_MS, so a single slow fix at a
+   * red light doesn't flap us out of 'high'.
+   */
+  private maybeRetuneAndroidGpsTier(speedMps: number, lat: number, lng: number): void {
+    const now = Date.now();
+    if (now - this.androidGpsTierLastEvalAt < ANDROID_GPS_TIER_REEVAL_MS) return;
+    this.androidGpsTierLastEvalAt = now;
+
+    // Maintain the "how long has speed been zero" timer.
+    if (speedMps < IDLE_TIER_SPEED_EPSILON_MPS) {
+      if (this.androidGpsSpeedZeroSince === 0) {
+        this.androidGpsSpeedZeroSince = now;
+      }
+    } else {
+      this.androidGpsSpeedZeroSince = 0;
+    }
+    const speedZeroForMs = this.androidGpsSpeedZeroSince === 0
+      ? 0
+      : now - this.androidGpsSpeedZeroSince;
+
+    const recommended = this.pickAndroidGpsTier(speedMps, lat, lng, speedZeroForMs);
+
+    // Track how long the recommendation has been stable for hysteresis.
+    if (recommended !== this.androidGpsTierRecommended) {
+      this.androidGpsTierRecommended = recommended;
+      this.androidGpsTierRecommendedSince = now;
+    }
+
+    if (recommended === this.androidGpsTier) return;
+
+    const currentRank = ANDROID_GPS_TIER_RANK[this.androidGpsTier];
+    const recommendedRank = ANDROID_GPS_TIER_RANK[recommended];
+    const isUpgrade = recommendedRank > currentRank;
+    const stableForMs = now - this.androidGpsTierRecommendedSince;
+
+    if (!isUpgrade && stableForMs < ANDROID_GPS_TIER_DOWNGRADE_HOLD_MS) {
+      // Hysteresis: ride out the current (more aggressive) tier until the
+      // downgrade recommendation is sustained. Avoids tearing down the
+      // watch on a single slow fix.
+      return;
+    }
+
+    const prev = this.androidGpsTier;
+    const camDist = this.nearestCameraMeters(lat, lng);
+    log.info(
+      `Android GPS tier: ${prev} → ${recommended} ` +
+      `(speed=${speedMps.toFixed(1)}m/s, nearestCam=${camDist === Infinity ? 'n/a' : camDist.toFixed(0) + 'm'}, ` +
+      `speedZeroFor=${(speedZeroForMs / 1000).toFixed(0)}s, stable=${(stableForMs / 1000).toFixed(0)}s)`
+    );
+    this.startAndroidDrivingGps(recommended);
+  }
+
+  /**
+   * Start continuous GPS on Android while driving (BT connected).
+   * Tier selects the polling rate and distance filter (see ANDROID_GPS_TIERS):
+   *   - 'high'   = 1 Hz / 5 m   — near cameras or at highway speed
+   *   - 'medium' = 2 s / 10 m   — city speeds outside the camera radius
+   *   - 'low'    = 5 s / 25 m   — slow + far from cameras
+   *   - 'idle'   = 30 s / 100 m — stopped 90s+ at a red light/jam far from cameras
+   * The callback re-evaluates the tier on each fix (throttled to 5s) and
+   * restarts the watch when the optimal tier changes. Default tier is 'high'
+   * so first-fix lookahead near a camera isn't blind during the warm-up.
+   */
+  private startAndroidDrivingGps(tier: AndroidGpsTier = 'high'): void {
     if (Platform.OS !== 'android') return;
     this.stopAndroidDrivingGps(); // Clear any existing watch
+
+    const cfg = ANDROID_GPS_TIERS[tier];
+    this.androidGpsTier = tier;
 
     try {
       this.androidDrivingGpsWatchId = Geolocation.watchPosition(
         (position) => {
+          // Speed-adaptive + spatial gating + idle: re-evaluate the polling
+          // tier on every fix (throttled inside maybeRetune). Cheap — 510
+          // flat-earth distance squares per call.
+          const speedNow = position.coords.speed ?? 0;
+          this.maybeRetuneAndroidGpsTier(
+            speedNow > 0 ? speedNow : 0,
+            position.coords.latitude,
+            position.coords.longitude,
+          );
+
           // Store last valid driving heading for parking street disambiguation.
           // GPS heading is only reliable while moving (speed > 0). When the car stops,
           // heading becomes null/-1/stale. By saving the last known driving heading,
@@ -1869,15 +2044,20 @@ class BackgroundTaskServiceClass {
           log.warn('Android driving GPS error:', error.message);
         },
         {
-          enableHighAccuracy: true,
-          distanceFilter: 5, // Update every ~5m for tight camera proximity
-          interval: 1000, // 1s — fast enough for immediate 200m alerts
-          fastestInterval: 500,
+          // 'high' tier asks for the GPS chip; lower tiers let Android fuse
+          // WiFi/cell when the chip would be overkill.
+          enableHighAccuracy: tier === 'high',
+          distanceFilter: cfg.distanceFilterM,
+          interval: cfg.intervalMs,
+          fastestInterval: cfg.fastestIntervalMs,
           forceRequestLocation: true,
           showLocationDialog: false,
         }
       );
-      log.info('Android driving GPS started for camera alerts');
+      log.info(
+        `Android driving GPS started (tier=${tier}, interval=${cfg.intervalMs}ms, ` +
+        `df=${cfg.distanceFilterM}m, highAccuracy=${tier === 'high'})`
+      );
     } catch (error) {
       log.error('Failed to start Android driving GPS', error);
     }
@@ -5602,6 +5782,29 @@ class BackgroundTaskServiceClass {
         return;
       }
 
+      // Temperature gate: if the most recent forecast showed the minimum
+      // temperature for the next 24h was well above freezing AND that
+      // reading is still fresh (≤6h old), snow is physically impossible —
+      // skip the NWS round-trip entirely. We use 35°F as the cutoff (a
+      // few degrees above 32°F to absorb forecast-update drift) and a 6h
+      // freshness window so a real cold front can't sneak past us.
+      const SNOW_TEMP_GATE_F = 35;
+      const SNOW_TEMP_GATE_FRESH_MS = 6 * 60 * 60 * 1000;
+      try {
+        const cachedMinF = await AsyncStorage.getItem(StorageKeys.SNOW_FORECAST_MIN_TEMP_F);
+        const cachedAt = await AsyncStorage.getItem(StorageKeys.SNOW_FORECAST_MIN_TEMP_AT);
+        if (cachedMinF && cachedAt) {
+          const minF = parseFloat(cachedMinF);
+          const ageMs = Date.now() - parseInt(cachedAt, 10);
+          if (!isNaN(minF) && ageMs < SNOW_TEMP_GATE_FRESH_MS && minF > SNOW_TEMP_GATE_F) {
+            log.info(`Snow forecast check skipped — last min forecast temp was ${minF.toFixed(0)}°F (>${SNOW_TEMP_GATE_F}°F), ${Math.round(ageMs / 3600000)}h ago`);
+            return;
+          }
+        }
+      } catch (e) {
+        // Cache read failed — fall through and do the full check.
+      }
+
       log.info('Checking NWS forecast for snow...');
 
       // NWS API: Get forecast for Chicago (with 15-second timeouts)
@@ -5661,6 +5864,28 @@ class BackgroundTaskServiceClass {
 
       const forecastData = await forecastResponse.json();
       const periods = forecastData?.properties?.periods || [];
+
+      // Cache the minimum temperature across the next ~24h (4 periods is
+      // typically two day/night pairs in NWS data). This drives the
+      // SNOW_TEMP_GATE precheck on the next 2-hour tick — when it's clearly
+      // too warm to snow we skip the NWS round-trip entirely.
+      try {
+        let minTempF: number | null = null;
+        for (const p of periods.slice(0, 4)) {
+          const t = typeof p?.temperature === 'number' ? p.temperature : null;
+          if (t === null) continue;
+          const unit = (p.temperatureUnit || 'F').toString().toUpperCase();
+          const tF = unit === 'C' ? (t * 9) / 5 + 32 : t;
+          if (minTempF === null || tF < minTempF) minTempF = tF;
+        }
+        if (minTempF !== null) {
+          await AsyncStorage.setItem(StorageKeys.SNOW_FORECAST_MIN_TEMP_F, String(minTempF));
+          await AsyncStorage.setItem(StorageKeys.SNOW_FORECAST_MIN_TEMP_AT, String(Date.now()));
+          log.debug(`Snow forecast min temp cached: ${minTempF.toFixed(0)}°F (next 24h)`);
+        }
+      } catch (e) {
+        log.debug('Failed to cache snow forecast min temp (non-fatal)', e);
+      }
 
       // Check the next 4 periods (~48 hours) for snow
       let snowForecast: { amount: number; period: string; hoursAway: number } | null = null;
