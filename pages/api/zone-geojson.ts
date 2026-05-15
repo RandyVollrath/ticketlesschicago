@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
+import { sanitizeErrorMessage } from '../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -112,7 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
       res.status(200).json(geojson);
     } catch {
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: sanitizeErrorMessage(err) });
     }
   }
 }

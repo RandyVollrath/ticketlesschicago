@@ -20,6 +20,7 @@ import { createClient } from '@supabase/supabase-js';
 import { stripe } from '../../../lib/stripe-default-payment-method';
 import { sendAutopayFailedEmail } from '../../../lib/autopay-user-emails';
 import { sendAutopayOperatorAlert } from '../../../lib/autopay-alerts';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 export const config = { maxDuration: 60 };
 
@@ -47,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .in('status', ['pending', 'in_progress', 'manual_required'])
     .lte('created_at', cutoffIso);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: sanitizeErrorMessage(error) });
 
   const results = {
     timeoutHours,

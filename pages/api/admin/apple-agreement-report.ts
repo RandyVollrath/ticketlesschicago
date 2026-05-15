@@ -13,6 +13,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const auth = req.headers['authorization'];
@@ -36,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .not('native_meta', 'is', null);
 
   if (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 
   const withApple = (rows ?? []).filter((r) => r.native_meta?.apple);

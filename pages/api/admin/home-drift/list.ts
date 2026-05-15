@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdminAuth } from '../../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -27,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .or(`cooldown_until.is.null,cooldown_until.lte.${new Date().toISOString()}`)
     .order('detected_at', { ascending: false })
     .limit(200);
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: sanitizeErrorMessage(error) });
 
   // Keep only the newest per user.
   const newestByUser = new Map<string, any>();

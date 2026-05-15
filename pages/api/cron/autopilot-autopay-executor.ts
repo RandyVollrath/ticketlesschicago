@@ -7,6 +7,7 @@ import { resolveDefaultStripePaymentMethod } from '../../../lib/stripe-default-p
 import { executeLiveStripeCharge, executeSimulatedAutopay, getAutopayExecutionMode } from '../../../lib/autopay-execute';
 import { sendAutopayFailedEmail, sendAutopayPaidEmail, sendAutopayPreChargeEmail } from '../../../lib/autopay-user-emails';
 import { enqueueCityPayment } from '../../../lib/city-payment-queue';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 export const config = { maxDuration: 60 };
 
@@ -87,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .order('updated_at', { ascending: true })
     .limit(100);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: sanitizeErrorMessage(error) });
 
   for (const letter of (data || []) as PayableLetter[]) {
     results.checked++;

@@ -20,6 +20,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Resend } from 'resend';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 interface Issue {
   user_id: string;
@@ -72,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       '[ALERT] paid-user health check FAILED to run',
       `Could not query user_profiles: ${error.message}\n\nNo paid users were verified. Investigate.`
     );
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 
   const issues: Issue[] = [];

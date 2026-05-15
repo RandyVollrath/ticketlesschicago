@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdminAuth } from '../../../../lib/auth-middleware';
+import { sanitizeErrorMessage } from '../../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -47,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (error) {
     console.error(`/admin/home-drift/cooldown error for signal ${signal_id}:`, error.message);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
   if (!data) {
     return res.status(404).json({ error: 'signal_id not found' });

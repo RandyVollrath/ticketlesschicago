@@ -24,6 +24,7 @@ import formidable from 'formidable';
 import fs from 'fs';
 import { withAdminAuth } from '../../../lib/auth-middleware';
 import { processHistoryFoiaResponse } from '../../../lib/contest-outcome-tracker';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -170,6 +171,6 @@ export default withAdminAuth(async (req, res, _adminUser) => {
     });
   } catch (err: any) {
     console.error('foia-history-backfill error:', err);
-    return res.status(500).json({ error: err.message || 'Internal error' });
+    return res.status(500).json({ error: sanitizeErrorMessage(err) || 'Internal error' });
   }
 });

@@ -7,6 +7,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin as typedSupabase } from '../../../lib/supabase';
 import { logRenewalAudit } from '../../../lib/renewal-audit';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabaseAdmin = typedSupabase as any;
 
@@ -28,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .lt('expires_at', now)
     .select('id, user_id, renewal_type');
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: sanitizeErrorMessage(error) });
 
   for (const row of (data as Array<{ id: string; user_id: string; renewal_type: string }>) ?? []) {
     await logRenewalAudit({

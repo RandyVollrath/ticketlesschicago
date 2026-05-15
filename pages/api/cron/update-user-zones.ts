@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { resolveAddressZone } from '../../../lib/address-zone-resolver';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -166,6 +167,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (err: any) {
     console.error('Zone update error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: sanitizeErrorMessage(err) });
   }
 }

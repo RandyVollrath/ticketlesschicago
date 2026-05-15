@@ -18,6 +18,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { sendFoiaDripDay3, sendFoiaDripDay7 } from '../../../lib/foia-drip-emails';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -142,6 +143,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json(results);
   } catch (err: any) {
     console.error('FOIA drip crashed:', err.message);
-    return res.status(500).json({ error: err.message, partial: results });
+    return res.status(500).json({ error: sanitizeErrorMessage(err), partial: results });
   }
 }

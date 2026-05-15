@@ -8,6 +8,7 @@ import {
   getClientIP,
 } from '../../../lib/rate-limiter';
 import { Resend } from 'resend';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -351,6 +352,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (err: any) {
     console.error('partners/comp-signup error:', err);
-    return res.status(500).json({ error: err.message || 'Signup failed.' });
+    return res.status(500).json({ error: sanitizeErrorMessage(err) || 'Signup failed.' });
   }
 }

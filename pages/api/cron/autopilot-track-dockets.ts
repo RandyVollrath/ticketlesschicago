@@ -20,6 +20,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { fetchAhmsDocketDetails } from '../../../lib/ahms-fetcher';
 import { normalizeDispositionToLifecycleStatus, updateContestLifecycle } from '../../../lib/contest-lifecycle';
+import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 export const config = { maxDuration: 120 };
 
@@ -51,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .limit(100);
 
   if (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: sanitizeErrorMessage(error) });
   }
 
   for (const letter of letters || []) {
