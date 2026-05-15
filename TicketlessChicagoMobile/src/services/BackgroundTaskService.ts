@@ -2590,30 +2590,32 @@ class BackgroundTaskServiceClass {
       // Send notification — always notify so the user knows the scan ran
       const rawData = result.rawApiData || await this.getRawParkingData(result);
 
-      // Server-side suppression: walk-away drift or low-confidence no-snap.
-      // When the server isn't sure where the car actually is (compass vs GPS
-      // heading disagree by > 50°, or addressConfidence=0 with no snap), it
-      // sends `suppressNotifications: true` and we stay quiet — no rule
-      // alerts, no "parked OK" notification, no call alert. The diagnostic is
-      // still saved server-side; user can open the app to verify or correct.
+      // Server-side low-confidence flag: walk-away drift or no-snap reverse
+      // geocode. When set, we still notify (per user settings) but downgrade
+      // the alert — soft copy, no critical sound, no phone call — so a wrong
+      // address can't blast through as if we were sure. The home-screen hero
+      // card was already updated above via saveParkingCheckResult, so the
+      // user always sees the latest evaluation when they open the app.
       // See pages/api/mobile/check-parking.ts walk-away guard (May 2026).
-      const serverSuppress = rawData?.suppressNotifications === true;
-      if (serverSuppress) {
+      const lowConfidence = rawData?.suppressNotifications === true;
+      if (lowConfidence) {
         log.warn(
-          `Parking notification SUPPRESSED by server: reason=${rawData?.suppressionReason || 'unknown'}, ` +
+          `Parking notification DOWNGRADED (low confidence): reason=${rawData?.suppressionReason || 'unknown'}, ` +
           `addressConfidence=${rawData?.addressConfidence ?? '?'}, address=${filteredResult.address}`
         );
-      } else if (filteredResult.rules.length > 0) {
-        await this.sendParkingNotification(filteredResult, coords.accuracy, rawData);
+      }
+      if (filteredResult.rules.length > 0) {
+        await this.sendParkingNotification(filteredResult, coords.accuracy, rawData, lowConfidence);
 
-        // Trigger phone call alert if user has it enabled and there are active restrictions
-        if (persistParkingEvent) {
+        // Phone call alert only on high-confidence active restrictions.
+        // We never want to call someone about a wrong address.
+        if (persistParkingEvent && !lowConfidence) {
           this.triggerCallAlertIfEnabled(filteredResult, parkingSessionId).catch(err =>
             log.warn('Call alert trigger failed (non-fatal):', err)
           );
         }
       } else {
-        await this.sendSafeNotification(filteredResult.address, coords.accuracy, rawData);
+        await this.sendSafeNotification(filteredResult.address, coords.accuracy, rawData, lowConfidence);
       }
 
       // Schedule advance reminder notifications for upcoming restrictions.
@@ -2808,15 +2810,16 @@ class BackgroundTaskServiceClass {
         // Update the notification with the real address
         const filteredResult = await this.filterOwnPermitZone(result);
         const rawData = result.rawApiData || await this.getRawParkingData(result);
-        const serverSuppress = rawData?.suppressNotifications === true;
-        if (serverSuppress) {
+        const lowConfidence = rawData?.suppressNotifications === true;
+        if (lowConfidence) {
           log.warn(
-            `Address backfill notification SUPPRESSED: reason=${rawData?.suppressionReason || 'unknown'}, address=${filteredResult.address}`
+            `Address backfill notification DOWNGRADED (low confidence): reason=${rawData?.suppressionReason || 'unknown'}, address=${filteredResult.address}`
           );
-        } else if (filteredResult.rules.length > 0) {
-          await this.sendParkingNotification(filteredResult, coords.accuracy, rawData);
+        }
+        if (filteredResult.rules.length > 0) {
+          await this.sendParkingNotification(filteredResult, coords.accuracy, rawData, lowConfidence);
         } else {
-          await this.sendSafeNotification(filteredResult.address, coords.accuracy, rawData);
+          await this.sendSafeNotification(filteredResult.address, coords.accuracy, rawData, lowConfidence);
         }
         log.info('Address backfill: notification updated with resolved address');
       } catch (error) {
@@ -2894,15 +2897,16 @@ class BackgroundTaskServiceClass {
 
       // Re-send notification with corrected data
       const rawData = result.rawApiData || await this.getRawParkingData(result);
-      const serverSuppress = rawData?.suppressNotifications === true;
-      if (serverSuppress) {
+      const lowConfidence = rawData?.suppressNotifications === true;
+      if (lowConfidence) {
         log.warn(
-          `Phase 2 re-notify SUPPRESSED: reason=${rawData?.suppressionReason || 'unknown'}, address=${filteredResult.address}`
+          `Phase 2 re-notify DOWNGRADED (low confidence): reason=${rawData?.suppressionReason || 'unknown'}, address=${filteredResult.address}`
         );
-      } else if (filteredResult.rules.length > 0) {
-        await this.sendParkingNotification(filteredResult, burstCoords.accuracy, rawData);
+      }
+      if (filteredResult.rules.length > 0) {
+        await this.sendParkingNotification(filteredResult, burstCoords.accuracy, rawData, lowConfidence);
       } else {
-        await this.sendSafeNotification(filteredResult.address, burstCoords.accuracy, rawData);
+        await this.sendSafeNotification(filteredResult.address, burstCoords.accuracy, rawData, lowConfidence);
       }
 
       // NOTE: Do NOT call saveParkedLocationToServer here. Phase 1 already
@@ -3915,7 +3919,8 @@ class BackgroundTaskServiceClass {
       rules: Array<{ type?: string; message: string; severity: string }>;
     },
     accuracy?: number,
-    rawData?: any
+    rawData?: any,
+    lowConfidence: boolean = false
   ): Promise<void> {
     // Filter rules by user's per-type push notification preferences
     const filteredRules = await this.filterRulesByUserPrefs(result.rules);
@@ -3935,11 +3940,17 @@ class BackgroundTaskServiceClass {
     this.lastParkingNotificationAt = Date.now();
     this.lastParkingNotificationAddress = result.address;
 
-    const hasCritical = result.rules.some(r => r.severity === 'critical');
+    // Low-confidence alerts get the urgent severity stripped — we don't want
+    // to blast a "critical: tow zone" alert at a wrong address.
+    const hasCritical = !lowConfidence && result.rules.some(r => r.severity === 'critical');
     const accuracyNote = accuracy ? ` (GPS: ${accuracy.toFixed(0)}m)` : '';
 
     // Build the body with rule messages
     let body = `${result.address}${accuracyNote}\n${result.rules.map(r => r.message).join('\n')}`;
+
+    if (lowConfidence) {
+      body = `🤔 We couldn't pinpoint your exact spot — open Autopilot to verify.\n\n${body}`;
+    }
 
     // Add enforcement risk intelligence
     const riskContext = this.buildEnforcementRiskContext(rawData);
@@ -3979,17 +3990,21 @@ class BackgroundTaskServiceClass {
     // "Parked —" titles (no single restriction-specific copy fits).
     const riskUrgency = rawData?.enforcementRisk?.urgency;
     let title: string;
-    const singleRuleTitle = result.rules.length === 1
-      ? this.distinctiveRuleTitle(result.rules[0])
-      : null;
-    if (singleRuleTitle) {
-      title = singleRuleTitle;
-    } else if (hasCritical) {
-      title = '⚠️ Parked — Restriction Active!';
-    } else if (riskUrgency === 'high') {
-      title = '⚠️ Parked — Peak Enforcement Window';
+    if (lowConfidence) {
+      title = 'Parked — Verify Spot';
     } else {
-      title = '⚠️ Parked — Heads Up';
+      const singleRuleTitle = result.rules.length === 1
+        ? this.distinctiveRuleTitle(result.rules[0])
+        : null;
+      if (singleRuleTitle) {
+        title = singleRuleTitle;
+      } else if (hasCritical) {
+        title = '⚠️ Parked — Restriction Active!';
+      } else if (riskUrgency === 'high') {
+        title = '⚠️ Parked — Peak Enforcement Window';
+      } else {
+        title = '⚠️ Parked — Heads Up';
+      }
     }
 
     await notifee.displayNotification({
@@ -4013,7 +4028,12 @@ class BackgroundTaskServiceClass {
    * Send notification that parking is safe.
    * Includes upcoming restriction context and enforcement risk intelligence.
    */
-  private async sendSafeNotification(address: string, accuracy?: number, rawData?: any): Promise<void> {
+  private async sendSafeNotification(
+    address: string,
+    accuracy?: number,
+    rawData?: any,
+    lowConfidence: boolean = false
+  ): Promise<void> {
     // Check user preference — if "All Clear" alerts are disabled, skip entirely
     try {
       const pref = await AsyncStorage.getItem(StorageKeys.ALL_CLEAR_ALERTS_ENABLED);
@@ -4057,11 +4077,18 @@ class BackgroundTaskServiceClass {
       body += ' You\'re good to park here!';
     }
 
-    // Use risk-aware title for high urgency even when no active restriction
+    if (lowConfidence) {
+      body = `🤔 We couldn't pinpoint your exact spot — open Autopilot to verify.\n\n${body}`;
+    }
+
+    // Use risk-aware title for high urgency even when no active restriction.
+    // Low-confidence wins over both — we don't claim "All Clear" if we're not sure where you are.
     const riskUrgency = rawData?.enforcementRisk?.urgency;
-    const title = riskUrgency === 'high'
-      ? '⚠️ Parked — Peak Enforcement Area'
-      : '✅ Parked — All Clear';
+    const title = lowConfidence
+      ? 'Parked — Verify Spot'
+      : riskUrgency === 'high'
+        ? '⚠️ Parked — Peak Enforcement Area'
+        : '✅ Parked — All Clear';
 
     await notifee.displayNotification({
       title,
