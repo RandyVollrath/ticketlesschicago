@@ -14,6 +14,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { randomBytes } from 'crypto';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 
 const supabaseAdmin = createClient(
@@ -50,6 +51,9 @@ async function handleEnqueue(req: NextApiRequest, res: NextApiResponse) {
   const rawState: string = (body.state || 'IL').toString().trim().toUpperCase();
   const rawLastName: string = (body.last_name || body.lastName || '').toString().trim();
   const rawEmail: string | null = body.email ? body.email.toString().trim().toLowerCase() : null;
+  // Monitor flag: keep watching the plate weekly and email on new tickets.
+  // Only honored when we actually have an email — silently false otherwise.
+  const wantsMonitor: boolean = !!body.monitor && !!rawEmail;
 
   if (!PLATE_RE.test(rawPlate)) {
     return res.status(400).json({ error: 'Plate must be 2–8 letters and digits.' });
@@ -90,6 +94,11 @@ async function handleEnqueue(req: NextApiRequest, res: NextApiResponse) {
       ip,
       user_agent: (req.headers['user-agent'] || '').toString().slice(0, 500),
       status: 'pending',
+      monitor_enabled: wantsMonitor,
+      // Pre-generate the unsubscribe token even when monitoring is off, so
+      // it's already there if the user is later moved into monitoring (e.g.
+      // by an admin) without us having to backfill.
+      unsubscribe_token: randomBytes(24).toString('hex'),
     })
     .select('id, status, created_at')
     .single();

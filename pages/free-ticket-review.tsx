@@ -92,6 +92,12 @@ export default function FreeTicketReview() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [emailUsed, setEmailUsed] = useState(false);
+  // Opt-in for weekly rechecks: when the city portal lags behind reality
+  // (most common scenario — a fresh ticket isn't in the portal for days
+  // after issuance), we keep watching the plate and email the moment a new
+  // ticket appears. Default ON so most users get the safety net, but
+  // disabled when no email is given since we'd have nowhere to notify.
+  const [monitor, setMonitor] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [reviewId, setReviewId] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusResponse | null>(null);
@@ -139,6 +145,9 @@ export default function FreeTicketReview() {
           state: state.trim().toUpperCase(),
           last_name: lastName.trim(),
           email: email.trim() || null,
+          // Only honor monitor opt-in when we actually have an email to
+          // send notifications to. Server enforces this too.
+          monitor: !!(email.trim() && monitor),
         }),
       });
       const data = await r.json();
@@ -260,6 +269,34 @@ export default function FreeTicketReview() {
                 style={{ marginTop: 16 }}
               />
 
+              <label
+                htmlFor="free-review-monitor"
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14,
+                  padding: '12px 14px', borderRadius: 10,
+                  border: `1px solid ${email.trim() ? COLORS.border : '#F1F5F9'}`,
+                  background: email.trim() ? '#F8FAFC' : '#fff',
+                  cursor: email.trim() ? 'pointer' : 'not-allowed',
+                  opacity: email.trim() ? 1 : 0.55,
+                }}
+              >
+                <input
+                  id="free-review-monitor"
+                  type="checkbox"
+                  checked={monitor && !!email.trim()}
+                  disabled={!email.trim()}
+                  onChange={e => setMonitor(e.target.checked)}
+                  style={{ marginTop: 3, width: 16, height: 16, flexShrink: 0 }}
+                />
+                <div style={{ fontSize: 13, color: COLORS.graphite, lineHeight: 1.5 }}>
+                  <strong style={{ color: COLORS.deepHarbor }}>Keep watching my plate.</strong>{' '}
+                  The city portal often takes a few days to show a fresh ticket. Re-check my
+                  plate every Monday and email me only when a new ticket actually appears.
+                  Unsubscribe anytime from the email — and we'll stop automatically if you ever
+                  start a paid Autopilot plan.
+                </div>
+              </label>
+
               {error && (
                 <div style={{
                   marginTop: 16, padding: '12px 14px', borderRadius: 10,
@@ -283,7 +320,8 @@ export default function FreeTicketReview() {
 
               <p style={{ marginTop: 14, fontSize: 12, color: COLORS.slate }}>
                 We only use this to look up your tickets on the City of Chicago payment portal.
-                No card, no signup. Your plate and last name are stored only as long as the review takes.
+                No card, no signup. If you leave the "keep watching" box unchecked, your plate
+                and last name are kept only as long as the review takes.
               </p>
             </form>
           </section>

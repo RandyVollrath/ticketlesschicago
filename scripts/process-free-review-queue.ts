@@ -313,6 +313,16 @@ async function processOne(row: { id: string; plate: string; state: string; last_
 
   console.log(`[${row.id}] done — ${analysis.totalTickets} tickets, ${analysis.perTicket.filter(t => t.recommendation === 'contest').length} worth contesting`);
 
+  // Seed last_known_ticket_numbers with whatever was on the portal right
+  // now. The recheck cron diffs against this list — these are the tickets
+  // the user has already SEEN in their initial review, so they should
+  // never trigger a "new ticket detected" email. Set last_rechecked_at to
+  // the same moment so the cron's "anything older than 6 days" filter
+  // skips this row for the first week.
+  const seenTicketNumbers = lookup.tickets
+    .map(t => t.ticket_number)
+    .filter((n): n is string => typeof n === 'string' && n.length > 0);
+
   await supabase
     .from('free_review_requests')
     .update({
@@ -322,6 +332,8 @@ async function processOne(row: { id: string; plate: string; state: string; last_
       completed_at: new Date().toISOString(),
       worker_id: null,
       claimed_at: null,
+      last_known_ticket_numbers: seenTicketNumbers,
+      last_rechecked_at: new Date().toISOString(),
     })
     .eq('id', row.id);
 
