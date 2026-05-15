@@ -428,11 +428,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             );
             console.log(`  History FOIA: ${historyResult.action} (${historyResult.parsedTicketCount} tickets parsed)`);
 
+            // Skip admin notification entirely on acknowledgments and unclassified
+            // responses — the classifier already logged + paged where appropriate.
+            const skipAdminNotice =
+              historyResult.action === 'history_foia_acknowledgment_recorded' ||
+              historyResult.action === 'history_foia_response_unclassified';
+
             // Notify admin — different email for extensions vs actual responses.
             // Skip duplicate extension notices: the city sometimes sends the same
             // extension letter more than once. We only want one admin email per
             // request transition into `extension_requested`.
-            if (process.env.RESEND_API_KEY && !historyResult.isDuplicateExtension) {
+            if (process.env.RESEND_API_KEY && !historyResult.isDuplicateExtension && !skipAdminNotice) {
               const isExt = historyResult.isExtension;
               await fetch('https://api.resend.com/emails', {
                 method: 'POST',
@@ -550,6 +556,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             return res.status(200).json({
               message: 'Evidence FOIA extension processed (admin-only notification)',
+              ...foiaResult,
+            });
+          }
+
+          // ── Acknowledgment / unclassified: do NOT regen the letter or notify user ──
+          // These responses leave the FOIA in flight. The classifier already
+          // wrote the audit log and (for unclassified) paged the admin.
+          if (
+            foiaResult.action === 'foia_acknowledgment_recorded' ||
+            foiaResult.action === 'foia_response_unclassified'
+          ) {
+            console.log(`  Evidence FOIA ${foiaResult.action} — skipping letter regen and user notification`);
+            return res.status(200).json({
+              message: `Evidence FOIA ${foiaResult.action}`,
               ...foiaResult,
             });
           }

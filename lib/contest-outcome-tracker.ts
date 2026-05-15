@@ -948,6 +948,83 @@ export function isExtensionResponse(subject: string, body: string): boolean {
 }
 
 /**
+ * Detect bare GovQA-style acknowledgments — "we received your request, it is
+ * being processed." These are NOT fulfillments and NOT extensions; they should
+ * leave the FOIA status alone.
+ *
+ * Root cause this guards against: the city's GovQA portal sends an auto-ack on
+ * every new ticket whose body contains the word "attached" inside its footer
+ * link to the Public Records Center. The old classifier treated that as
+ * fulfillment and closed the FOIA with 0 documents.
+ *
+ * Caller must use this BEFORE the fulfillment/denial decision. If true, leave
+ * status unchanged and append the email to response_payload audit history.
+ */
+export function isAcknowledgmentEmail(subject: string, body: string): boolean {
+  const combined = `${subject} ${body}`.toLowerCase();
+  const ackPhrases = [
+    'has been received and is being processed',
+    'has been received and being processed',
+    'received and is being processed',
+    'received and being processed',
+    'we have received your request',
+    'we have received your foia',
+    'your reference number for tracking',
+    'reference number for tracking purposes',
+    'thank you for your foia request',
+    'thank you for submitting your foia',
+    'your request has been submitted',
+    'will be reviewed by our office',
+  ];
+  return ackPhrases.some(p => combined.includes(p));
+}
+
+/**
+ * Stricter fulfillment detector. Replaces the old heuristic which fired on a
+ * bare "attached" anywhere in the body (matched GovQA footer links).
+ *
+ * Returns true only when:
+ *   - real email attachments are present, OR
+ *   - the body uses unambiguous fulfillment phrasing.
+ *
+ * Caller must already have ruled out extensions and acknowledgments.
+ */
+export function isLikelyFulfillment(
+  body: string,
+  attachments: { filename: string; content_type: string }[],
+): boolean {
+  if (attachments.length > 0) return true;
+  const lower = body.toLowerCase();
+  const fulfillmentPhrases = [
+    'please find attached',
+    'please see attached',
+    'records are attached',
+    'records attached',
+    'documents are attached',
+    'document is attached',
+    'is attached hereto',
+    'are attached hereto',
+    'attached hereto are',
+    'attached please find',
+    'enclosed please find',
+    'records enclosed',
+    'are providing the following records',
+    'are providing the responsive',
+    'producing the following records',
+    'in response to your request, please',
+    'in response to your foia request',
+    'responsive records are',
+    'responsive documents are',
+    'attached are the responsive',
+    'completed your foia request',
+    'completing your foia request',
+    'request has been completed',
+    'request is now complete',
+  ];
+  return fulfillmentPhrases.some(p => lower.includes(p));
+}
+
+/**
  * Check if an incoming email is a FOIA response from the City of Chicago.
  */
 export function isFoiaResponseEmail(
@@ -1477,6 +1554,8 @@ async function processEvidenceFoiaMatch(
   action: string;
   isExtension?: boolean;
   isDuplicateExtension?: boolean;
+  isAcknowledgment?: boolean;
+  isUnclassified?: boolean;
 }> {
   // ── Extension check — must come BEFORE fulfillment/denial classification ──
   // Guard: Don't downgrade an already-fulfilled/denied request back to extension_requested.
@@ -1531,6 +1610,57 @@ async function processEvidenceFoiaMatch(
     };
   }
 
+  // Acknowledgment handling — must come BEFORE the terminal-status / fulfillment
+  // branches. A bare "we received your request" auto-ack should NOT close a
+  // FOIA. Append it to the audit history and leave status untouched.
+  if (isAcknowledgmentEmail(subject, body) && attachments.length === 0) {
+    console.log(`  Acknowledgment detected for evidence FOIA ${matchedRequest.id} — leaving status '${matchedRequest.status}' unchanged`);
+    const ackHistory = Array.isArray(matchedRequest.response_payload?.ack_history)
+      ? matchedRequest.response_payload.ack_history
+      : [];
+    ackHistory.push({
+      from: fromEmail,
+      subject,
+      body_preview: body.substring(0, 500),
+      received_at: new Date().toISOString(),
+      match_method: matchMethod,
+    });
+    await supabase
+      .from('ticket_foia_requests')
+      .update({
+        updated_at: new Date().toISOString(),
+        response_payload: {
+          ...(matchedRequest.response_payload || {}),
+          ack_history: ackHistory,
+          last_ack_at: new Date().toISOString(),
+        },
+      })
+      .eq('id', matchedRequest.id);
+
+    if (matchedRequest.ticket_id) {
+      await supabase.from('ticket_audit_log').insert({
+        ticket_id: matchedRequest.ticket_id,
+        action: 'foia_acknowledgment_received',
+        details: {
+          from: fromEmail,
+          subject,
+          match_method: matchMethod,
+          note: 'GovQA / DOF auto-acknowledgment — status unchanged',
+        },
+        performed_by: null,
+      });
+    }
+
+    return {
+      matched: true,
+      requestId: matchedRequest.id,
+      ticketNumber: matchedRequest.detected_tickets?.ticket_number || null,
+      foiaType: 'evidence',
+      action: 'foia_acknowledgment_recorded',
+      isAcknowledgment: true,
+    };
+  }
+
   // Guard: If the request is already in a terminal status, don't reprocess.
   // This prevents late/duplicate emails from overwriting existing fulfillment data.
   if (terminalStatuses.includes(matchedRequest.status)) {
@@ -1544,29 +1674,31 @@ async function processEvidenceFoiaMatch(
     };
   }
 
-  // Determine if this is a fulfillment or denial
+  // Determine if this is a fulfillment, denial, or unclassified response.
+  // Stricter than before: bare "attached" anywhere in the body is NOT enough,
+  // because GovQA footer links contain that word.
   const lowerBody = body.toLowerCase();
   const isDenial = lowerBody.includes('no responsive records') ||
     lowerBody.includes('no records found') ||
     lowerBody.includes('unable to locate') ||
     lowerBody.includes('no records responsive');
-  const isFulfillment = attachments.length > 0 ||
-    lowerBody.includes('attached') ||
-    lowerBody.includes('enclosed') ||
-    lowerBody.includes('responsive documents');
+  const isFulfillment = isLikelyFulfillment(body, attachments);
 
-  // Fulfillment takes priority: if attachments are present, treat as fulfillment even if
-  // body also contains denial-like language (e.g. "no responsive records" + attached docs)
-  const status = isFulfillment
+  // Three-way decision. The old code defaulted ambiguous responses to
+  // fulfilled_denial — that silently closed FOIAs on auto-acks. Now we park
+  // them for admin review instead.
+  const status: 'fulfilled_with_records' | 'fulfilled_denial' | 'response_unclassified' = isFulfillment
     ? 'fulfilled_with_records'
     : isDenial
     ? 'fulfilled_denial'
-    : 'fulfilled_denial'; // No records = effectively a denial
+    : 'response_unclassified';
   const notes = isFulfillment
     ? `City produced ${attachments.length} document(s). Review for defense-relevant information.`
     : isDenial
-    ? 'City responded: no responsive records found. Strengthens due process argument — no supporting enforcement documentation exists.'
-    : 'City responded but produced no records. Supports due process argument.';
+    ? 'City responded: no responsive records found. Strengthens procedural-fairness argument — no supporting enforcement documentation exists.'
+    : 'City sent a response that could not be auto-classified as fulfillment or denial. Manual review required.';
+
+  const isTerminal = status === 'fulfilled_with_records' || status === 'fulfilled_denial';
 
   // Update the FOIA request
   // Preserve extension metadata if this request previously received an extension
@@ -1583,7 +1715,7 @@ async function processEvidenceFoiaMatch(
     .from('ticket_foia_requests')
     .update({
       status,
-      fulfilled_at: new Date().toISOString(),
+      fulfilled_at: isTerminal ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
       response_payload: {
         from: fromEmail,
@@ -1592,6 +1724,7 @@ async function processEvidenceFoiaMatch(
         attachment_count: attachments.length,
         attachments: attachments.map(a => ({ filename: a.filename, type: a.content_type, ...(a.url ? { url: a.url } : {}) })),
         is_denial: isDenial,
+        is_unclassified: status === 'response_unclassified',
         received_at: new Date().toISOString(),
         match_method: matchMethod,
         ...(previousExtension || {}),
@@ -1602,27 +1735,78 @@ async function processEvidenceFoiaMatch(
     })
     .eq('id', matchedRequest.id);
 
-  // Audit log
+  // Audit log — distinguish all three outcomes
   const ticketId = matchedRequest.ticket_id;
+  const auditAction = isFulfillment
+    ? 'foia_response_received'
+    : isDenial
+    ? 'foia_no_records'
+    : 'foia_response_unclassified';
   await supabase.from('ticket_audit_log').insert({
     ticket_id: ticketId,
-    action: isDenial ? 'foia_no_records' : 'foia_response_received',
+    action: auditAction,
     details: {
       from: fromEmail,
       subject,
       attachment_count: attachments.length,
       is_denial: isDenial,
+      is_unclassified: status === 'response_unclassified',
       match_method: matchMethod,
       ...(previousExtension ? { after_extension: true, extension_received_at: previousExtension.extension_received_at } : {}),
     },
     performed_by: null,
   });
 
+  // Unclassified responses get a dedicated admin alert and skip auto-integration.
+  // Leaving the FOIA "in flight" means the deadline monitor keeps tracking it
+  // until someone reviews the email manually.
+  if (status === 'response_unclassified') {
+    if (process.env.RESEND_API_KEY) {
+      try {
+        await new Resend(process.env.RESEND_API_KEY).emails.send({
+          from: 'Autopilot America <alerts@autopilotamerica.com>',
+          to: ['randyvollrath@gmail.com'],
+          subject: `FOIA Response Needs Review — Ticket ${matchedRequest.detected_tickets?.ticket_number || matchedRequest.id}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: #6B7280; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                <h1 style="margin: 0; font-size: 20px;">FOIA Response — Unclassified</h1>
+                <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">Status parked at <code>response_unclassified</code>; FOIA stays in flight.</p>
+              </div>
+              <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                <p><strong>Request ID:</strong> ${matchedRequest.id}</p>
+                <p><strong>Ticket:</strong> ${matchedRequest.detected_tickets?.ticket_number || '(no ticket number)'}</p>
+                <p><strong>From:</strong> ${fromEmail}</p>
+                <p><strong>Subject:</strong> ${subject}</p>
+                <p><strong>Attachments:</strong> ${attachments.length}</p>
+                <p><strong>Match method:</strong> ${matchMethod}</p>
+                <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+                <p><strong>Body Preview:</strong></p>
+                <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; white-space: pre-wrap; font-size: 13px;">${body.substring(0, 800)}</div>
+              </div>
+            </div>
+          `,
+        });
+      } catch (alertErr: any) {
+        console.error(`  Admin unclassified-response alert failed: ${alertErr.message}`);
+      }
+    }
+    const ticketNumber = matchedRequest.detected_tickets?.ticket_number || null;
+    return {
+      matched: true,
+      requestId: matchedRequest.id,
+      ticketNumber,
+      foiaType: 'evidence',
+      action: 'foia_response_unclassified',
+      isUnclassified: true,
+    };
+  }
+
   // ── Auto-set FOIA integration flags on the contest letter ──
   // This removes the manual step of flipping finance_foia_integrated in admin.
   // Both fulfillments AND denials are useful:
   //   - Fulfillment: actual evidence to cite in letter
-  //   - Denial: "no responsive records" strengthens due process argument
+  //   - Denial: "no responsive records" strengthens procedural-fairness argument
   if (ticketId) {
     try {
       // Determine which flag to set based on request type
@@ -1750,6 +1934,37 @@ export async function processHistoryFoiaResponse(
     };
   }
 
+  // Acknowledgment handling — leave status untouched and append to ack history.
+  // Same root cause as the evidence path: GovQA auto-acks were being read as
+  // "fulfilled with 0 records."
+  if (isAcknowledgmentEmail(subject, body) && attachments.length === 0) {
+    console.log(`  Acknowledgment detected for history FOIA ${requestId} — leaving status '${historyRequest.status}' unchanged`);
+    const existingResponse: any = historyRequest.response_data || {};
+    const ackHistory = Array.isArray(existingResponse.ack_history) ? existingResponse.ack_history : [];
+    ackHistory.push({
+      from: fromEmail,
+      subject,
+      body_preview: body.substring(0, 500),
+      received_at: new Date().toISOString(),
+    });
+    await supabase
+      .from('foia_history_requests')
+      .update({
+        updated_at: new Date().toISOString(),
+        response_data: {
+          ...existingResponse,
+          ack_history: ackHistory,
+          last_ack_at: new Date().toISOString(),
+        },
+      } as any)
+      .eq('id', requestId);
+    return {
+      action: 'history_foia_acknowledgment_recorded',
+      parsedTicketCount: 0,
+      isExtension: false,
+    };
+  }
+
   // Guard: If the request is already in a terminal status, don't reprocess.
   // This prevents late/duplicate emails from overwriting existing fulfillment data.
   if (historyTerminalStatuses.includes(historyRequest.status)) {
@@ -1777,9 +1992,12 @@ export async function processHistoryFoiaResponse(
   const ticketCount = parsedResult?.tickets?.length || 0;
   const totalFines = parsedResult?.total_fines || 0;
 
-  // ── Classify the response as records vs denial vs clean-plate ──
-  // Mirrors the evidence-FOIA logic so admins can tell at a glance whether
-  // the city actually produced records or invoked an exemption.
+  // ── Classify the response as records vs denial vs clean-plate vs unclassified ──
+  // Crucially: 0 parsed tickets does NOT automatically mean "clean plate."
+  // It can also mean the AI parser couldn't read the email — e.g. a bare
+  // acknowledgment slipping past the ack detector, or a malformed attachment.
+  // Require an attachment or an explicit clean-plate signal in the body
+  // before closing as 'fulfilled'.
   const lowerBody = body.toLowerCase();
   const hasDenialLanguage =
     lowerBody.includes('withheld') ||
@@ -1788,11 +2006,20 @@ export async function processHistoryFoiaResponse(
     lowerBody.includes('no responsive records') ||
     lowerBody.includes('no records responsive') ||
     lowerBody.includes('unable to locate');
+  const hasCleanPlateLanguage =
+    lowerBody.includes('no outstanding') ||
+    lowerBody.includes('no tickets on file') ||
+    lowerBody.includes('no violations on file') ||
+    lowerBody.includes('no records were found');
+  const looksLikeRealFulfillment =
+    ticketCount > 0 || attachments.length > 0 || hasCleanPlateLanguage;
   const resolvedStatus = ticketCount > 0
     ? 'fulfilled_with_records'
     : hasDenialLanguage
       ? 'fulfilled_denial'
-      : 'fulfilled'; // 0 tickets with no denial language = legitimately clean plate
+      : looksLikeRealFulfillment
+        ? 'fulfilled'
+        : 'response_unclassified';
 
   // Preserve extension metadata if this request previously received an extension
   const previousExtension = historyRequest.status === 'extension_requested'
@@ -1804,9 +2031,10 @@ export async function processHistoryFoiaResponse(
       }
     : undefined;
 
+  const isHistoryTerminal = resolvedStatus !== 'response_unclassified';
   const updatePayload: any = {
     status: resolvedStatus,
-    response_received_at: new Date().toISOString(),
+    response_received_at: isHistoryTerminal ? new Date().toISOString() : null,
     updated_at: new Date().toISOString(),
     response_data: {
       from: fromEmail,
@@ -1814,6 +2042,7 @@ export async function processHistoryFoiaResponse(
       body_preview: body.substring(0, 500),
       attachment_count: attachments.length,
       attachments: attachments.map(a => ({ filename: a.filename, type: a.content_type, ...(a.url ? { url: a.url } : {}) })),
+      is_unclassified: resolvedStatus === 'response_unclassified',
       received_at: new Date().toISOString(),
       ...(previousExtension || {}),
     },
@@ -1829,6 +2058,10 @@ export async function processHistoryFoiaResponse(
     updatePayload.notes = previousExtension
       ? `[After 5 ILCS 140/3(e) extension] ${parsedResult.summary}`
       : parsedResult.summary;
+  } else if (resolvedStatus === 'response_unclassified') {
+    updatePayload.notes = previousExtension
+      ? '[After 5 ILCS 140/3(e) extension] Response could not be auto-classified — manual review required.'
+      : 'Response could not be auto-classified — manual review required.';
   } else {
     updatePayload.notes = previousExtension
       ? '[After 5 ILCS 140/3(e) extension] FOIA response received — AI parsing failed, manual review needed'
@@ -1839,6 +2072,38 @@ export async function processHistoryFoiaResponse(
     .from('foia_history_requests')
     .update(updatePayload)
     .eq('id', requestId);
+
+  // Admin alert for unclassified history responses — keep the request in flight
+  // so the deadline monitor keeps tracking it until someone reviews.
+  if (resolvedStatus === 'response_unclassified' && process.env.RESEND_API_KEY) {
+    try {
+      await new Resend(process.env.RESEND_API_KEY).emails.send({
+        from: 'Autopilot America <alerts@autopilotamerica.com>',
+        to: ['randyvollrath@gmail.com'],
+        subject: `History FOIA Needs Review — Request ${requestId}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #6B7280; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-size: 20px;">History FOIA — Unclassified</h1>
+              <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">Status parked at <code>response_unclassified</code>; request stays in flight.</p>
+            </div>
+            <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+              <p><strong>Request ID:</strong> ${requestId}</p>
+              <p><strong>From:</strong> ${fromEmail}</p>
+              <p><strong>Subject:</strong> ${subject}</p>
+              <p><strong>Attachments:</strong> ${attachments.length}</p>
+              <p><strong>AI parse result:</strong> ${parsedResult ? `${ticketCount} tickets parsed` : 'parse failed'}</p>
+              <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+              <p><strong>Body Preview:</strong></p>
+              <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; white-space: pre-wrap; font-size: 13px;">${body.substring(0, 800)}</div>
+            </div>
+          </div>
+        `,
+      });
+    } catch (alertErr: any) {
+      console.error(`  Admin history-unclassified alert failed: ${alertErr.message}`);
+    }
+  }
 
   // ── Denial → draft a PAC appeal letter (fire-and-forget) ──
   // The City sometimes invokes 5 ILCS 140/7(1)(b) to withhold plate-keyed
@@ -1870,7 +2135,17 @@ export async function processHistoryFoiaResponse(
     }
   }
 
-  // Send results email to user
+  // Send results email to user — but ONLY when we actually classified the
+  // response. Sending "your results are ready" on an unclassified ack would
+  // be a worse failure than the bug we just fixed.
+  if (resolvedStatus === 'response_unclassified') {
+    return {
+      action: 'history_foia_response_unclassified',
+      parsedTicketCount: 0,
+      isExtension: false,
+    };
+  }
+
   try {
     const { sendFoiaHistoryResultsEmail, classifyCityResponse } = await import('./foia-history-service');
     const cityResponseType = classifyCityResponse(ticketCount, parsedResult?.summary);
