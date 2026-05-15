@@ -597,7 +597,7 @@ export default function StartFunnel() {
     }}>
       <Head>
         <title>Get Protected - Autopilot America</title>
-        <meta name="description" content="Set up automatic parking ticket protection. $79/year — first ticket pays for it." />
+        <meta name="description" content="Set up automatic parking ticket protection. $99/year — first ticket pays for it." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -1146,7 +1146,7 @@ export default function StartFunnel() {
               }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>The math, plainly:</div>
                 <div style={{ color: COLORS.textSecondary }}>
-                  Autopilot is <strong style={{ color: COLORS.text }}>$79/year</strong>.
+                  Autopilot is <strong style={{ color: COLORS.text }}>$99/year</strong>.
                   One contested city sticker dismissed saves <strong style={{ color: COLORS.text }}>$200</strong>; one red-light camera dismissed saves <strong style={{ color: COLORS.text }}>$156</strong>.
                   Dismiss <strong>one</strong> ticket and you&apos;re ahead for the year.
                 </div>
@@ -1178,68 +1178,22 @@ export default function StartFunnel() {
 
               {/* Billing toggle */}
               <div style={{
-                display: 'flex', backgroundColor: '#F1F5F9', borderRadius: 10, padding: 3, marginBottom: 16,
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setBillingPlan('annual')}
-                  style={{
-                    flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
-                    fontSize: 14, fontWeight: billingPlan === 'annual' ? 700 : 500,
-                    backgroundColor: billingPlan === 'annual' ? '#fff' : 'transparent',
-                    color: billingPlan === 'annual' ? COLORS.text : COLORS.textSecondary,
-                    boxShadow: billingPlan === 'annual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  Annual <span style={{ fontSize: 11, color: COLORS.success, fontWeight: 600 }}>Save 18%</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBillingPlan('monthly')}
-                  style={{
-                    flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
-                    fontSize: 14, fontWeight: billingPlan === 'monthly' ? 700 : 500,
-                    backgroundColor: billingPlan === 'monthly' ? '#fff' : 'transparent',
-                    color: billingPlan === 'monthly' ? COLORS.text : COLORS.textSecondary,
-                    boxShadow: billingPlan === 'monthly' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  Monthly
-                </button>
-              </div>
-
-              <div style={{
                 textAlign: 'center', padding: '24px', borderRadius: 16,
                 background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.card} 100%)`,
                 border: `1px solid ${COLORS.border}`, marginBottom: 24,
               }}>
                 <div style={{ fontSize: 48, fontWeight: 700, color: COLORS.text, lineHeight: 1.1 }}>
-                  {billingPlan === 'annual' ? '$79' : '$9'}
+                  $99
                   <span style={{ fontSize: 20, fontWeight: 400, color: COLORS.textSecondary }}>
-                    {billingPlan === 'annual' ? '/year' : '/month'}
+                    /year
                   </span>
                 </div>
-                {billingPlan === 'annual' ? (
-                  <>
-                    <div style={{ fontSize: 14, color: COLORS.textSecondary, marginTop: 8 }}>
-                      Cancel anytime. Founding Member rate locks while your membership stays active.
-                    </div>
-                    <div style={{ fontSize: 14, color: COLORS.success, fontWeight: 600, marginTop: 6 }}>
-                      Skip one ticket and it pays for itself.
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ fontSize: 14, color: COLORS.textSecondary, marginTop: 8 }}>
-                      Cancel anytime. No commitment.
-                    </div>
-                    <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 6 }}>
-                      $108/year — save 27% with annual billing
-                    </div>
-                  </>
-                )}
+                <div style={{ fontSize: 14, color: COLORS.textSecondary, marginTop: 8 }}>
+                  Cancel anytime.
+                </div>
+                <div style={{ fontSize: 14, color: COLORS.success, fontWeight: 600, marginTop: 6 }}>
+                  Skip one ticket and it pays for itself.
+                </div>
               </div>
 
               <div style={{ marginBottom: 24 }}>
@@ -1249,7 +1203,7 @@ export default function StartFunnel() {
                   <IncludedItem text="Meter alerts — know when you've parked in a metered zone, when the meter zone is active, and when you've reached the posted time limit ($47M/yr)" />
                   <IncludedItem text="Red-light and speed camera alerts as you drive ($183M/yr in Chicago)" />
                   <IncludedItem text="Twice-weekly plate monitoring + automatic contest letters drafted, printed, and mailed" />
-                  <IncludedItem text="City sticker and license plate renewal deadline reminders" />
+                  <IncludedItem text="City sticker and license plate renewal — supervised rollout in 2026, we personally verify every renewal" />
                   <IncludedItem text="No Tickets or One Ticket Dismissed Guarantee" />
                 </div>
                 <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 10, lineHeight: 1.5 }}>
@@ -1280,17 +1234,11 @@ export default function StartFunnel() {
               {error && <ErrorText>{error}</ErrorText>}
 
               <ContinueButton onClick={handleCheckout} disabled={loading}>
-                {loading
-                  ? 'Setting up...'
-                  : billingPlan === 'annual'
-                    ? 'Start protection — $79/year'
-                    : 'Start protection — $9/month'}
+                {loading ? 'Setting up...' : 'Start protection — $99/year'}
               </ContinueButton>
 
               <div style={{ textAlign: 'center', marginTop: 12, fontSize: 13, color: COLORS.textSecondary, fontWeight: 500 }}>
-                {billingPlan === 'annual'
-                  ? '$79/year, billed today. Cancel anytime.'
-                  : 'Skip one ticket and you’re ahead.'}
+                $99/year, billed today. Cancel anytime.
               </div>
               <div style={{ textAlign: 'center', marginTop: 6, fontSize: 12, color: COLORS.textMuted }}>
                 Secure payment via Stripe · Sign in on the next screen.

@@ -187,6 +187,7 @@ export default function FreeContest() {
           state: contact.plate_state.trim().toUpperCase(),
           last_name: contact.last_name.trim(),
           email: contact.email.trim(),
+          source: 'free_contest',
         }),
       });
       const data = await r.json();
@@ -613,7 +614,7 @@ export default function FreeContest() {
                     textDecoration: 'none',
                   }}
                 >
-                  Start Autopilot — $79/year →
+                  Start Autopilot — $99/year →
                 </a>
               </div>
             </div>

@@ -538,7 +538,7 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
               background: COLORS.signal, color: '#04221A', fontWeight: 800, fontSize: 16,
               textDecoration: 'none',
             }}>
-              Protect my plate going forward — $79/year →
+              Protect my plate going forward — $99/year →
             </a>
           </div>
         )}
@@ -560,7 +560,7 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
                 Want Autopilot to keep it that way — and contest anything new?
               </div>
               <div style={{ marginTop: 10, fontSize: 14, color: '#CBD5E1', lineHeight: 1.6 }}>
-                For $79/year Autopilot checks your plate against the city portal every Monday and Thursday, sends you
+                For $99/year Autopilot checks your plate against the city portal every Monday and Thursday, sends you
                 street-cleaning, snow-ban, and renewal alerts before tickets happen, and automatically files a contest
                 for every ticket that does land — mail-in if we catch it inside the deadline, late-hearing if it slips
                 past. FOIA requests, evidence packet, cross-checks against the City's own 311 sign-repair complaints,
@@ -571,7 +571,7 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
                 background: COLORS.signal, color: '#04221A', fontWeight: 800, fontSize: 15,
                 textDecoration: 'none',
               }}>
-                Start Autopilot — $79/year →
+                Start Autopilot — $99/year →
               </a>
             </div>
           </>
@@ -618,7 +618,7 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
               Don't fight {worthIt.length + maybe.length === 1 ? 'this ticket' : `these ${worthIt.length + maybe.length} tickets`} alone.
             </div>
             <div style={{ marginTop: 10, fontSize: 14, color: '#CBD5E1', lineHeight: 1.6 }}>
-              For $79/year Autopilot writes and mails the contest letter for every ticket on your plate, requests the
+              For $99/year Autopilot writes and mails the contest letter for every ticket on your plate, requests the
               city's records on your behalf, attaches the evidence you upload, and tracks each citation through to a
               final decision. We also catch new tickets and street-cleaning days going forward.
             </div>
@@ -627,7 +627,7 @@ function ResultsView({ analysis }: { analysis: Analysis }) {
               background: COLORS.signal, color: '#04221A', fontWeight: 800, fontSize: 15,
               textDecoration: 'none',
             }}>
-              Fight {worthIt.length + maybe.length === 1 ? 'this ticket' : `these ${worthIt.length + maybe.length} tickets`} — $79/year →
+              Fight {worthIt.length + maybe.length === 1 ? 'this ticket' : `these ${worthIt.length + maybe.length} tickets`} — $99/year →
             </a>
             <div style={{ marginTop: 14, fontSize: 12, color: '#94A3B8', lineHeight: 1.5 }}>
               Win rates shown per ticket type are historical dismissal rates from our Chicago FOIA dataset — your
@@ -680,7 +680,7 @@ function HeroCallout({
         background: COLORS.signal, color: '#04221A', fontWeight: 800, fontSize: 16,
         textDecoration: 'none',
       }}>
-        {filable === 1 ? 'Fight this ticket' : `Fight these ${filable} tickets`} — $79/year →
+        {filable === 1 ? 'Fight this ticket' : `Fight these ${filable} tickets`} — $99/year →
       </a>
       <div style={{ marginTop: 10, fontSize: 12, color: '#94A3B8' }}>
         We write the letters, request the city's records, attach the evidence you provide, and track every citation to a final decision.

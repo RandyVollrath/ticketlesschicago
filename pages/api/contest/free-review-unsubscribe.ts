@@ -1,13 +1,13 @@
 /**
  * GET /api/contest/free-review-unsubscribe?token=<hex>
  *
- * One-click unsubscribe link for the "we'll keep watching your plate"
- * follow-up emails. Flips monitor_enabled=false on the matching row and
- * returns a plain HTML confirmation page (no JS, no styling dependencies).
+ * One-click unsubscribe link for all follow-up emails on a free-review
+ * row: weekly recheck "new ticket detected" AND the educational drip
+ * (Day 3 / Day 7). Flips monitor_enabled=false AND drip_unsubscribed=true.
  *
  * The user's original review row is left untouched — they can still come
  * back to /free-ticket-review?id=<uuid> and see their analysis. We're only
- * turning off the weekly recheck cron.
+ * turning off the follow-up emails.
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: row, error: lookupErr } = await supabase
     .from('free_review_requests')
-    .select('id, plate, monitor_enabled, monitor_stopped_reason')
+    .select('id, plate, monitor_enabled, monitor_stopped_reason, drip_unsubscribed')
     .eq('unsubscribe_token', token)
     .maybeSingle();
 
@@ -76,11 +76,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     `));
   }
 
-  if (row.monitor_enabled === false) {
+  // Already off on both axes? Show the confirmation page and short-circuit.
+  if (row.monitor_enabled === false && row.drip_unsubscribed === true) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(200).send(htmlPage('Already unsubscribed', `
       <h1>You're already off the list for plate ${row.plate}.</h1>
-      <p>No more weekly recheck emails. Your original review at <a href="/free-ticket-review?id=${row.id}">/free-ticket-review?id=${row.id}</a> is still there if you want to look at it.</p>
+      <p>No more follow-up emails of any kind. Your original review at <a href="/free-ticket-review?id=${row.id}">/free-ticket-review?id=${row.id}</a> is still there if you want to look at it.</p>
     `));
   }
 
@@ -90,6 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       monitor_enabled: false,
       monitor_stopped_reason: 'unsubscribed',
       monitor_stopped_at: new Date().toISOString(),
+      drip_unsubscribed: true,
     })
     .eq('id', row.id);
 
@@ -104,8 +106,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   return res.status(200).send(htmlPage('Unsubscribed', `
-    <h1>Unsubscribed — we'll stop watching plate ${row.plate}.</h1>
-    <p>No more weekly recheck emails. Your original review at <a href="/free-ticket-review?id=${row.id}">/free-ticket-review?id=${row.id}</a> is still there.</p>
-    <p>If you ever want ongoing protection again — contest filing, FOIA, street-cleaning alerts — Autopilot is $79/year. <a href="/get-started">Start Autopilot →</a></p>
+    <h1>Unsubscribed — we'll stop all follow-up emails for plate ${row.plate}.</h1>
+    <p>No more weekly rechecks, no more drip emails. Your original review at <a href="/free-ticket-review?id=${row.id}">/free-ticket-review?id=${row.id}</a> is still there.</p>
+    <p>If you ever want ongoing protection again — contest filing, FOIA, street-cleaning alerts — Autopilot is $99/year. <a href="/get-started">Start Autopilot →</a></p>
   `));
 }

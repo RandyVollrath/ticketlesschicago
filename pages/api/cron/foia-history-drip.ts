@@ -5,7 +5,7 @@
  * so they're not in the main drip_campaign_status pipeline. This cron sends them:
  *
  *   Day 3 — educational, no pitch (Chicago ticket math)
- *   Day 7 — soft pitch ($79/yr Autopilot)
+ *   Day 7 — soft pitch ($99/yr Autopilot)
  *
  * State is tracked on foia_history_requests.drip_day3_sent_at / drip_day7_sent_at
  * (see migration 20260512_add_foia_drip_columns.sql).

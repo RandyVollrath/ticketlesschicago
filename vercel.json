@@ -93,6 +93,9 @@
     "pages/api/cron/foia-history-drip.ts": {
       "maxDuration": 120
     },
+    "pages/api/cron/free-review-drip.ts": {
+      "maxDuration": 120
+    },
     "pages/api/cron/autopilot-open-data-monitor.ts": {
       "maxDuration": 120
     },
@@ -146,9 +149,16 @@
     },
     "pages/api/cron/expire-stale-consents.ts": {
       "maxDuration": 60
+    },
+    "pages/api/cron/silent-failure-detector.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
+    {
+      "path": "/api/cron/silent-failure-detector",
+      "schedule": "0 16 * * *"
+    },
     {
       "path": "/api/cron/paid-user-health-check",
       "schedule": "0 13 * * *"
@@ -264,6 +274,10 @@
     {
       "path": "/api/cron/foia-history-drip",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/free-review-drip",
+      "schedule": "30 14 * * *"
     },
     {
       "path": "/api/cron/autopilot-open-data-monitor",

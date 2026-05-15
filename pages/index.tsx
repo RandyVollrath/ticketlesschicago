@@ -103,7 +103,8 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [pricingPlan, setPricingPlan] = useState<'annual' | 'monthly'>('annual');
+  // Monthly was killed 2026-05-15; annual-only for new signups. The one
+  // existing $9/mo customer is grandfathered via their existing Stripe sub.
   const router = useRouter();
 
   useEffect(() => {
@@ -174,7 +175,7 @@ export default function LandingPage() {
     }}>
       <Head>
         <title>Your car&apos;s ticket protection on autopilot | Autopilot America</title>
-        <meta name="description" content="Your car's ticket protection on autopilot in Chicago — street cleaning & snow ban alerts, twice-weekly plate monitoring, and automatic contest letters drafted, printed, and mailed. $79/year or $9/month." />
+        <meta name="description" content="Your car's ticket protection on autopilot in Chicago — street cleaning & snow ban alerts, twice-weekly plate monitoring, automatic contest letters drafted/printed/mailed, and sticker auto-renewal. $99/year." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -317,12 +318,12 @@ export default function LandingPage() {
           margin: '0 auto 32px',
           lineHeight: 1.5
         }}>
-          Chicago drivers paid <strong style={{ color: '#fff' }}>$420 million</strong> in parking and camera tickets last year. <span style={{ color: '#CBD5E1' }}>$79/year keeps you out of that number. <strong style={{ color: '#fff' }}>Guaranteed<sup style={{ fontSize: '0.6em' }}>*</sup></strong></span>
+          Chicago drivers paid <strong style={{ color: '#fff' }}>$420 million</strong> in parking and camera tickets last year. <span style={{ color: '#CBD5E1' }}>\$99/year keeps you out of that number. <strong style={{ color: '#fff' }}>Guaranteed<sup style={{ fontSize: '0.6em' }}>*</sup></strong></span>
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <Button primary href="/get-started">
-            Get Started - $79/year <ArrowRight />
+            Get Started - \$99/year <ArrowRight />
           </Button>
         </div>
 
@@ -378,7 +379,7 @@ export default function LandingPage() {
           letterSpacing: '-0.5px',
           lineHeight: 1.15,
         }}>
-          $79/year pays for itself after one avoided ticket.
+          \$99/year pays for itself after one avoided ticket.
         </h2>
         <p style={{
           fontSize: '18px',
@@ -572,7 +573,7 @@ export default function LandingPage() {
             letterSpacing: '0.3px',
             boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
           }}>
-            Get Protected for $79/year
+            Get Protected for \$99/year
           </Link>
         </div>
       </section>
@@ -797,48 +798,6 @@ export default function LandingPage() {
           Everything you need to fight Chicago parking tickets on autopilot.
         </p>
 
-        {/* Billing toggle */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '32px' }}>
-          <div style={{ display: 'inline-flex', backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4 }}>
-            <button
-              type="button"
-              onClick={() => setPricingPlan('annual')}
-              style={{
-                padding: '12px 22px',
-                borderRadius: 8,
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 15,
-                fontWeight: pricingPlan === 'annual' ? 700 : 500,
-                backgroundColor: pricingPlan === 'annual' ? '#fff' : 'transparent',
-                color: pricingPlan === 'annual' ? COLORS.primary : '#64748B',
-                boxShadow: pricingPlan === 'annual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              Annual <span style={{ fontSize: 12, color: '#10B981', fontWeight: 600, marginLeft: 6 }}>Save 18%</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPricingPlan('monthly')}
-              style={{
-                padding: '12px 22px',
-                borderRadius: 8,
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 15,
-                fontWeight: pricingPlan === 'monthly' ? 700 : 500,
-                backgroundColor: pricingPlan === 'monthly' ? '#fff' : 'transparent',
-                color: pricingPlan === 'monthly' ? COLORS.primary : '#64748B',
-                boxShadow: pricingPlan === 'monthly' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              Monthly
-            </button>
-          </div>
-        </div>
-
         <div style={{
           maxWidth: '560px',
           margin: '0 auto',
@@ -851,25 +810,6 @@ export default function LandingPage() {
             boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)',
             position: 'relative',
           }}>
-            {/* Founding Member Badge */}
-            {pricingPlan === 'annual' && (
-              <div style={{
-                position: 'absolute',
-                top: '-14px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                backgroundColor: COLORS.accent,
-                color: COLORS.primary,
-                padding: '7px 18px',
-                borderRadius: '20px',
-                fontSize: '12px',
-                fontWeight: 700,
-                letterSpacing: '0.5px',
-              }}>
-                FOUNDING MEMBER RATE
-              </div>
-            )}
-
             <div style={{ textAlign: 'center', marginBottom: '36px' }}>
               <h3 style={{
                 fontFamily: FONTS.heading,
@@ -878,30 +818,17 @@ export default function LandingPage() {
                 color: '#fff',
                 letterSpacing: '-1px',
               }}>
-                {pricingPlan === 'annual' ? '$79' : '$9'}
+                $99
                 <span style={{ fontSize: '20px', color: '#94A3B8', fontWeight: 400 }}>
-                  {pricingPlan === 'annual' ? '/year' : '/month'}
+                  /year
                 </span>
               </h3>
-              {pricingPlan === 'annual' ? (
-                <>
-                  <p style={{ color: '#CBD5E1', marginBottom: '6px', fontSize: '15px' }}>
-                    Year-round protection. Price locked for life while active.
-                  </p>
-                  <p style={{ color: '#94A3B8', fontSize: '13px', margin: 0 }}>
-                    Less than the cost of two parking tickets.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p style={{ color: '#CBD5E1', marginBottom: '6px', fontSize: '15px' }}>
-                    Cancel anytime. No commitment.
-                  </p>
-                  <p style={{ color: '#94A3B8', fontSize: '13px', margin: 0 }}>
-                    $108/year — save 27% with annual.
-                  </p>
-                </>
-              )}
+              <p style={{ color: '#CBD5E1', marginBottom: '6px', fontSize: '15px' }}>
+                Year-round protection. Cancel anytime.
+              </p>
+              <p style={{ color: '#94A3B8', fontSize: '13px', margin: 0 }}>
+                Less than the cost of two parking tickets.
+              </p>
             </div>
 
             <div style={{
@@ -918,7 +845,7 @@ export default function LandingPage() {
                 'Street cleaning & snow ban alerts',
                 'Twice-weekly plate monitoring',
                 'Automatic contest letters, printed & mailed',
-                'Registration renewal deadline reminders',
+                'Sticker auto-renewal — supervised rollout, we personally verify every renewal in 2026',
                 'No Ticket / First Dismissal Guarantee',
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '14px', color: '#fff' }}>
@@ -929,10 +856,10 @@ export default function LandingPage() {
 
             <Button
               fullWidth
-              href={`/get-started?plan=${pricingPlan}`}
+              href="/get-started?plan=annual"
               style={{ backgroundColor: '#fff', color: COLORS.primary }}
             >
-              Get Started {pricingPlan === 'annual' ? '— $79/year' : '— $9/month'}
+              Get Started — $99/year
             </Button>
 
             <p style={{ fontSize: '13px', color: '#94A3B8', marginTop: '20px', textAlign: 'center', lineHeight: 1.6 }}>
@@ -1018,7 +945,7 @@ export default function LandingPage() {
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button primary href="/get-started">
-              Get Started - $79/year <ArrowRight />
+              Get Started - \$99/year <ArrowRight />
             </Button>
           </div>
         </div>

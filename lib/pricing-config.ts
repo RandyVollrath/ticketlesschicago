@@ -10,6 +10,9 @@
 // SUBSCRIPTION PRICING (Display values)
 // Actual charges use Stripe price IDs
 // ==========================================
+// New-customer pricing. Existing customers at $79/yr ("Founding Members") and
+// the one $9/mo customer are grandfathered in Stripe and unaffected by this
+// config — display strings here only apply to public marketing + new signups.
 export const SUBSCRIPTION_PRICING = {
   monthly: {
     amount: 9,
@@ -18,11 +21,11 @@ export const SUBSCRIPTION_PRICING = {
     stripePriceEnvKey: 'STANDARD_MONTHLY_9',
   },
   annual: {
-    amount: 79,
-    displayAmount: '$79',
+    amount: 99,
+    displayAmount: '$99',
     interval: 'year',
-    stripePriceEnvKey: 'STANDARD_ANNUAL_79',
-    savings: '$29', // ~27% off vs monthly × 12
+    stripePriceEnvKey: 'STANDARD_ANNUAL_99',
+    savings: '$9', // vs monthly × 12 = $108
   },
 } as const;
 

@@ -55,14 +55,23 @@ export const AUTOPILOT_PLANS = {
   },
 } as const;
 
-export const ACTIVE_AUTOPILOT_PLAN = AUTOPILOT_PLANS.STANDARD_ANNUAL_79;
+// New-customer pricing is $99/yr. Existing $79/yr and $9/mo customers are
+// grandfathered — their existing Stripe subscriptions keep renewing at their
+// historical rate; we never modify those subscriptions.
+//
+// If STANDARD_ANNUAL_99 env var is unset (e.g. before the new Stripe price is
+// created), the AUTOPILOT_PRICE_ID fallback chain resolves to the $79 price ID
+// — checkout still works, just at the old price, while display strings show $99.
+// Set STANDARD_ANNUAL_99=<stripe_price_id> in Vercel env to charge $99.
+export const ACTIVE_AUTOPILOT_PLAN = AUTOPILOT_PLANS.STANDARD_ANNUAL_99;
 export const ACTIVE_MONTHLY_PLAN = AUTOPILOT_PLANS.STANDARD_MONTHLY_9;
 
 export const AUTOPILOT_PRICE_ID =
+  process.env.STANDARD_ANNUAL_99 ||
   process.env.STANDARD_ANNUAL_79 ||
   process.env.STRIPE_AUTOPILOT_PRICE_ID ||
   process.env.STRIPE_FOUNDING_ANNUAL_49_PRICE_ID ||
-  'price_autopilot_annual_79';
+  'price_autopilot_annual_99';
 
 export const AUTOPILOT_MONTHLY_PRICE_ID =
   process.env.STANDARD_MONTHLY_9 ||
