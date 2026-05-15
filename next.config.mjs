@@ -17,6 +17,7 @@ const nextConfig = {
   async rewrites() {
     return [
       { source: '/oauth-return', destination: '/auth/callback' },
+      { source: '/collect', destination: '/admin/permit-zone-field-collection' },
     ];
   },
   async headers() {

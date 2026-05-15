@@ -72,6 +72,8 @@ export default function PermitZoneFieldCollection() {
   const [submitting, setSubmitting] = useState(false);
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrInfo, setOcrInfo] = useState<string | null>(null);
 
   // Load targets
   async function loadTargets() {
@@ -111,8 +113,45 @@ export default function PermitZoneFieldCollection() {
 
   function onPhotoSelect(file: File) {
     const reader = new FileReader();
-    reader.onload = () => setPhotoData(reader.result as string);
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      setPhotoData(dataUrl);
+      await runOcr(dataUrl);
+    };
     reader.readAsDataURL(file);
+  }
+
+  async function runOcr(dataUrl: string) {
+    setOcrBusy(true); setOcrInfo(null); setError(null);
+    try {
+      const r = await fetch('/api/admin/ocr-permit-sign', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photo_base64: dataUrl }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.sign) { setOcrInfo('OCR returned no sign — fill manually'); return; }
+      const s = j.sign;
+      if (typeof s.zone_number === 'number') setZoneOnSign(String(s.zone_number));
+      if (s.all_days) { setAllDays(true); setDays({}); }
+      else if (Array.isArray(s.days_array)) {
+        const next: Record<string, boolean> = {};
+        for (const d of s.days_array) next[d] = true;
+        setDays(next); setAllDays(false);
+      }
+      if (s.all_times) { setAllTimes(true); setHoursStart(''); setHoursEnd(''); }
+      else {
+        if (typeof s.hours_start_24 === 'string') setHoursStart(s.hours_start_24);
+        if (typeof s.hours_end_24 === 'string') setHoursEnd(s.hours_end_24);
+        setAllTimes(false);
+      }
+      if (typeof s.sign_condition === 'string') setCondition(s.sign_condition);
+      if (typeof s.raw_text === 'string') setRawText(s.raw_text);
+      setOcrInfo(`OCR: ${s.kind}${s.zone_number != null ? ' zone ' + s.zone_number : ''} — review and Save`);
+    } catch (e: any) {
+      setOcrInfo('OCR error: ' + (e.message || String(e)));
+    } finally {
+      setOcrBusy(false);
+    }
   }
 
   function quickFillFromTarget(t: Target) {
@@ -231,8 +270,18 @@ export default function PermitZoneFieldCollection() {
                  onChange={e => e.target.files?.[0] && onPhotoSelect(e.target.files[0])} />
         </div>
         {photoData && (
-          <img src={photoData} alt="captured sign"
-               style={{ maxWidth: '100%', borderRadius: 6, marginTop: 4 }} />
+          <div style={{ marginTop: 4 }}>
+            <img src={photoData} alt="captured sign"
+                 style={{ maxWidth: '100%', borderRadius: 6, display: 'block' }} />
+            <div style={{ fontSize: 12, color: ocrBusy ? '#06c' : '#555', marginTop: 4 }}>
+              {ocrBusy ? '🔎 Reading sign with AI…' : (ocrInfo || 'Photo loaded')}
+              {!ocrBusy && (
+                <button onClick={() => runOcr(photoData)} style={{ ...btnGhost, marginLeft: 8 }}>
+                  re-read
+                </button>
+              )}
+            </div>
+          </div>
         )}
 
         <div style={row}>
