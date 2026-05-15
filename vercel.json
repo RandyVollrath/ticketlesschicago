@@ -149,9 +149,6 @@
     },
     "pages/api/cron/expire-stale-consents.ts": {
       "maxDuration": 60
-    },
-    "pages/api/cron/silent-failure-detector.ts": {
-      "maxDuration": 60
     }
   },
   "crons": [
