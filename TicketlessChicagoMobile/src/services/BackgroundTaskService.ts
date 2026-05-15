@@ -250,9 +250,21 @@ class BackgroundTaskServiceClass {
   private readonly AR_BT_DEDUP_WINDOW_MS = 60 * 1000;
   // Periodic rescan timer (re-checks parking rules at last parked location)
   private rescanInterval: ReturnType<typeof setInterval> | null = null;
+  // Non-snow-route parks don't need a recurring rescan — the 4h tick early-
+  // returned in 100% of cases off route. Instead, we schedule a single 24h
+  // one-shot just to refresh stale rules if the car sits for a full day.
+  private rescanOneshotTimeout: ReturnType<typeof setTimeout> | null = null;
   // Snow forecast monitoring timers
   private snowForecastInterval: ReturnType<typeof setInterval> | null = null;
   private snowForecastInitialTimeout: ReturnType<typeof setTimeout> | null = null;
+  // Chained setTimeout handle for adaptive snow-forecast scheduling. Used
+  // instead of setInterval so each cycle can pick its own delay based on
+  // cached temp (2h default, 4h when reliably warm).
+  private snowForecastNextTimeout: ReturnType<typeof setTimeout> | null = null;
+  // Epoch counter — incremented on every stop. Each chained reschedule
+  // captures the epoch it was started in and aborts if a newer epoch is
+  // in effect, so a rapid stop+start can't leave two chains running.
+  private snowForecastEpoch: number = 0;
   // Debounce: timestamp of last handleCarDisconnection call (prevents duplicate triggers
   // from native service + JS-side listeners + pending events all firing for the same disconnect)
   private lastDisconnectHandlerTime: number = 0;
@@ -2755,11 +2767,17 @@ class BackgroundTaskServiceClass {
       if (persistParkingEvent) {
         await this.saveParkedCoords(coords, result.address, result.rawApiData);
 
-        // Start periodic rescan timer (re-checks restrictions every 4 hours)
-        this.startRescanTimer();
+        // Rescan policy depends on whether we're on a snow route. On route:
+        // recurring 4h timer to catch a snow-ban becoming active. Off route:
+        // single one-shot at 24h to refresh stale rules. Snow forecast
+        // monitoring starts only on a snow route (same condition).
+        const onSnowRoute =
+          !!result.rawApiData?.twoInchSnowBan ||
+          (Array.isArray(result.rules) &&
+            result.rules.some((r: any) => r.type === 'snow_route'));
+        this.startRescanTimer(onSnowRoute);
 
-        // If parked on a snow route, start monitoring local weather
-        if (result.rawApiData?.twoInchSnowBan || result.rules?.some((r: any) => r.type === 'snow_route')) {
+        if (onSnowRoute) {
           this.startSnowForecastMonitoring();
         }
       }
@@ -5562,24 +5580,43 @@ class BackgroundTaskServiceClass {
   }
 
   /**
-   * Start a 4-hour recurring timer to re-check parking restrictions.
-   * Catches changed conditions: new snow ban, approaching street cleaning day, etc.
+   * Start the parking-rescan timer.
+   *
+   * On snow routes: recurring every 4h. The rescan exists to catch the
+   * 2-inch snow ban becoming active mid-park, and that needs frequent
+   * checks while snow risk is real.
+   *
+   * Off snow routes: NO recurring timer — the 4h tick used to fire every
+   * cycle and immediately early-return because the rescan-notify path is
+   * filtered to snow_route only. Instead we schedule one 24h one-shot, just
+   * so a car that genuinely sits for a full day picks up fresh server
+   * rules. Saves ~5 wake-ups per day vs. the old always-on interval.
    */
-  private startRescanTimer(): void {
+  private startRescanTimer(onSnowRoute: boolean): void {
     this.stopRescanTimer();
 
-    // First rescan after 4 hours
-    this.rescanInterval = setInterval(async () => {
-      await this.performRescan();
-    }, RESCAN_INTERVAL_MS);
-
-    log.info('Rescan timer started (every 4 hours while parked)');
+    if (onSnowRoute) {
+      this.rescanInterval = setInterval(async () => {
+        await this.performRescan();
+      }, RESCAN_INTERVAL_MS);
+      log.info('Rescan timer: recurring every 4h (parked on snow route)');
+    } else {
+      this.rescanOneshotTimeout = setTimeout(async () => {
+        this.rescanOneshotTimeout = null;
+        await this.performRescan();
+      }, RESCAN_SKIP_IF_NEXT_RESTRICTION_BEYOND_MS);
+      log.info('Rescan timer: single one-shot at 24h (parked off snow route)');
+    }
   }
 
   private stopRescanTimer(): void {
     if (this.rescanInterval) {
       clearInterval(this.rescanInterval);
       this.rescanInterval = null;
+    }
+    if (this.rescanOneshotTimeout) {
+      clearTimeout(this.rescanOneshotTimeout);
+      this.rescanOneshotTimeout = null;
     }
   }
 
@@ -5720,33 +5757,89 @@ class BackgroundTaskServiceClass {
   // ==========================================================================
 
   /**
+   * Pick the delay until the next snow-forecast check based on the cached
+   * min forecast temp. When we know the next 24h are reliably warm we
+   * sleep twice as long between checks. The temp-gate inside
+   * checkSnowForecast still short-circuits the API call itself; this just
+   * also halves how often we wake up to do that short-circuit.
+   *
+   * Returns the default 2h interval if the cache is missing or stale.
+   */
+  private async computeNextSnowForecastDelayMs(): Promise<number> {
+    try {
+      const cachedMinF = await AsyncStorage.getItem(StorageKeys.SNOW_FORECAST_MIN_TEMP_F);
+      const cachedAt = await AsyncStorage.getItem(StorageKeys.SNOW_FORECAST_MIN_TEMP_AT);
+      if (!cachedMinF || !cachedAt) return SNOW_FORECAST_CHECK_INTERVAL_MS;
+      const minF = parseFloat(cachedMinF);
+      const ageMs = Date.now() - parseInt(cachedAt, 10);
+      // Must be fresh and clearly warm to extend. 6h freshness matches the
+      // gate inside checkSnowForecast; 50°F gives margin over the 35°F
+      // threshold for early-warning safety.
+      if (!isNaN(minF) && ageMs < 6 * 60 * 60 * 1000 && minF > 50) {
+        return 2 * SNOW_FORECAST_CHECK_INTERVAL_MS; // 4 hours
+      }
+    } catch (e) {
+      // ignore — fall through to default
+    }
+    return SNOW_FORECAST_CHECK_INTERVAL_MS;
+  }
+
+  /**
+   * Run one snow-forecast check, then schedule the next one. Chained
+   * setTimeout (not setInterval) so we can adapt the delay each cycle
+   * based on the latest cached temp. Each chain captures the epoch it was
+   * started in — if a stop+start happens mid-flight, the old chain aborts.
+   */
+  private async runSnowForecastCheckAndReschedule(epoch: number): Promise<void> {
+    if (epoch !== this.snowForecastEpoch) return; // stopped mid-flight
+    try {
+      await this.checkSnowForecast();
+    } catch (e) {
+      log.warn('Snow forecast check failed', e);
+    }
+    if (epoch !== this.snowForecastEpoch) return; // stopped during async work
+    const delayMs = await this.computeNextSnowForecastDelayMs();
+    log.debug(`Next snow forecast check in ${(delayMs / 3600000).toFixed(1)}h`);
+    this.snowForecastNextTimeout = setTimeout(
+      () => {
+        if (epoch !== this.snowForecastEpoch) return;
+        void this.runSnowForecastCheckAndReschedule(epoch);
+      },
+      delayMs,
+    );
+  }
+
+  /**
    * Start periodic weather checks when parked on a designated snow route.
    * Uses the National Weather Service (NWS) API — free, no API key needed.
    * Checks if 2" or more snow is forecast OR has recently fallen.
    */
   private startSnowForecastMonitoring(): void {
     this.stopSnowForecastMonitoring();
+    const epoch = ++this.snowForecastEpoch;
 
-    // Run an initial check after 5 minutes (give time for settlement)
+    // Run an initial check after 5 minutes (give time for settlement).
+    // The initial check seeds the temp cache and the reschedule helper
+    // picks the next delay from there (2h or 4h if it's warm).
     this.snowForecastInitialTimeout = setTimeout(() => {
       this.snowForecastInitialTimeout = null;
-      this.checkSnowForecast().catch(e =>
-        log.warn('Initial snow forecast check failed', e)
-      );
+      if (epoch !== this.snowForecastEpoch) return;
+      void this.runSnowForecastCheckAndReschedule(epoch);
     }, 5 * 60 * 1000);
 
-    // Then check every 2 hours
-    this.snowForecastInterval = setInterval(async () => {
-      await this.checkSnowForecast();
-    }, SNOW_FORECAST_CHECK_INTERVAL_MS);
-
-    log.info('Snow forecast monitoring started (parked on snow route)');
+    log.info('Snow forecast monitoring started (parked on snow route, adaptive 2-4h)');
   }
 
   private stopSnowForecastMonitoring(): void {
+    // Bump epoch first so any in-flight async work aborts before we clear.
+    this.snowForecastEpoch++;
     if (this.snowForecastInitialTimeout) {
       clearTimeout(this.snowForecastInitialTimeout);
       this.snowForecastInitialTimeout = null;
+    }
+    if (this.snowForecastNextTimeout) {
+      clearTimeout(this.snowForecastNextTimeout);
+      this.snowForecastNextTimeout = null;
     }
     if (this.snowForecastInterval) {
       clearInterval(this.snowForecastInterval);

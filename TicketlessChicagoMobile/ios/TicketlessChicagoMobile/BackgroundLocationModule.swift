@@ -2636,21 +2636,42 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   /// Briefly run high-frequency GPS after monitor start/resume to avoid a blind
   /// window where CoreMotion is quiet and no speed/heading callbacks arrive.
   /// This improves first-drive detection and camera alert arming reliability.
+  ///
+  /// Window length depends on CoreMotion confidence:
+  ///   - CM has produced at least one reading (state != "unknown") AND it's
+  ///     not automotive → 20s. CM already knows we're not driving; we just
+  ///     need a brief warm-up to bridge to the keepalive state.
+  ///   - CM is silent (state == "unknown", e.g. fresh start) → full
+  ///     `bootstrapGpsWindowSec`. This is the blind-window case the
+  ///     bootstrap exists for in the first place.
   private func startBootstrapGpsWindow(reason: String) {
     guard isMonitoring else { return }
     if isDriving || coreMotionSaysAutomotive { return }
 
     bootstrapGpsTimer?.invalidate()
 
+    // Confidence check: CM has produced at least one non-automotive reading
+    // in this session. We only shorten when CM was active AND said something
+    // concrete — the silent / unknown case still gets the full window.
+    let coreMotionConfidentNonAuto =
+      coreMotionActive &&
+      coreMotionStateLabel != "unknown" &&
+      coreMotionStateLabel != "automotive"
+    let windowSec: TimeInterval = coreMotionConfidentNonAuto
+      ? min(20, bootstrapGpsWindowSec)
+      : bootstrapGpsWindowSec
+
     // Always ramp up to full accuracy (startContinuousGps handles keepalive→active transition)
     startContinuousGps()
     decision("bootstrap_gps_started", [
       "reason": reason,
-      "windowSec": bootstrapGpsWindowSec,
+      "windowSec": windowSec,
+      "coreMotionConfidentNonAuto": coreMotionConfidentNonAuto,
+      "coreMotionStateLabel": coreMotionStateLabel,
     ])
-    self.log("Bootstrap GPS started (\(reason)) for \(String(format: "%.0f", bootstrapGpsWindowSec))s")
+    self.log("Bootstrap GPS started (\(reason)) for \(String(format: "%.0f", windowSec))s (cmConfident=\(coreMotionConfidentNonAuto), cmState=\(coreMotionStateLabel))")
 
-    let timer = Timer.scheduledTimer(withTimeInterval: bootstrapGpsWindowSec, repeats: false) { [weak self] _ in
+    let timer = Timer.scheduledTimer(withTimeInterval: windowSec, repeats: false) { [weak self] _ in
       guard let self = self else { return }
       self.bootstrapGpsTimer = nil
       let shouldKeepGps =

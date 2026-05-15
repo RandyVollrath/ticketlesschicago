@@ -201,7 +201,72 @@ for (const s of snowCases) {
   if (!ok) failed++;
 }
 
-const total = cases.length + hysteresis.length + 4 + snowCases.length;
+// ---- Snow-forecast adaptive interval --------------------------------------
+const SNOW_FORECAST_DEFAULT_MS = 2 * 60 * 60 * 1000; // 2h
+const SNOW_FORECAST_WARM_MS = 4 * 60 * 60 * 1000;    // 4h when cached temp > 50°F
+function nextSnowDelay(cachedMinF: number | null, cachedAgeMs: number): number {
+  if (cachedMinF === null) return SNOW_FORECAST_DEFAULT_MS;
+  if (cachedAgeMs < 6 * 60 * 60 * 1000 && cachedMinF > 50) {
+    return SNOW_FORECAST_WARM_MS;
+  }
+  return SNOW_FORECAST_DEFAULT_MS;
+}
+interface IntervalCase {
+  name: string;
+  minF: number | null;
+  ageMs: number;
+  expectedMs: number;
+}
+const intervalCases: IntervalCase[] = [
+  { name: 'no cache → 2h default',                        minF: null, ageMs: 0,                   expectedMs: SNOW_FORECAST_DEFAULT_MS },
+  { name: 'reliably warm (65°F, fresh) → 4h',             minF: 65,   ageMs: 1 * 3600_000,        expectedMs: SNOW_FORECAST_WARM_MS },
+  { name: 'borderline (40°F, fresh) → 2h',                minF: 40,   ageMs: 1 * 3600_000,        expectedMs: SNOW_FORECAST_DEFAULT_MS },
+  { name: 'cold (28°F) → 2h (snow risk, watch closely)',  minF: 28,   ageMs: 1 * 3600_000,        expectedMs: SNOW_FORECAST_DEFAULT_MS },
+  { name: 'warm but stale (8h) → 2h',                     minF: 65,   ageMs: 8 * 3600_000,        expectedMs: SNOW_FORECAST_DEFAULT_MS },
+  { name: 'exactly 50°F (not >50) → 2h',                  minF: 50,   ageMs: 1 * 3600_000,        expectedMs: SNOW_FORECAST_DEFAULT_MS },
+];
+for (const i of intervalCases) {
+  const got = nextSnowDelay(i.minF, i.ageMs);
+  const ok = got === i.expectedMs;
+  console.log(`${ok ? 'OK ' : 'FAIL'}  snow interval: min=${i.minF ?? 'null'}°F age=${(i.ageMs/3600_000).toFixed(0)}h next=${(got/3600_000).toFixed(0)}h (expected ${(i.expectedMs/3600_000).toFixed(0)}h)  — ${i.name}`);
+  if (!ok) failed++;
+}
+
+// ---- Rescan strategy (on-route vs off-route) ------------------------------
+// On route: recurring 4h interval.
+// Off route: single 24h one-shot — no recurring wake-ups.
+function rescanStrategy(onSnowRoute: boolean): 'recurring_4h' | 'oneshot_24h' {
+  return onSnowRoute ? 'recurring_4h' : 'oneshot_24h';
+}
+const okOnRoute = rescanStrategy(true) === 'recurring_4h';
+const okOffRoute = rescanStrategy(false) === 'oneshot_24h';
+console.log(`${okOnRoute ? 'OK ' : 'FAIL'}  parked on snow route → recurring_4h`);
+console.log(`${okOffRoute ? 'OK ' : 'FAIL'}  parked off snow route → oneshot_24h`);
+if (!okOnRoute) failed++;
+if (!okOffRoute) failed++;
+
+// ---- iOS bootstrap window logic ------------------------------------------
+// Confidence rule: shorten only when CoreMotion is active AND state is not
+// "unknown" AND not "automotive" (automotive is excluded by the outer guard).
+function bootstrapWindow(cmActive: boolean, cmState: string): number {
+  const confident = cmActive && cmState !== 'unknown' && cmState !== 'automotive';
+  return confident ? 20 : 75;
+}
+interface BootCase { name: string; active: boolean; state: string; expected: number; }
+const bootCases: BootCase[] = [
+  { name: 'fresh start (CM unknown) → 75s',           active: true,  state: 'unknown',    expected: 75 },
+  { name: 'CM inactive (denied) → 75s',               active: false, state: 'stationary', expected: 75 },
+  { name: 'CM active + stationary → 20s',             active: true,  state: 'stationary', expected: 20 },
+  { name: 'CM active + walking → 20s',                active: true,  state: 'walking',    expected: 20 },
+];
+for (const b of bootCases) {
+  const got = bootstrapWindow(b.active, b.state);
+  const ok = got === b.expected;
+  console.log(`${ok ? 'OK ' : 'FAIL'}  bootstrap: active=${b.active} state=${b.state} → ${got}s (expected ${b.expected}s)  — ${b.name}`);
+  if (!ok) failed++;
+}
+
+const total = cases.length + hysteresis.length + 4 + snowCases.length + intervalCases.length + 2 + bootCases.length;
 if (failed > 0) {
   console.error(`\n${failed} / ${total} case(s) failed`);
   process.exit(1);
