@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Footer from '../components/Footer';
 import MobileNav from '../components/MobileNav';
+import { violationCodeToTemplateKey } from '../lib/violation-code-to-template';
 
 const COLORS = {
   deepHarbor: '#0F172A',
@@ -18,25 +19,9 @@ const COLORS = {
 
 const PASSWORD_KEY = 'free_contest_password_v1';
 
-const VIOLATION_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: 'street_cleaning', label: 'Street cleaning' },
-  { value: 'no_city_sticker', label: 'No city sticker / wheel tax' },
-  { value: 'expired_meter', label: 'Expired meter' },
-  { value: 'expired_plates', label: 'Expired plates / registration' },
-  { value: 'residential_permit', label: 'Residential permit zone' },
-  { value: 'fire_hydrant', label: 'Fire hydrant (15-ft rule)' },
-  { value: 'missing_plate', label: 'Missing / obscured plate' },
-  { value: 'parking_prohibited', label: 'No parking / tow zone / temp restriction' },
-  { value: 'bus_lane', label: 'Bus lane' },
-  { value: 'disabled_zone', label: 'Disabled / handicapped zone' },
-  { value: 'double_parking', label: 'Double parking' },
-  { value: 'red_light', label: 'Red light camera' },
-  { value: 'speed_camera', label: 'Speed camera' },
-  { value: 'other_unknown', label: 'Other / not sure' },
-];
-
-interface FormState {
-  full_name: string;
+interface ContactForm {
+  first_name: string;
+  last_name: string;
   email: string;
   mailing_address: string;
   mailing_city: string;
@@ -44,16 +29,11 @@ interface FormState {
   mailing_zip: string;
   plate: string;
   plate_state: string;
-  ticket_number: string;
-  violation_date: string;
-  violation_type: string;
-  violation_description: string;
-  amount: string;
-  location: string;
 }
 
-const EMPTY_FORM: FormState = {
-  full_name: '',
+const EMPTY_CONTACT: ContactForm = {
+  first_name: '',
+  last_name: '',
   email: '',
   mailing_address: '',
   mailing_city: 'Chicago',
@@ -61,26 +41,46 @@ const EMPTY_FORM: FormState = {
   mailing_zip: '',
   plate: '',
   plate_state: 'IL',
-  ticket_number: '',
-  violation_date: '',
-  violation_type: 'other_unknown',
-  violation_description: '',
-  amount: '',
-  location: '',
 };
 
+interface PortalTicketSummary {
+  ticketNumber: string;
+  issueDate: string | null;
+  daysSinceIssue: number | null;
+  pastMailWindow: boolean;
+  amount: number;
+  violationDescription: string;
+  violationName: string;
+  violationCode: string | null;
+}
+
+interface ReviewStatus {
+  id: string;
+  status: 'pending' | 'processing' | 'done' | 'error';
+  error_message?: string;
+  analysis?: { perTicket: PortalTicketSummary[]; totalTickets: number; totalAmountDue: number } | null;
+  queue?: { position: number; ahead: number; etaSeconds: number; workerLive: boolean };
+}
+
 export default function FreeContest() {
+  // ─── Password gate ─────────────────────────────────────────────────────
   const [password, setPassword] = useState('');
   const [authed, setAuthed] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  // ─── Main form state ──────────────────────────────────────────────────
+  const [contact, setContact] = useState<ContactForm>(EMPTY_CONTACT);
+  const [reviewId, setReviewId] = useState<string | null>(null);
+  const [reviewStatus, setReviewStatus] = useState<ReviewStatus | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [generating, setGenerating] = useState<string | null>(null); // ticketNumber currently being generated
   const [letter, setLetter] = useState<string | null>(null);
+  const [letterForTicket, setLetterForTicket] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollAttempts = useRef(0);
 
-  // Auto-auth from sessionStorage so the user doesn't re-enter every reload.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.sessionStorage.getItem(PASSWORD_KEY);
@@ -88,6 +88,12 @@ export default function FreeContest() {
       setPassword(stored);
       void verifyPassword(stored, /* silent */ true);
     }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pollTimer.current) clearInterval(pollTimer.current);
+    };
   }, []);
 
   async function verifyPassword(pw: string, silent = false) {
@@ -101,14 +107,10 @@ export default function FreeContest() {
       });
       if (r.ok) {
         setAuthed(true);
-        if (typeof window !== 'undefined') {
-          window.sessionStorage.setItem(PASSWORD_KEY, pw);
-        }
+        if (typeof window !== 'undefined') window.sessionStorage.setItem(PASSWORD_KEY, pw);
       } else {
         if (!silent) setAuthError('Wrong password.');
-        if (typeof window !== 'undefined') {
-          window.sessionStorage.removeItem(PASSWORD_KEY);
-        }
+        if (typeof window !== 'undefined') window.sessionStorage.removeItem(PASSWORD_KEY);
       }
     } catch {
       if (!silent) setAuthError('Network error — try again.');
@@ -117,13 +119,15 @@ export default function FreeContest() {
     }
   }
 
-  async function handleGenerate(e: React.FormEvent) {
+  async function startLookup(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLetter(null);
+    setLetterForTicket(null);
 
-    const required: Array<[keyof FormState, string]> = [
-      ['full_name', 'Your full name'],
+    const required: Array<[keyof ContactForm, string]> = [
+      ['first_name', 'First name'],
+      ['last_name', 'Last name'],
       ['email', 'Email'],
       ['mailing_address', 'Mailing street address'],
       ['mailing_city', 'City'],
@@ -131,29 +135,93 @@ export default function FreeContest() {
       ['mailing_zip', 'ZIP'],
       ['plate', 'License plate'],
       ['plate_state', 'Plate state'],
-      ['ticket_number', 'Ticket number'],
-      ['violation_date', 'Violation date'],
     ];
     for (const [k, label] of required) {
-      if (!form[k].trim()) {
+      if (!contact[k].trim()) {
         setError(`${label} is required.`);
         return;
       }
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim())) {
       setError('Please enter a valid email address.');
       return;
     }
 
     setSubmitting(true);
     try {
+      const r = await fetch('/api/contest/free-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plate: contact.plate.trim().toUpperCase(),
+          state: contact.plate_state.trim().toUpperCase(),
+          last_name: contact.last_name.trim(),
+          email: contact.email.trim(),
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        setError(data.error || 'Could not start the lookup.');
+        return;
+      }
+      setReviewId(data.id);
+      setReviewStatus({ id: data.id, status: data.status || 'pending' });
+      pollAttempts.current = 0;
+      pollTimer.current = setInterval(() => pollReview(data.id), 4000);
+    } catch (err: any) {
+      setError(err?.message || 'Network error.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function pollReview(id: string) {
+    try {
+      const r = await fetch(`/api/contest/free-review?id=${id}`);
+      const data: ReviewStatus = await r.json();
+      setReviewStatus(data);
+      pollAttempts.current += 1;
+      if (data.status === 'done' || data.status === 'error') {
+        if (pollTimer.current) {
+          clearInterval(pollTimer.current);
+          pollTimer.current = null;
+        }
+      } else if (pollAttempts.current === 5 && pollTimer.current) {
+        clearInterval(pollTimer.current);
+        pollTimer.current = setInterval(() => pollReview(id), 10000);
+      }
+    } catch {
+      // swallow — keep polling
+    }
+  }
+
+  async function generateLetterForTicket(t: PortalTicketSummary) {
+    setError(null);
+    setGenerating(t.ticketNumber);
+    try {
+      const violationType = violationCodeToTemplateKey(t.violationCode);
       const r = await fetch('/api/free-contest/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Free-Contest-Password': password,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          email: contact.email.trim(),
+          full_name: `${contact.first_name.trim()} ${contact.last_name.trim()}`.trim(),
+          mailing_address: contact.mailing_address.trim(),
+          mailing_city: contact.mailing_city.trim(),
+          mailing_state: contact.mailing_state.trim(),
+          mailing_zip: contact.mailing_zip.trim(),
+          plate: contact.plate.trim().toUpperCase(),
+          plate_state: contact.plate_state.trim().toUpperCase(),
+          ticket_number: t.ticketNumber,
+          violation_date: t.issueDate || '',
+          violation_type: violationType,
+          violation_description: t.violationDescription || t.violationName,
+          amount: String(t.amount || ''),
+          location: '',
+        }),
       });
       const data = await r.json();
       if (!r.ok) {
@@ -161,10 +229,11 @@ export default function FreeContest() {
         return;
       }
       setLetter(data.letter);
+      setLetterForTicket(t.ticketNumber);
     } catch (err: any) {
       setError(err?.message || 'Network error.');
     } finally {
-      setSubmitting(false);
+      setGenerating(null);
     }
   }
 
@@ -179,9 +248,21 @@ export default function FreeContest() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `contest-letter-${form.ticket_number || 'draft'}.txt`;
+    a.download = `contest-letter-${letterForTicket || 'draft'}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  function startOver() {
+    setReviewId(null);
+    setReviewStatus(null);
+    setLetter(null);
+    setLetterForTicket(null);
+    setError(null);
+    if (pollTimer.current) {
+      clearInterval(pollTimer.current);
+      pollTimer.current = null;
+    }
   }
 
   // ─── Password screen ────────────────────────────────────────────────────
@@ -247,7 +328,10 @@ export default function FreeContest() {
     );
   }
 
-  // ─── Main form ──────────────────────────────────────────────────────────
+  // ─── Main UI ────────────────────────────────────────────────────────────
+  const isLooking = reviewStatus && reviewStatus.status !== 'done' && reviewStatus.status !== 'error';
+  const tickets = reviewStatus?.analysis?.perTicket || [];
+
   return (
     <>
       <Head>
@@ -265,59 +349,45 @@ export default function FreeContest() {
             Free Chicago contest letter
           </h1>
           <p style={{ marginTop: 14, fontSize: 17, color: COLORS.slate, lineHeight: 1.55 }}>
-            Fill in your ticket details. We&apos;ll generate a mail-in contest letter you can
-            print, sign, and send to the City of Chicago Department of Finance — using the same
-            templates Autopilot uses for paying members.
+            Enter your contact info and plate. We&apos;ll pull every open ticket on your plate
+            from the City of Chicago payment portal, then generate a mail-in contest letter for
+            whichever one you want to fight — using the same templates Autopilot uses for
+            paying members.
           </p>
           <p style={{ marginTop: 8, fontSize: 13, color: COLORS.slate }}>
-            No account, no payment. We save your submission so we can follow up
-            about Autopilot — that&apos;s the only thing we use this info for.
+            We save your submission so we can follow up about Autopilot. That&apos;s the only
+            thing we use your info for.
           </p>
         </section>
 
-        {!letter && (
+        {/* ─── Step 1: Form ─────────────────────────────────────────── */}
+        {!reviewId && (
           <section style={{ padding: '10px 24px 40px', maxWidth: 760, margin: '0 auto' }}>
             <form
-              onSubmit={handleGenerate}
+              onSubmit={startLookup}
               style={{
                 background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 28,
                 boxShadow: '0 1px 3px rgba(15,23,42,0.04)',
               }}
             >
               <FieldGroup title="About you">
-                <Field label="Full name" value={form.full_name} onChange={(v) => setForm({ ...form, full_name: v })} placeholder="Jane Smith" />
-                <Field label="Email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="you@example.com" type="email" helper="We'll save your submission and may follow up about Autopilot." />
-                <Field label="Mailing street address" value={form.mailing_address} onChange={(v) => setForm({ ...form, mailing_address: v })} placeholder="1234 N Ashland Ave" />
                 <Row>
-                  <Field label="City" value={form.mailing_city} onChange={(v) => setForm({ ...form, mailing_city: v })} />
-                  <Field label="State" value={form.mailing_state} onChange={(v) => setForm({ ...form, mailing_state: v })} maxLength={2} autoCapitalize="characters" />
-                  <Field label="ZIP" value={form.mailing_zip} onChange={(v) => setForm({ ...form, mailing_zip: v })} maxLength={10} />
+                  <Field label="First name" value={contact.first_name} onChange={(v) => setContact({ ...contact, first_name: v })} placeholder="Jane" />
+                  <Field label="Last name" value={contact.last_name} onChange={(v) => setContact({ ...contact, last_name: v })} placeholder="Smith" helper="Used for the city portal lookup." />
+                </Row>
+                <Field label="Email" value={contact.email} onChange={(v) => setContact({ ...contact, email: v })} placeholder="you@example.com" type="email" />
+                <Field label="Mailing street address" value={contact.mailing_address} onChange={(v) => setContact({ ...contact, mailing_address: v })} placeholder="1234 N Ashland Ave" />
+                <Row>
+                  <Field label="City" value={contact.mailing_city} onChange={(v) => setContact({ ...contact, mailing_city: v })} />
+                  <Field label="State" value={contact.mailing_state} onChange={(v) => setContact({ ...contact, mailing_state: v })} maxLength={2} autoCapitalize="characters" />
+                  <Field label="ZIP" value={contact.mailing_zip} onChange={(v) => setContact({ ...contact, mailing_zip: v })} maxLength={10} />
                 </Row>
               </FieldGroup>
 
               <FieldGroup title="Your vehicle">
                 <Row>
-                  <Field label="License plate" value={form.plate} onChange={(v) => setForm({ ...form, plate: v })} placeholder="ABC1234" maxLength={8} autoCapitalize="characters" />
-                  <Field label="Plate state" value={form.plate_state} onChange={(v) => setForm({ ...form, plate_state: v })} maxLength={2} autoCapitalize="characters" />
-                </Row>
-              </FieldGroup>
-
-              <FieldGroup title="The ticket">
-                <Row>
-                  <Field label="Ticket number" value={form.ticket_number} onChange={(v) => setForm({ ...form, ticket_number: v })} placeholder="9000000000" />
-                  <Field label="Violation date" value={form.violation_date} onChange={(v) => setForm({ ...form, violation_date: v })} type="date" />
-                </Row>
-                <SelectField
-                  label="Violation type"
-                  value={form.violation_type}
-                  onChange={(v) => setForm({ ...form, violation_type: v })}
-                  options={VIOLATION_OPTIONS}
-                  helper="Pick the closest match — this selects the contest template we use."
-                />
-                <Field label="Violation description (as it appears on the ticket)" value={form.violation_description} onChange={(v) => setForm({ ...form, violation_description: v })} placeholder='e.g. "STREET CLEANING"' />
-                <Row>
-                  <Field label="Amount" value={form.amount} onChange={(v) => setForm({ ...form, amount: v })} placeholder="65" type="text" helper="Dollars only, no $ sign." />
-                  <Field label="Location" value={form.location} onChange={(v) => setForm({ ...form, location: v })} placeholder="1500 N Damen Ave" />
+                  <Field label="License plate" value={contact.plate} onChange={(v) => setContact({ ...contact, plate: v })} placeholder="ABC1234" maxLength={8} autoCapitalize="characters" />
+                  <Field label="Plate state" value={contact.plate_state} onChange={(v) => setContact({ ...contact, plate_state: v })} maxLength={2} autoCapitalize="characters" />
                 </Row>
               </FieldGroup>
 
@@ -339,24 +409,129 @@ export default function FreeContest() {
                   fontSize: 16, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer',
                 }}
               >
-                {submitting ? 'Generating…' : 'Generate my contest letter'}
+                {submitting ? 'Looking up your tickets…' : 'Look up my tickets'}
               </button>
 
               <p style={{ marginTop: 12, fontSize: 12, color: COLORS.slate, lineHeight: 1.5 }}>
-                This tool generates a draft letter based on what you enter. It is not legal advice.
-                For complex cases, consult a traffic attorney.
+                This tool generates draft letters based on what the city portal returns. It is
+                not legal advice. For complex cases, consult a traffic attorney.
               </p>
             </form>
           </section>
         )}
 
+        {/* ─── Step 2: Waiting ──────────────────────────────────────── */}
+        {isLooking && reviewStatus && (
+          <section style={{ maxWidth: 720, margin: '0 auto', padding: '24px' }}>
+            <div style={{
+              background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: 12, padding: 24,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0c4a6e' }}>
+                {reviewStatus.status === 'processing'
+                  ? 'Pulling your tickets from the City of Chicago payment portal…'
+                  : 'Queued — starting the city portal lookup shortly'}
+              </div>
+              {reviewStatus.queue && reviewStatus.queue.etaSeconds > 0 && (
+                <div style={{ marginTop: 8, fontSize: 13, color: COLORS.slate }}>
+                  Estimated wait: <strong>{reviewStatus.queue.etaSeconds < 90
+                    ? `${Math.round(reviewStatus.queue.etaSeconds)}s`
+                    : `${Math.ceil(reviewStatus.queue.etaSeconds / 60)} min`
+                  }</strong>
+                </div>
+              )}
+              <div style={{ marginTop: 18, height: 4, background: '#BAE6FD', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{
+                  width: '40%', height: '100%', background: COLORS.regulatory,
+                  animation: 'fc-slide 1.4s ease-in-out infinite',
+                }} />
+              </div>
+            </div>
+            <style jsx global>{`
+              @keyframes fc-slide {
+                0%   { transform: translateX(-100%); }
+                50%  { transform: translateX(120%); }
+                100% { transform: translateX(250%); }
+              }
+            `}</style>
+          </section>
+        )}
+
+        {/* ─── Error from review ────────────────────────────────────── */}
+        {reviewStatus?.status === 'error' && (
+          <section style={{ maxWidth: 720, margin: '0 auto', padding: '24px' }}>
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12, padding: 24 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#991B1B' }}>Couldn&apos;t pull your tickets</div>
+              <div style={{ marginTop: 8, color: '#7F1D1D', fontSize: 14 }}>
+                {reviewStatus.error_message || 'The city portal lookup failed. The most common cause is a last name that doesn\'t exactly match what\'s on the vehicle registration.'}
+              </div>
+              <button onClick={startOver} style={{ ...btnSecondary, marginTop: 14 }}>← Try again</button>
+            </div>
+          </section>
+        )}
+
+        {/* ─── Step 3: Pick a ticket or see letter ──────────────────── */}
+        {reviewStatus?.status === 'done' && !letter && (
+          <section style={{ padding: '10px 24px 40px', maxWidth: 880, margin: '0 auto' }}>
+            <div style={{
+              background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 24,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 12 }}>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>
+                  {tickets.length === 0
+                    ? 'No open tickets on file'
+                    : `${tickets.length} ticket${tickets.length === 1 ? '' : 's'} on plate ${contact.plate.toUpperCase()}`}
+                </h2>
+                <button onClick={startOver} style={btnSecondary}>← Change plate</button>
+              </div>
+
+              {tickets.length === 0 && (
+                <p style={{ marginTop: 14, fontSize: 14, color: COLORS.slate, lineHeight: 1.55 }}>
+                  The City of Chicago payment portal returned no open receivables for this plate.
+                  Either you don&apos;t have any unpaid tickets, or the ticket hasn&apos;t hit the
+                  portal yet (new tickets typically appear within 7–10 days).
+                </p>
+              )}
+
+              {tickets.length > 0 && (
+                <p style={{ marginTop: 10, fontSize: 13, color: COLORS.slate }}>
+                  Pick the ticket you want to contest. We&apos;ll fill in everything from the city&apos;s record.
+                </p>
+              )}
+
+              <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {tickets.map((t) => (
+                  <TicketRow
+                    key={t.ticketNumber}
+                    t={t}
+                    busy={generating === t.ticketNumber}
+                    onGenerate={() => generateLetterForTicket(t)}
+                  />
+                ))}
+              </div>
+
+              {error && (
+                <div style={{
+                  marginTop: 16, padding: '12px 14px', borderRadius: 10,
+                  background: '#FEF2F2', color: '#991B1B', border: '1px solid #FECACA', fontSize: 14,
+                }}>
+                  {error}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ─── Step 4: Letter ───────────────────────────────────────── */}
         {letter && (
           <section style={{ padding: '10px 24px 60px', maxWidth: 880, margin: '0 auto' }}>
             <div style={{
               background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 24,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Your contest letter</h2>
+                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>
+                  Contest letter for ticket {letterForTicket}
+                </h2>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={copyLetter} style={btnSecondary}>Copy</button>
                   <button onClick={downloadLetter} style={btnSecondary}>Download .txt</button>
@@ -380,12 +555,10 @@ export default function FreeContest() {
               </div>
 
               <div style={{ marginTop: 18, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <button onClick={() => { setLetter(null); }} style={btnSecondary}>
-                  ← Edit details
+                <button onClick={() => { setLetter(null); setLetterForTicket(null); }} style={btnSecondary}>
+                  ← Pick a different ticket
                 </button>
-                <button onClick={() => { setLetter(null); setForm(EMPTY_FORM); }} style={btnSecondary}>
-                  Start over
-                </button>
+                <button onClick={startOver} style={btnSecondary}>Start over</button>
               </div>
 
               <div style={{
@@ -424,6 +597,41 @@ const btnSecondary: React.CSSProperties = {
   padding: '10px 16px', borderRadius: 10, border: `1px solid ${COLORS.border}`,
   background: '#fff', color: COLORS.deepHarbor, fontSize: 14, fontWeight: 600, cursor: 'pointer',
 };
+
+function TicketRow({ t, busy, onGenerate }: { t: PortalTicketSummary; busy: boolean; onGenerate: () => void }) {
+  return (
+    <div style={{
+      padding: 14, border: `1px solid ${COLORS.border}`, borderRadius: 12, background: '#fff',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+    }}>
+      <div style={{ flex: 1, minWidth: 220 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.deepHarbor }}>
+          {t.violationName || t.violationDescription}
+          {t.violationCode && <span style={{ fontWeight: 400, color: COLORS.slate, marginLeft: 8 }}>§ {t.violationCode}</span>}
+        </div>
+        <div style={{ marginTop: 4, fontSize: 13, color: COLORS.slate }}>
+          #{t.ticketNumber} • {t.issueDate || 'date unknown'} • ${t.amount?.toFixed(2) || '0.00'}
+          {t.pastMailWindow && (
+            <span style={{ color: COLORS.warning, marginLeft: 8, fontWeight: 600 }}>
+              ⚠ Past 21-day mail window
+            </span>
+          )}
+        </div>
+      </div>
+      <button
+        onClick={onGenerate}
+        disabled={busy}
+        style={{
+          padding: '10px 18px', borderRadius: 10, border: 'none',
+          background: busy ? COLORS.slate : COLORS.regulatory, color: '#fff',
+          fontSize: 14, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer',
+        }}
+      >
+        {busy ? 'Generating…' : 'Generate letter'}
+      </button>
+    </div>
+  );
+}
 
 function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -477,38 +685,6 @@ function Field(props: {
           fontFamily: 'inherit', boxSizing: 'border-box',
         }}
       />
-      {props.helper && (
-        <div style={{ marginTop: 6, fontSize: 12, color: COLORS.slate }}>{props.helper}</div>
-      )}
-    </label>
-  );
-}
-
-function SelectField(props: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: Array<{ value: string; label: string }>;
-  helper?: string;
-}) {
-  return (
-    <label style={{ display: 'block' }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.graphite, marginBottom: 6 }}>
-        {props.label}
-      </div>
-      <select
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value)}
-        style={{
-          width: '100%', padding: '12px 14px', borderRadius: 10,
-          border: `1px solid ${COLORS.border}`, fontSize: 16,
-          fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff',
-        }}
-      >
-        {props.options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
       {props.helper && (
         <div style={{ marginTop: 6, fontSize: 12, color: COLORS.slate }}>{props.helper}</div>
       )}
