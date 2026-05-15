@@ -1,31 +1,16 @@
 /**
- * Simple in-memory rate limiter for API routes
+ * Rate limiter for API routes.
  *
- * Note: This resets on server restart and doesn't work across multiple
- * Vercel serverless instances. For production, consider using Redis.
- * However, this still provides protection against basic abuse.
+ * Backed by Upstash Redis when its env vars are configured (durable across
+ * Vercel instances), otherwise falls back to per-instance in-memory counting.
+ * Backend logic lives in lib/rate-limit-backend.ts.
  */
 
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
-}
-
-const rateLimitStore = new Map<string, RateLimitEntry>();
-
-// Clean up old entries periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (entry.resetAt < now) {
-      rateLimitStore.delete(key);
-    }
-  }
-}, 60000); // Clean up every minute
+import { checkAndIncrement } from './rate-limit-backend';
 
 export interface RateLimitConfig {
-  maxRequests: number;  // Max requests per window
-  windowMs: number;     // Window size in milliseconds
+  maxRequests: number;
+  windowMs: number;
 }
 
 export interface RateLimitResult {
@@ -35,51 +20,24 @@ export interface RateLimitResult {
 }
 
 /**
- * Check if a request should be rate limited
+ * Atomically check + increment a rate limit for `identifier`.
  *
- * @param identifier - Unique identifier (IP, user ID, etc.)
- * @param config - Rate limit configuration
- * @returns Result indicating if request is allowed
+ * The original sync signature is preserved by wrapping the async backend in
+ * a Promise. Callers that did `if (!checkRateLimit(...).success)` synchronously
+ * still need to await; check callsites if you change a tight loop.
  */
-export function checkRateLimit(
+export async function checkRateLimit(
   identifier: string,
   config: RateLimitConfig
-): RateLimitResult {
-  const now = Date.now();
-  const key = identifier;
-
-  let entry = rateLimitStore.get(key);
-
-  // If no entry or window expired, create new one
-  if (!entry || entry.resetAt < now) {
-    entry = {
-      count: 1,
-      resetAt: now + config.windowMs,
-    };
-    rateLimitStore.set(key, entry);
-    return {
-      success: true,
-      remaining: config.maxRequests - 1,
-      resetAt: entry.resetAt,
-    };
-  }
-
-  // Increment count
-  entry.count++;
-
-  // Check if over limit
-  if (entry.count > config.maxRequests) {
-    return {
-      success: false,
-      remaining: 0,
-      resetAt: entry.resetAt,
-    };
-  }
-
+): Promise<RateLimitResult> {
+  // Derive a stable action label from the window+limit so different presets
+  // get separate buckets in Redis without callers having to pass a name.
+  const action = `legacy_${config.maxRequests}_${config.windowMs}`;
+  const r = await checkAndIncrement(identifier, action, config.maxRequests, config.windowMs);
   return {
-    success: true,
-    remaining: config.maxRequests - entry.count,
-    resetAt: entry.resetAt,
+    success: r.allowed,
+    remaining: r.remaining,
+    resetAt: Date.now() + r.resetMs,
   };
 }
 

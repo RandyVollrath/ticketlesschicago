@@ -1,44 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from './supabase';
+import { checkAndIncrement } from './rate-limit-backend';
 
-// ── In-memory rate limit cache ──
-// Avoids hitting Supabase on every single request during traffic surges.
-// Each Vercel function instance gets its own cache — that's fine, it just
-// means limits are per-instance which is MORE lenient, not less.
-// Entries auto-expire when their window passes.
-const rateLimitCache = new Map<string, number[]>();
-
-function getCacheKey(identifier: string, action: string): string {
-  return `${action}:${identifier}`;
-}
-
-function cleanExpiredEntries(key: string, windowMs: number): number[] {
-  const entries = rateLimitCache.get(key) || [];
-  const cutoff = Date.now() - windowMs;
-  const valid = entries.filter(ts => ts > cutoff);
-  if (valid.length === 0) {
-    rateLimitCache.delete(key);
-  } else {
-    rateLimitCache.set(key, valid);
-  }
-  return valid;
-}
-
-// Periodically clean the entire cache to prevent memory leaks
-let lastCacheClean = 0;
-function maybeCleanCache() {
-  const now = Date.now();
-  if (now - lastCacheClean < 60_000) return;
-  lastCacheClean = now;
-  for (const [key, entries] of rateLimitCache) {
-    const valid = entries.filter(ts => ts > now - 3_600_000);
-    if (valid.length === 0) {
-      rateLimitCache.delete(key);
-    } else {
-      rateLimitCache.set(key, valid);
-    }
-  }
-}
+// Rate-limit storage lives in lib/rate-limit-backend.ts — that module routes
+// through Upstash Redis when its env vars are configured, otherwise falls
+// back to per-instance in-memory counting (the prior behavior). Same public
+// API either way, so callers here don't change.
 
 // Rate limit configurations
 export const RATE_LIMITS = {
@@ -95,61 +62,39 @@ export function getClientIP(req: NextApiRequest): string {
 }
 
 /**
- * Check if action is rate limited.
- * Uses in-memory cache (no DB hit per request).
+ * Atomically check + increment the limit for (identifier, action).
+ *
+ * IMPORTANT semantic change vs. the prior implementation: this now counts
+ * every check, not only checks followed by `recordRateLimitAction`. That
+ * closes a bypass where a caller could fire invalid requests forever without
+ * incrementing the counter. Callers that previously called check + record
+ * still work — `recordRateLimitAction` is now a no-op.
  */
 export async function checkRateLimit(
   identifier: string,
   action: RateLimitAction
 ): Promise<RateLimitResult> {
   const config = RATE_LIMITS[action];
-  const key = getCacheKey(identifier, action);
-
-  maybeCleanCache();
-
-  const cached = cleanExpiredEntries(key, config.windowMs);
-  const currentCount = cached.length;
-  const remaining = Math.max(0, config.limit - currentCount);
-  const allowed = currentCount < config.limit;
-
-  let resetIn = 0;
-  if (!allowed && cached.length > 0) {
-    const oldest = Math.min(...cached);
-    resetIn = Math.max(0, oldest + config.windowMs - Date.now());
-  }
-
-  return { allowed, remaining, resetIn, limit: config.limit };
+  const r = await checkAndIncrement(identifier, action, config.limit, config.windowMs);
+  return {
+    allowed: r.allowed,
+    remaining: r.remaining,
+    resetIn: r.resetMs,
+    limit: r.limit,
+  };
 }
 
 /**
- * Record a rate-limited action.
- * Writes to in-memory cache immediately, fire-and-forgets DB insert.
+ * Deprecated: checkRateLimit now increments atomically. This is kept as a
+ * no-op so existing call sites continue to compile and run unchanged. The
+ * fire-and-forget DB insert is intentionally dropped — Upstash is our source
+ * of truth for rate-limit state.
  */
 export async function recordRateLimitAction(
-  identifier: string,
-  action: RateLimitAction
+  _identifier: string,
+  _action: RateLimitAction
 ): Promise<void> {
-  // Record in memory first (instant)
-  const key = getCacheKey(identifier, action);
-  const entries = rateLimitCache.get(key) || [];
-  entries.push(Date.now());
-  rateLimitCache.set(key, entries);
-
-  // Fire-and-forget DB insert
-  try {
-    const { error } = await supabaseAdmin
-      .from('rate_limits')
-      .insert({
-        identifier,
-        action,
-      } as { identifier: string; action: string });
-
-    if (error) {
-      console.error('Failed to record rate limit action:', error.message);
-    }
-  } catch (error) {
-    console.error('Failed to record rate limit action:', error instanceof Error ? error.message : error);
-  }
+  // intentionally empty
 }
 
 /**
