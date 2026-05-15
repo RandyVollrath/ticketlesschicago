@@ -185,21 +185,11 @@ export function isRestrictionActive(
     }
   }
 
-  // Check permit zones during restricted hours — only if we have verified hours
-  if (restriction.type === 'permit-zone' && schedule.permitHours) {
-    const [startHour, endHour] = parsePermitHours(schedule.permitHours);
-    const hour = time.getHours();
-
-    // Handle overnight ranges (e.g., 6pm-6am = 18-6)
-    if (startHour > endHour) {
-      if (!(hour >= startHour || hour < endHour)) {
-        return false;
-      }
-    } else {
-      if (!(hour >= startHour && hour < endHour)) {
-        return false;
-      }
-    }
+  // Permit zones — our hours dataset (Street View) is too uneven to claim
+  // a zone is "active right now". Treat permit zones as a chronic warning
+  // shown via the rule chip, not as a time-bounded active restriction.
+  if (restriction.type === 'permit-zone') {
+    return false;
   }
 
   return true;
@@ -444,7 +434,10 @@ export function formatRestrictionDescription(restriction: Restriction): string {
     case 'winter-ban':
       return 'Winter overnight ban - No parking 3am-7am (Dec 1 - Apr 1)';
     case 'permit-zone':
-      return `Permit Zone ${schedule.permitZone} - ${schedule.permitHours || '6pm-6am'}`;
+      // Hours are not surfaced — our zone-hours dataset (gathered from Street
+      // View signs) is too uneven to display authoritatively. Tell the user
+      // they're inside a permit zone and to check the posted sign.
+      return `Permit Zone ${schedule.permitZone} - may be active, check posted sign`;
     default:
       return restriction.description || 'Parking restricted';
   }

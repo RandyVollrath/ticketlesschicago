@@ -11,7 +11,6 @@ export interface PermitZoneResult {
     status: string;
     addressRange: string;
     ward: string;
-    restrictionSchedule?: string;
   }>;
   parsedAddress: {
     number: number;
@@ -126,46 +125,10 @@ export default async function handler(
 
     console.log(`After odd/even filter: ${matchingZones.length} matches`);
 
-    // Look up enforcement hours for matched zones
-    const zoneNumbers = [...new Set(matchingZones.map(z => String(z.zone)))];
-    let zoneHoursMap: Record<string, string> = {};
-    if (zoneNumbers.length > 0 && supabaseAdmin) {
-      // First check for block-level overrides
-      const blockNumber = Math.floor(parsed.number / 100) * 100;
-      const { data: blockOverrides } = await supabaseAdmin
-        .from('permit_zone_block_overrides')
-        .select('zone, restriction_schedule')
-        .in('zone', zoneNumbers)
-        .eq('block_number', blockNumber)
-        .eq('street_name', parsed.name);
-
-      if (blockOverrides?.length) {
-        for (const bo of blockOverrides) {
-          if (bo.restriction_schedule) {
-            zoneHoursMap[String(bo.zone)] = bo.restriction_schedule;
-          }
-        }
-      }
-
-      // Then fall back to zone-level hours for zones not covered by overrides
-      const zonesWithoutOverride = zoneNumbers.filter(z => !zoneHoursMap[z]);
-      if (zonesWithoutOverride.length > 0) {
-        const { data: zoneHours } = await supabaseAdmin
-          .from('permit_zone_hours')
-          .select('zone, restriction_schedule')
-          .in('zone', zonesWithoutOverride);
-
-        if (zoneHours?.length) {
-          for (const zh of zoneHours) {
-            if (zh.restriction_schedule && !zoneHoursMap[String(zh.zone)]) {
-              zoneHoursMap[String(zh.zone)] = zh.restriction_schedule;
-            }
-          }
-        }
-      }
-    }
-
-    // Format response
+    // Hours are deliberately not returned. Our residential permit-zone hours
+    // dataset was gathered from Google Street View signs and is too uneven to
+    // surface as authoritative — clients show a "may be active, check posted
+    // signs" warning instead of specific times.
     const formattedZones = matchingZones.map(zone => ({
       zone: zone.zone,
       status: zone.status,
@@ -173,7 +136,6 @@ export default async function handler(
       ward: zone.ward_low === zone.ward_high
         ? `Ward ${zone.ward_low}`
         : `Wards ${zone.ward_low}-${zone.ward_high}`,
-      restrictionSchedule: zoneHoursMap[String(zone.zone)] || undefined,
     }));
 
     return res.status(200).json({

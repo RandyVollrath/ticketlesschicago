@@ -3511,10 +3511,19 @@ class BackgroundTaskServiceClass {
       // If currently in ban hours (3am-7am), don't schedule - user should already know
     }
 
-    // Permit zone reminder — 30 minutes before actual enforcement start
-    if (result.permitZone?.inPermitZone && !result.permitZone?.permitRequired) {
+    // Permit zone reminder — only schedule when the server returned a verified
+    // restriction schedule. Our Street-View-sourced hours dataset is too
+    // uneven to use for time-based notifications, so the server now returns
+    // restrictionSchedule=null for residential permit zones and this block
+    // simply doesn't fire. The user still sees the "may be active" warning
+    // chip from the live parking check.
+    if (
+      result.permitZone?.inPermitZone &&
+      !result.permitZone?.permitRequired &&
+      result.permitZone.restrictionSchedule
+    ) {
       const zoneName = result.permitZone.zoneName || 'Permit zone';
-      const schedule = result.permitZone.restrictionSchedule || 'Mon–Fri 8am–6pm (estimated)';
+      const schedule = result.permitZone.restrictionSchedule;
       const ADVANCE_WARNING_MINUTES = 30;
 
       // Parse the restriction schedule to find the next enforcement window
@@ -3927,15 +3936,12 @@ class BackgroundTaskServiceClass {
       parts.push('🌨️ 2-inch snow ban ACTIVE — move now or risk towing');
     }
 
-    // Permit zone
+    // Permit zone — we no longer surface specific hours because our
+    // Street-View-sourced hours dataset is too uneven. Just flag that the
+    // block is inside a permit zone.
     if (rawData?.permitZone?.inPermitZone) {
       const zone = rawData.permitZone.zoneName || 'this zone';
-      const schedule = rawData.permitZone.restrictionSchedule || 'check posted signs';
-      if (rawData.permitZone.permitRequired) {
-        parts.push(`🅿️ Permit zone ${zone} enforced now — ${schedule}`);
-      } else {
-        parts.push(`🅿️ Permit zone ${zone} — enforcement: ${schedule}`);
-      }
+      parts.push(`🅿️ Permit zone ${zone} — may be active, check posted signs`);
     }
 
     // Metered parking zone — mention whether currently enforced or not.

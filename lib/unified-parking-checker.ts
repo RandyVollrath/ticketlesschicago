@@ -567,50 +567,20 @@ export async function checkAllParkingRestrictions(
 
       if (matchingZones.length > 0) {
         const zone = matchingZones[0];
-        // Priority: 1. Block-level override, 2. Zone-level hours, 3. Unknown
-        const blockOverride = blockOverrideMap.get(`residential:${zone.zone}`);
-        const zoneHours = zoneHoursMap.get(`residential:${zone.zone}`);
-        const effectiveSchedule = blockOverride?.schedule || zoneHours?.schedule || null;
-        const scheduleSource = blockOverride ? 'block' : (zoneHours ? 'zone' : null);
-        const scheduleConfidence = blockOverride?.confidence || zoneHours?.confidence || null;
 
+        // Our residential permit-zone hours dataset was gathered by reading
+        // posted signs in Google Street View. Coverage is uneven and hours
+        // change block-to-block, so we no longer surface specific times to
+        // the user — we only tell them they're inside a permit zone and it
+        // may be active. The posted sign on the block is the source of truth.
         result.permitZone.found = true;
         result.permitZone.zoneName = `Zone ${zone.zone}`;
         result.permitZone.zoneType = 'residential';
-        result.permitZone.restrictionSchedule = effectiveSchedule;
-
-        if (effectiveSchedule) {
-          // We have hours — use time-based validation
-          const zoneStatus = validatePermitZone(zone.zone, effectiveSchedule);
-          result.permitZone.isCurrentlyRestricted = zoneStatus.is_currently_restricted;
-          result.permitZone.hoursUntilRestriction = zoneStatus.hours_until_restriction;
-
-          // Suffix for block-level overrides (user-reported corrections)
-          const sourceNote = scheduleSource === 'block' ? ' (this block)' : '';
-
-          if (zoneStatus.is_currently_restricted) {
-            result.permitZone.severity = 'critical';
-            result.permitZone.message = `PERMIT REQUIRED NOW - Zone ${zone.zone} (${effectiveSchedule})${sourceNote}. $75 fine.`;
-          } else if (zoneStatus.hours_until_restriction <= 3) {
-            result.permitZone.severity = 'warning';
-            // Round to whole hours for display ("starts in 2h"); when under
-            // an hour, show minutes so the user knows it's imminent.
-            const h = zoneStatus.hours_until_restriction;
-            const countdown = h < 1
-              ? `${Math.max(1, Math.round(h * 60))}m`
-              : `${Math.round(h)}h`;
-            result.permitZone.message = `Zone ${zone.zone} - Permit enforcement starts in ${countdown} (${effectiveSchedule})${sourceNote}.`;
-          } else {
-            result.permitZone.severity = 'info';
-            result.permitZone.message = `Zone ${zone.zone} - Permit required ${effectiveSchedule}${sourceNote}.`;
-          }
-        } else {
-          // No hours data at all — tell user to check posted signs
-          result.permitZone.isCurrentlyRestricted = false;
-          result.permitZone.hoursUntilRestriction = 999;
-          result.permitZone.severity = 'warning';
-          result.permitZone.message = `Permit Zone ${zone.zone} — enforcement hours unknown. Check posted signs for times. $75 fine.`;
-        }
+        result.permitZone.restrictionSchedule = null;
+        result.permitZone.isCurrentlyRestricted = false;
+        result.permitZone.hoursUntilRestriction = 999;
+        result.permitZone.severity = 'warning';
+        result.permitZone.message = `Permit Zone ${zone.zone} — may be active. Check the posted sign on this block for current hours. $75 fine if a permit is required and you don't have one.`;
       }
     }
 

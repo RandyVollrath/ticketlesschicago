@@ -38,7 +38,7 @@ export function PermitZoneWarning({ zones }: PermitZoneWarningProps) {
             marginBottom: '8px',
             margin: '0 0 8px 0'
           }}>
-            Permit Parking Zone Detected
+            Permit Zone — may be active
           </h4>
           <p style={{
             fontSize: '14px',
@@ -46,7 +46,7 @@ export function PermitZoneWarning({ zones }: PermitZoneWarningProps) {
             lineHeight: '1.6',
             margin: '0 0 12px 0'
           }}>
-            This address is in a Chicago residential permit parking zone. If you don't have a permit, you may receive parking tickets even when following street cleaning rules.
+            This address falls inside a Chicago residential permit parking zone. Enforcement hours vary block-to-block — check the posted sign on this block for current times. Without a permit, you may receive a $75 ticket when the zone is active.
           </p>
           {zones.map((zone, index) => (
             <div
