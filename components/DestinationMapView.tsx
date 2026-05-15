@@ -338,9 +338,10 @@ export default function DestinationMapView() {
     winterLayer: any;
     meterLayer: any;
     permitLayer: any;
+    permitHitLayer: any;
     permitParkabilityLayer: any;
     meters: any[];
-  }>({ cleaningLayer: null, cleaningZones: [], snowLayer: null, winterLayer: null, meterLayer: null, permitLayer: null, permitParkabilityLayer: null, meters: [] });
+  }>({ cleaningLayer: null, cleaningZones: [], snowLayer: null, winterLayer: null, meterLayer: null, permitLayer: null, permitHitLayer: null, permitParkabilityLayer: null, meters: [] });
 
   // Restyle all layers when parkability mode changes
   const applyViewMode = useCallback((isParkability: boolean) => {
@@ -485,10 +486,15 @@ export default function DestinationMapView() {
 
   useEffect(() => {
     const map = mapRef.current;
-    const { permitLayer } = layersRef.current;
-    if (!map || !permitLayer) return;
-    if (showPermitZones) { if (!map.hasLayer(permitLayer)) permitLayer.addTo(map); }
-    else { if (map.hasLayer(permitLayer)) map.removeLayer(permitLayer); }
+    const { permitLayer, permitHitLayer } = layersRef.current;
+    if (!map) return;
+    if (showPermitZones) {
+      if (permitLayer && !map.hasLayer(permitLayer)) permitLayer.addTo(map);
+      if (permitHitLayer && !map.hasLayer(permitHitLayer)) permitHitLayer.addTo(map);
+    } else {
+      if (permitLayer && map.hasLayer(permitLayer)) map.removeLayer(permitLayer);
+      if (permitHitLayer && map.hasLayer(permitHitLayer)) map.removeLayer(permitHitLayer);
+    }
   }, [showPermitZones]);
 
   useEffect(() => {
@@ -911,7 +917,10 @@ export default function DestinationMapView() {
           features: permitRes.features,
         };
 
-        // Invisible wide layer for easy tapping (20px hit target)
+        // Invisible wide layer for easy tapping (20px hit target).
+        // Not attached to the map here — added/removed alongside the visible
+        // permit lines by the showPermitZones effect. Otherwise users tap
+        // "empty" map and pop a permit info card for a line they can't see.
         const hitLayer = L.geoJSON(permitGeoJSON, {
           style: () => ({
             color: 'transparent',
@@ -921,25 +930,17 @@ export default function DestinationMapView() {
           interactive: true,
           onEachFeature: (feature: any, layer: any) => {
             const p = feature.properties;
-            const sideLabel = p.oddEven === 'O' ? 'ODD side only' : p.oddEven === 'E' ? 'EVEN side only' : 'Both sides';
-            const sideBg = p.oddEven === 'O' ? '#dbeafe' : p.oddEven === 'E' ? '#ffedd5' : '#e2e8f0';
-            const sideColor = p.oddEven === 'O' ? '#1e40af' : p.oddEven === 'E' ? '#c2410c' : '#334155';
-            const oppositeHint = p.oddEven === 'O'
-              ? 'Opposite side may be legal: even-numbered addresses (check signs).'
-              : p.oddEven === 'E'
-                ? 'Opposite side may be legal: odd-numbered addresses (check signs).'
-                : 'Both sides are in this permit segment (check signs).';
             layer.bindPopup(`
               <div style="font-family:system-ui;font-size:13px;min-width:160px">
-                <div style="font-weight:700;color:${p.oddEven === 'O' ? PERMIT_COLORS.odd : p.oddEven === 'E' ? PERMIT_COLORS.even : PERMIT_COLORS.both};font-size:14px">Zone ${p.zone}</div>
-                <div style="color:#374151;margin-top:3px;font-weight:500">${p.street || ''}</div>
-                <div style="color:#6B7280;font-size:12px;margin-top:2px">${p.addrRange || ''}</div>
-                <div style="margin-top:6px;display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:${sideBg};color:${sideColor}">${sideLabel}</div>
-                <div style="color:#9CA3AF;font-size:11px;margin-top:6px">${oppositeHint}</div>
+                <div style="font-weight:700;color:${PERMIT_COLORS.both};font-size:12px;text-transform:uppercase;letter-spacing:0.4px">Residential Permit Zone</div>
+                <div style="color:#1A1C1E;margin-top:4px;font-size:15px;font-weight:600">Zone ${p.zone}</div>
+                <div style="color:#6B7280;font-size:12px;margin-top:2px">${p.street || ''}</div>
+                <div style="color:#9CA3AF;font-size:11px;margin-top:6px">Need a Zone ${p.zone} permit to park here.</div>
               </div>
-            `, { maxWidth: 260 });
+            `, { maxWidth: 240 });
           },
-        }).addTo(map);
+        });
+        layersRef.current.permitHitLayer = hitLayer;
 
         // Visible styled layer (not interactive — clicks pass through to hit layer)
         const permitLayer = L.layerGroup();
