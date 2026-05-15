@@ -732,6 +732,20 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       setShowGroundTruthBanner(false);
       return;
     }
+    // Once the user has engaged with this specific parking event
+    // (confirmed, corrected, or dismissed), never re-show the banner for
+    // it. Without this guard, background refinements (GPS Phase 2 burst
+    // re-check, address backfill retries at 60s/3min/9min, periodic
+    // rescan) emit parking-check-updated which calls loadLastCheck, which
+    // re-populates lastParkingCheck — and the age-only check below
+    // re-showed the banner the user just dismissed.
+    if (
+      correctionDismissedTs !== null &&
+      correctionDismissedTs === lastParkingCheck.timestamp
+    ) {
+      setShowGroundTruthBanner(false);
+      return;
+    }
     const ageMs = Date.now() - lastParkingCheck.timestamp;
     // Window for the "Is this correct?" banner. 60 min — wide enough to
     // catch the user opening the app after running an errand, narrow
@@ -740,7 +754,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     // recallable anyway. Re-tunable: bump higher if confirmation
     // volume is too low, drop lower if the banner feels stale.
     setShowGroundTruthBanner(ageMs <= 60 * 60 * 1000);
-  }, [lastParkingCheck, isMonitoring]);
+  }, [lastParkingCheck, isMonitoring, correctionDismissedTs]);
 
   const handleCarDisconnect = async () => {
     log.info('Parking detected - refreshing UI');
@@ -1093,6 +1107,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, [lastParkingCheck]);
 
+  // Mark the current parking event as "user has engaged with the correction
+  // prompt" so the inline yellow hint and the ground-truth banner both stop
+  // auto-showing for this one event. Idempotent — safe to call from any
+  // dismiss/save/confirm path.
+  const markCorrectionEngaged = useCallback(() => {
+    const ts = lastParkingCheck?.timestamp;
+    if (!ts) return;
+    setCorrectionDismissedTs(ts);
+    AsyncStorage.setItem(StorageKeys.PARKING_CORRECTION_DISMISSED_TS, String(ts)).catch(() => {});
+  }, [lastParkingCheck]);
+
   const confirmParkingHere = useCallback(async () => {
     if (!lastParkingCheck) return;
     try {
@@ -1121,21 +1146,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         },
       });
       setShowGroundTruthBanner(false);
+      markCorrectionEngaged();
       Alert.alert('Thanks', 'Confirmed. This helps tune parking detection at this location.');
     } catch (e) {
       log.warn('Failed to confirm parking location', e);
     }
-  }, [lastParkingCheck]);
-
-  // Mark the current parking event as "user has engaged with the correction
-  // prompt" so the inline yellow hint stops auto-showing for this one event.
-  // Idempotent — safe to call from any dismiss/save path.
-  const markCorrectionEngaged = useCallback(() => {
-    const ts = lastParkingCheck?.timestamp;
-    if (!ts) return;
-    setCorrectionDismissedTs(ts);
-    AsyncStorage.setItem(StorageKeys.PARKING_CORRECTION_DISMISSED_TS, String(ts)).catch(() => {});
-  }, [lastParkingCheck]);
+  }, [lastParkingCheck, markCorrectionEngaged]);
 
   // Open the wrong-street correction modal pre-filled with the current address.
   // Reset the typed-fallback disclosure each open so the alternate-tap flow is
@@ -1307,7 +1323,18 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             }
           : lastParkingCheck.rawApiData,
       };
-      const nextParkingCheck = authoritativeResult ?? optimistic;
+      // Preserve the original detect timestamp on the saved result. The
+      // semantic identity of the event is "the parking that started at T0",
+      // not "the latest re-check". Without this, a pin-drag re-check from
+      // LocationService stamps a fresh Date.now() on the result; the
+      // banner-engagement record (keyed by lastParkingCheck.timestamp)
+      // would then no longer match the saved event, and a background
+      // refinement could pop the "Is this correct?" banner again moments
+      // later — the exact bug we're fixing.
+      const nextParkingCheck = {
+        ...(authoritativeResult ?? optimistic),
+        timestamp: lastParkingCheck.timestamp,
+      };
       setLastParkingCheck(nextParkingCheck);
       try {
         await AsyncStorage.setItem(StorageKeys.LAST_PARKING_LOCATION, JSON.stringify(nextParkingCheck));
