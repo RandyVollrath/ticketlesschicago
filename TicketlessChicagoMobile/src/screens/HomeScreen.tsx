@@ -1826,9 +1826,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.permissionBannerContent}>
             <Icon name="run" size={18} color={colors.warning} />
             <View style={styles.permissionBannerTextWrap}>
-              <Text style={styles.permissionBannerTitle}>Motion & Fitness disabled</Text>
+              <Text style={styles.permissionBannerTitle}>Motion & Fitness disabled — using more battery</Text>
               <Text style={styles.permissionBannerBody}>
-                Autopilot uses motion sensors to detect when you park. Without this, parking detection uses GPS only and may be less reliable. Enable Motion & Fitness in Settings for best results.
+                Without Motion & Fitness, Autopilot falls back to continuous GPS to detect when you park. That uses noticeably more battery and is less reliable. Enable Motion & Fitness in Settings to drop back to the low-power detection path.
               </Text>
             </View>
           </View>
