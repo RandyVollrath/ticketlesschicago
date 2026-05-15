@@ -1,5 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { createClient } from '@supabase/supabase-js';
 import { DEFENSE_TEMPLATES } from '../../../lib/contest-templates';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } },
+);
 
 interface Body {
   full_name?: string;
@@ -16,6 +23,15 @@ interface Body {
   violation_description?: string;
   amount?: string;
   location?: string;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function getClientIp(req: NextApiRequest): string | null {
+  const xff = req.headers['x-forwarded-for'];
+  if (typeof xff === 'string') return xff.split(',')[0].trim();
+  if (Array.isArray(xff) && xff.length > 0) return xff[0].split(',')[0].trim();
+  return req.socket?.remoteAddress || null;
 }
 
 function s(v: unknown): string {
@@ -57,6 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const body = (req.body || {}) as Body;
+  const email = s(body.email).toLowerCase();
   const fullName = s(body.full_name);
   const mailingAddress = s(body.mailing_address);
   const mailingCity = s(body.mailing_city);
@@ -71,6 +88,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const amountRaw = s(body.amount);
   const location = s(body.location) || 'the cited location';
 
+  if (!email || !EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'A valid email is required.' });
+  }
   if (!fullName || !mailingAddress || !mailingCity || !mailingState || !mailingZip) {
     return res.status(400).json({ error: 'Name and full mailing address are required.' });
   }
@@ -127,6 +147,40 @@ Sincerely,
 
 ${fullName}
 ${addressLines.join('\n')}`;
+
+  // Save the submission so we can follow up. Failure to insert must NOT
+  // block the user from getting their letter — they've already given us the
+  // data and we already generated the response. Log the failure server-side
+  // and return the letter anyway.
+  try {
+    const { error: insertError } = await supabaseAdmin
+      .from('free_contest_submissions')
+      .insert({
+        email,
+        full_name: fullName,
+        mailing_address: mailingAddress,
+        mailing_city: mailingCity,
+        mailing_state: mailingState,
+        mailing_zip: mailingZip,
+        plate,
+        plate_state: plateState,
+        ticket_number: ticketNumber,
+        violation_date: violationDateRaw,
+        violation_type: violationType,
+        violation_description: violationDescription,
+        amount: amountRaw || null,
+        location,
+        letter,
+        defense_type: template.type,
+        ip: getClientIp(req),
+        user_agent: (req.headers['user-agent'] || '').toString().slice(0, 500),
+      });
+    if (insertError) {
+      console.error('[free-contest] insert failed', insertError.message);
+    }
+  } catch (err) {
+    console.error('[free-contest] insert threw', err);
+  }
 
   return res.status(200).json({
     letter,

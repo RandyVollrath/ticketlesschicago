@@ -124,6 +124,7 @@ export default function FreeContest() {
 
     const required: Array<[keyof FormState, string]> = [
       ['full_name', 'Your full name'],
+      ['email', 'Email'],
       ['mailing_address', 'Mailing street address'],
       ['mailing_city', 'City'],
       ['mailing_state', 'State'],
@@ -138,6 +139,10 @@ export default function FreeContest() {
         setError(`${label} is required.`);
         return;
       }
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
     }
 
     setSubmitting(true);
@@ -265,7 +270,8 @@ export default function FreeContest() {
             templates Autopilot uses for paying members.
           </p>
           <p style={{ marginTop: 8, fontSize: 13, color: COLORS.slate }}>
-            No account, no payment. We don&apos;t save anything you enter on this page.
+            No account, no payment. We save your submission so we can follow up
+            about Autopilot — that&apos;s the only thing we use this info for.
           </p>
         </section>
 
@@ -280,7 +286,7 @@ export default function FreeContest() {
             >
               <FieldGroup title="About you">
                 <Field label="Full name" value={form.full_name} onChange={(v) => setForm({ ...form, full_name: v })} placeholder="Jane Smith" />
-                <Field label="Email (optional)" value={form.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="you@example.com" type="email" helper="Only used if you ask us to email you a copy. We don't store it from this page." />
+                <Field label="Email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="you@example.com" type="email" helper="We'll save your submission and may follow up about Autopilot." />
                 <Field label="Mailing street address" value={form.mailing_address} onChange={(v) => setForm({ ...form, mailing_address: v })} placeholder="1234 N Ashland Ave" />
                 <Row>
                   <Field label="City" value={form.mailing_city} onChange={(v) => setForm({ ...form, mailing_city: v })} />
