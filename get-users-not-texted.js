@@ -1,8 +1,14 @@
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
+require('dotenv').config({ path: '.env.local' });
 
-const MSC_SUPABASE_URL = 'https://zqljxkqdgfibfzdjfjiq.supabase.co';
-const MSC_SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxbGp4a3FkZ2ZpYmZ6ZGpmamlxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Mjk2NTAyNCwiZXhwIjoyMDU4NTQxMDI0fQ.5z8BVRn9Xku7ZwSSfZwQLYyfjzw-aqsYm1HmHlujJes';
+const MSC_SUPABASE_URL = process.env.MSC_SUPABASE_URL;
+const MSC_SUPABASE_SERVICE_ROLE_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY;
+
+if (!MSC_SUPABASE_URL || !MSC_SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('Missing MSC_SUPABASE_URL or MSC_SUPABASE_SERVICE_ROLE_KEY in .env.local');
+  process.exit(1);
+}
 
 const supabase = createClient(MSC_SUPABASE_URL, MSC_SUPABASE_SERVICE_ROLE_KEY);
 

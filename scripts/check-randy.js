@@ -1,15 +1,18 @@
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
 
-// Use service role key for full access
-const mscSupabase = createClient(
-  'https://zqljxkqdgfibfzdjfjiq.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxbGp4a3FkZ2ZpYmZ6ZGpmamlxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Mjk2NTAyNCwiZXhwIjoyMDU4NTQxMDI0fQ.5z8BVRn9Xku7ZwSSfZwQLYyfjzw-aqsYm1HmHlujJes'
-);
+const MSC_URL = process.env.MSC_SUPABASE_URL;
+const MSC_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY;
+const AA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const AA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const ticketlessSupabase = createClient(
-  'https://dzhqolbhuqdcpngdayuq.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6aHFvbGJodXFkY3BuZ2RheXVxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzQ0NzgyMSwiZXhwIjoyMDczMDIzODIxfQ.ecjdMfjTA06coyGLAUILY9KmiRCv_fkU5jo-REjqbIw'
-);
+if (!MSC_URL || !MSC_KEY || !AA_URL || !AA_KEY) {
+  console.error('Missing Supabase credentials in .env.local (MSC_SUPABASE_URL, MSC_SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).');
+  process.exit(1);
+}
+
+const mscSupabase = createClient(MSC_URL, MSC_KEY);
+const ticketlessSupabase = createClient(AA_URL, AA_KEY);
 
 async function checkEverything() {
   console.log('📊 NOTIFICATION READINESS CHECK\n');

@@ -2,14 +2,22 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { sendClickSendSMS, sendClickSendVoiceCall } from '../../../lib/sms-service';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
+import { verifyCronAuth, requireAdminAuth } from '../../../lib/auth-middleware';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Simple auth check
-  if (req.method !== 'POST' || req.body?.email !== 'randyvollrath@gmail.com') {
-    return res.status(403).json({ error: 'Unauthorized' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Auth: Vercel cron (CRON_SECRET) or an admin session. The previous gate
+  // (`req.body.email === 'randyvollrath@gmail.com'`) let anyone trigger real
+  // SMS and voice calls just by guessing the email.
+  if (!verifyCronAuth(req)) {
+    const admin = await requireAdminAuth(req, res);
+    if (!admin) return;
   }
 
   const logs: string[] = [];

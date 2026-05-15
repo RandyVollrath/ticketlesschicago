@@ -1,8 +1,14 @@
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+
+if (!process.env.MSC_SUPABASE_URL || !process.env.MSC_SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('Missing MSC_SUPABASE_URL or MSC_SUPABASE_SERVICE_ROLE_KEY in .env.local');
+  process.exit(1);
+}
 
 const mscSupabase = createClient(
-  'https://zqljxkqdgfibfzdjfjiq.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxbGp4a3FkZ2ZpYmZ6ZGpmamlxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Mjk2NTAyNCwiZXhwIjoyMDU4NTQxMDI0fQ.5z8BVRn9Xku7ZwSSfZwQLYyfjzw-aqsYm1HmHlujJes'
+  process.env.MSC_SUPABASE_URL,
+  process.env.MSC_SUPABASE_SERVICE_ROLE_KEY
 );
 
 async function checkGeometry() {

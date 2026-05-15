@@ -58,10 +58,8 @@ export default function ParkingMapDisplay({ userWard, userSection, alternatives,
           ...alternatives.map(alt => ({ ward: alt.ward, section: alt.section, isUser: false }))
         ]
         
-        // Use MyStreetCleaning database for geometry data
-        const MSC_URL = 'https://zqljxkqdgfibfzdjfjiq.supabase.co'
-        const MSC_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxbGp4a3FkZ2ZpYmZ6ZGpmamlxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Mjk2NTAyNCwiZXhwIjoyMDU4NTQxMDI0fQ.5z8BVRn9Xku7ZwSSfZwQLYyfjzw-aqsYm1HmHlujJes'
-        
+        // Geometry comes from /api/get-zone-geometry server-side, which holds
+        // the MSC connection secrets. Never inline the service-role key here.
         const response = await fetch('/api/get-zone-geometry', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

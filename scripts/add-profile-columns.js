@@ -1,8 +1,13 @@
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
 
-// Ticketless America database
-const TICKETLESS_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dzhqolbhuqdcpngdayuq.supabase.co';
-const TICKETLESS_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6aHFvbGJodXFkY3BuZ2RheXVxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzQ0NzgyMSwiZXhwIjoyMDczMDIzODIxfQ.ecjdMfjTA06coyGLAUILY9KmiRCv_fkU5jo-REjqbIw';
+const TICKETLESS_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const TICKETLESS_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!TICKETLESS_URL || !TICKETLESS_KEY) {
+  console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
+  process.exit(1);
+}
 
 const supabase = createClient(TICKETLESS_URL, TICKETLESS_KEY);
 

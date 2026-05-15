@@ -5,6 +5,7 @@ import { getUsersOnSnowRoutes } from '../../lib/snow-route-matcher';
 import { sendClickSendSMS } from '../../lib/sms-service';
 import { sendEmailWithRetry } from '../../lib/resend-with-retry';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
+import { verifyCronAuth } from '../../lib/auth-middleware';
 import { quickEmail, greeting as greet, p, callout, section, button, divider, bulletList, steps, esc } from '../../lib/email-template';
 import { getChicagoDateISO } from '../../lib/chicago-timezone-utils';
 
@@ -457,6 +458,10 @@ export default async function handler(
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!verifyCronAuth(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   // Get notification type from request body: 'forecast' or 'confirmation'
