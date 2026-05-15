@@ -96,8 +96,41 @@ const ADDRESS_BACKFILL_MAX_RETRIES = 3; // Max retries for address backfill
 
 // Periodic rescan: re-check parking at last location every 4 hours while parked
 const RESCAN_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
+// If the next known restriction at the parked spot is further out than this
+// AND there's no active snow risk, skip the 4-hour rescan tick — the snow
+// forecast monitor still fires every 2 hours and is what would change first.
+const RESCAN_SKIP_IF_NEXT_RESTRICTION_BEYOND_MS = 24 * 60 * 60 * 1000; // 24 hours
 // Snow forecast check interval (every 2 hours while parked on a snow route)
 const SNOW_FORECAST_CHECK_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+// Android driving-GPS tiers (battery vs. camera-alert lookahead trade-off).
+// "high" matches the legacy 1 Hz / 5 m setting and is used whenever we're near
+// a camera or moving fast enough that 1 Hz lookahead matters. "medium" and
+// "low" relax both rate and distance filter for the long stretches between
+// cameras at city speeds, which is most of the actual drive time.
+type AndroidGpsTier = 'high' | 'medium' | 'low';
+interface AndroidGpsTierConfig {
+  intervalMs: number;
+  fastestIntervalMs: number;
+  distanceFilterM: number;
+}
+const ANDROID_GPS_TIERS: Record<AndroidGpsTier, AndroidGpsTierConfig> = {
+  high:   { intervalMs: 1000, fastestIntervalMs: 500,  distanceFilterM: 5 },
+  medium: { intervalMs: 2000, fastestIntervalMs: 1000, distanceFilterM: 10 },
+  low:    { intervalMs: 5000, fastestIntervalMs: 2000, distanceFilterM: 25 },
+};
+// Camera proximity radii. 500m = "inside the alert range" (alerts fire at
+// ~200m of approach, so 500m gives the watcher warm-up). 1500m = "approaching
+// a camera neighborhood" — drop to medium rather than low.
+const CAMERA_PROXIMITY_HIGH_M = 500;
+const CAMERA_PROXIMITY_MEDIUM_M = 1500;
+// Speed thresholds (m/s). 25mph ≈ 11.18 m/s, 10mph ≈ 4.47 m/s. Above the high
+// threshold we want 1 Hz regardless of camera proximity (highway driving).
+const SPEED_HIGH_MPS = 11.18;
+const SPEED_MEDIUM_MPS = 4.47;
+// Re-evaluate the tier at most this often. Tearing down and rebuilding the
+// watchPosition handle has cost, so we don't want to flap every tick.
+const ANDROID_GPS_TIER_REEVAL_MS = 5000;
 // OpenWeatherMap-compatible API for Chicago snow forecast (free tier)
 const CHICAGO_WEATHER_LAT = 41.8781;
 const CHICAGO_WEATHER_LNG = -87.6298;
@@ -1528,13 +1561,25 @@ class BackgroundTaskServiceClass {
     this.cacheCurrentGps();
 
     this.gpsCacheInterval = setInterval(() => {
-      // Only cache when app is active (foreground) to save battery
-      if (AppState.currentState === 'active') {
-        this.cacheCurrentGps();
-      }
+      // Only cache when:
+      //   1. app is active (foreground), AND
+      //   2. state machine still says DRIVING (defends against an interval
+      //      that outlived the state transition that started it), AND
+      //   3. either we have an Android driving GPS watch OR camera alerts are
+      //      enabled — i.e. the cache will actually be consumed by something.
+      // This avoids 60s GPS pings when the user has the app open at home
+      // before the car connects or after the state has already moved on.
+      if (AppState.currentState !== 'active') return;
+      const state = ParkingDetectionStateMachine.state;
+      if (state !== 'DRIVING') return;
+      const willConsume =
+        this.androidDrivingGpsWatchId !== null ||
+        CameraAlertService.isAlertEnabled();
+      if (!willConsume) return;
+      this.cacheCurrentGps();
     }, GPS_CACHE_INTERVAL);
 
-    log.debug('GPS pre-caching started (60s interval while foreground)');
+    log.debug('GPS pre-caching started (60s while foreground + DRIVING + consumer present)');
   }
 
   private stopGpsCaching(): void {
@@ -5354,12 +5399,38 @@ class BackgroundTaskServiceClass {
       }
 
       const parked = JSON.parse(parkedJson);
+
+      // Battery optimization: the rescan exists almost entirely to catch the
+      // 2-inch snow ban becoming active while the car is parked. All other
+      // restriction types (street_cleaning, permit_zone, winter_ban, metered,
+      // dot_permit) have predictable schedules and are already covered by
+      // scheduleRestrictionReminders() with 30-min advance notifications, AND
+      // the rescan-notify path (below) is filtered to snow_route only. So if
+      // we are NOT parked on a snow route, this 4-hour API call is pure waste
+      // — skip it and let the next park event refresh state. If the user is
+      // still parked >24h from now we'll have caught it via a new park event
+      // or a normal foreground open by then.
+      if (parked.onSnowRoute !== true) {
+        const parkedAgeMs = parked.parkedAt
+          ? Date.now() - Date.parse(parked.parkedAt)
+          : 0;
+        // Belt-and-suspenders: if we've been parked > 24h on a non-snow route,
+        // allow one rescan tick anyway so the user isn't held on a fully stale
+        // server-side rule set (rules data does update over time).
+        if (parkedAgeMs < RESCAN_SKIP_IF_NEXT_RESTRICTION_BEYOND_MS) {
+          log.info(`Rescan skipped — not on snow route, parked ${Math.round(parkedAgeMs / 3600000)}h ago (<24h). Saves one parking API call.`);
+          return;
+        }
+        log.info(`Rescan running anyway — not on snow route but parked ${Math.round(parkedAgeMs / 3600000)}h ago (>=24h), refreshing rules.`);
+      }
+
       log.info('Performing periodic rescan at last parked location', {
         lat: parked.lat.toFixed(4),
         lng: parked.lng.toFixed(4),
         heading: parked.heading,
         accuracy: parked.accuracy,
         parkedAt: parked.parkedAt,
+        onSnowRoute: parked.onSnowRoute,
       });
 
       // Re-call the parking API with the saved coordinates PLUS the original
