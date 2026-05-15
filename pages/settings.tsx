@@ -1179,6 +1179,20 @@ function SettingsPageInner() {
   const [ilCredsSaveState, setIlCredsSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [ilCredsError, setIlCredsError] = useState<string | null>(null);
 
+  // Sticker auto-renewal toggles (master + per-sticker). Loaded from
+  // /api/profile/auto-renewal-settings; readiness flags tell the UI whether
+  // the credentials needed for each sticker type are on file yet.
+  const [autoRenewSettings, setAutoRenewSettings] = useState<{
+    authorized: boolean;
+    city_sticker: boolean;
+    license_plate: boolean;
+    authorized_at: string | null;
+    city_sticker_ready: boolean;
+    license_plate_ready: boolean;
+    missing: { city_sticker: string[]; license_plate: string[] };
+  } | null>(null);
+  const [autoRenewSaveError, setAutoRenewSaveError] = useState<string | null>(null);
+
   // Guided Setup Wizard
   const [guidedSetupStep, setGuidedSetupStep] = useState(0);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
@@ -1566,6 +1580,14 @@ function SettingsPageInner() {
         if (ilResp.ok) setIlCredsStatus(await ilResp.json());
       } catch (_) { /* non-fatal */ }
 
+      // Sticker auto-renewal toggles (master + per-sticker)
+      try {
+        const arResp = await fetch('/api/profile/auto-renewal-settings', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (arResp.ok) setAutoRenewSettings(await arResp.json());
+      } catch (_) { /* non-fatal */ }
+
       setLoading(false);
       setTimeout(() => { initialLoadRef.current = false; }, 100);
     } catch (err) {
@@ -1615,6 +1637,35 @@ function SettingsPageInner() {
       setIlCredsSaveState('error');
     }
   }, [ilRegIdInput, ilPinInput]);
+
+  // Sticker auto-renewal toggle save — flips master and/or per-sticker bits.
+  // Endpoint rejects flipping a sub-toggle ON if its credentials are missing,
+  // so the caller should only pass values that align with current readiness.
+  const saveAutoRenewSettings = useCallback(async (
+    patch: { authorized?: boolean; city_sticker?: boolean; license_plate?: boolean },
+  ) => {
+    setAutoRenewSaveError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setAutoRenewSaveError('Sign in required.');
+        return;
+      }
+      const resp = await fetch('/api/profile/auto-renewal-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify(patch),
+      });
+      const body = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        setAutoRenewSaveError(body?.error || 'Save failed.');
+        return;
+      }
+      setAutoRenewSettings(body);
+    } catch (e: any) {
+      setAutoRenewSaveError(e?.message || 'Save failed.');
+    }
+  }, []);
 
   // autoSave reads from formStateRef — zero deps, never recreated on keystroke
   const autoSave = useCallback(async () => {
@@ -2489,13 +2540,8 @@ function SettingsPageInner() {
                 Your vehicle info helps us detect camera tickets issued to the wrong car and strengthens the evidence in your contest letters.
               </p>
             )}
-
-            {/* VIN */}
-            <div>
-              <label style={FORM_STYLES.label}>VIN (optional)</label>
-              <input type="text" value={vin} onChange={(e) => setVin(e.target.value.toUpperCase())} placeholder="1HGBH41JXMN109186"
-                maxLength={17} style={{ ...FORM_STYLES.input, fontFamily: 'monospace' }} />
-            </div>
+            {/* VIN moved to the Sticker auto-renewal card — it's only used for the city-sticker
+                portal handoff, so it lives next to the toggle that actually requires it. */}
           </div>
         </CollapsibleCard>
 
@@ -3195,100 +3241,243 @@ function SettingsPageInner() {
         </CollapsibleCard>
 
 
-        {/* IL Plate Sticker Auto-Renewal */}
+        {/* Sticker auto-renewal — master toggle + per-sticker sub-toggles */}
         <CollapsibleCard
-          title="Auto-renew IL plate sticker"
-          summary={
-            ilCredsStatus?.has_credentials
-              ? ilCredsStatus.invalid_at
-                ? 'Last attempt rejected — please re-enter PIN'
-                : `Credentials on file${ilCredsStatus.updated_at ? ` (updated ${new Date(ilCredsStatus.updated_at).toLocaleDateString()})` : ''}`
-              : 'Optional — add Reg ID + PIN and we handle yearly renewal'
-          }
+          title="Sticker auto-renewal"
+          summary={(() => {
+            if (!autoRenewSettings) return 'Let Autopilot handle your city + plate sticker renewals';
+            if (!autoRenewSettings.authorized) return 'Off — we won’t charge or renew anything on your behalf';
+            const enabled: string[] = [];
+            if (autoRenewSettings.city_sticker) enabled.push('City sticker');
+            if (autoRenewSettings.license_plate) enabled.push('Plate sticker');
+            if (enabled.length === 0) return 'On — choose which stickers to auto-renew';
+            return `On — ${enabled.join(' + ')}`;
+          })()}
         >
-          <p style={{ margin: '0 0 12px', fontSize: 14, color: COLORS.textDark, lineHeight: 1.6 }}>
-            Add your Illinois Registration ID and PIN once and we'll renew your plate sticker for you each year. Find both on your IL Vehicle Registration Card or the renewal notice the state mails you.
-          </p>
-          {ilCredsStatus?.auto_renewal_authorized && (
-            <div style={{
-              padding: '10px 12px',
-              borderRadius: 8,
-              backgroundColor: '#ECFDF5',
-              border: '1px solid #A7F3D0',
-              fontSize: 13,
-              color: '#065F46',
-              marginBottom: 12,
-            }}>
-              ✓ Auto-renewal enabled by Autopilot{ilCredsStatus.auto_renewal_authorized_at ? ` on ${new Date(ilCredsStatus.auto_renewal_authorized_at).toLocaleDateString()}` : ''}. We'll email you to confirm before each yearly renewal — nothing happens without your explicit OK.
+          {/* Master toggle */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 12,
+            paddingBottom: 14,
+            borderBottom: `1px solid ${COLORS.border}`,
+            marginBottom: 14,
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h4 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: COLORS.primary }}>
+                Let Autopilot renew my stickers for me
+              </h4>
+              <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted, lineHeight: 1.5 }}>
+                We&rsquo;ll charge the card you have on file and submit each renewal. You get email reminders 30, 14, and 3 days before any charge so you can skip a year if you want.
+              </p>
             </div>
-          )}
-          {ilCredsStatus?.invalid_at && (
+            <Toggle
+              checked={Boolean(autoRenewSettings?.authorized)}
+              onChange={(next) => saveAutoRenewSettings({ authorized: next })}
+            />
+          </div>
+
+          {/* City sticker sub-row */}
+          <div style={{
+            padding: '14px',
+            borderRadius: 10,
+            border: `1px solid ${COLORS.border}`,
+            marginBottom: 12,
+            backgroundColor: autoRenewSettings?.authorized ? COLORS.white : '#F8FAFC',
+            opacity: autoRenewSettings?.authorized ? 1 : 0.6,
+          }}>
             <div style={{
-              padding: '10px 12px',
-              borderRadius: 8,
-              backgroundColor: '#FEF3C7',
-              border: '1px solid #FDE68A',
-              fontSize: 13,
-              color: '#92400E',
-              marginBottom: 12,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: 12,
             }}>
-              The state rejected your saved credentials on the last renewal attempt. This usually means your plate was replaced — please re-enter the Registration ID and PIN from your latest registration card.
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h4 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 600, color: COLORS.primary }}>
+                  Chicago city sticker
+                </h4>
+                <p style={{ margin: 0, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>
+                  We&rsquo;ll renew your city sticker through the Chicago Department of Finance portal.
+                </p>
+              </div>
+              <Toggle
+                checked={Boolean(autoRenewSettings?.city_sticker)}
+                onChange={(next) => saveAutoRenewSettings({ city_sticker: next })}
+                disabled={!autoRenewSettings?.authorized || (!autoRenewSettings?.city_sticker_ready && !autoRenewSettings?.city_sticker)}
+              />
             </div>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label style={FORM_STYLES.label}>Registration ID</label>
+
+            {/* Inline VIN field — required for city sticker auto-renewal */}
+            <div style={{ marginTop: 12 }}>
+              <label style={{ ...FORM_STYLES.label, display: 'flex', alignItems: 'center', gap: 6 }}>
+                VIN
+                {autoRenewSettings?.city_sticker && (
+                  <span style={{ fontSize: 11, color: COLORS.danger, fontWeight: 600 }}>required</span>
+                )}
+              </label>
               <input
                 type="text"
-                value={ilRegIdInput}
-                onChange={(e) => setIlRegIdInput(e.target.value)}
-                placeholder="11 digits"
-                inputMode="numeric"
-                autoComplete="off"
+                value={vin}
+                onChange={(e) => setVin(e.target.value.toUpperCase())}
+                placeholder="1HGBH41JXMN109186"
+                maxLength={17}
                 style={{ ...FORM_STYLES.input, fontFamily: 'monospace' }}
               />
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.4 }}>
+                The city portal asks for the last 6 of your VIN to confirm it&rsquo;s really your car. Found on your insurance card, registration, or the dashboard near the windshield.
+              </p>
             </div>
-            <div>
-              <label style={FORM_STYLES.label}>PIN</label>
-              <input
-                type="password"
-                value={ilPinInput}
-                onChange={(e) => setIlPinInput(e.target.value)}
-                placeholder="from registration card"
-                autoComplete="off"
-                style={{ ...FORM_STYLES.input, fontFamily: 'monospace' }}
-              />
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={saveIlCredentials}
-              disabled={!ilRegIdInput.trim() || !ilPinInput.trim() || ilCredsSaveState === 'saving'}
-              style={{
-                padding: '8px 16px',
+
+            {/* Show what's missing if the user can't enable yet */}
+            {autoRenewSettings?.authorized && !autoRenewSettings.city_sticker_ready && (
+              <div style={{
+                marginTop: 10,
+                padding: '8px 10px',
                 borderRadius: 6,
-                border: 'none',
-                fontWeight: 600,
-                fontSize: 14,
-                cursor: !ilRegIdInput.trim() || !ilPinInput.trim() || ilCredsSaveState === 'saving' ? 'not-allowed' : 'pointer',
-                backgroundColor: COLORS.accent,
-                color: '#fff',
-                opacity: !ilRegIdInput.trim() || !ilPinInput.trim() ? 0.5 : 1,
-              }}
-            >
-              {ilCredsSaveState === 'saving' ? 'Saving…' : ilCredsStatus?.has_credentials ? 'Update credentials' : 'Save credentials'}
-            </button>
-            {ilCredsSaveState === 'saved' && (
-              <span style={{ fontSize: 13, color: COLORS.accent }}>Saved — encrypted at rest.</span>
-            )}
-            {ilCredsError && (
-              <span style={{ fontSize: 13, color: COLORS.danger }}>{ilCredsError}</span>
+                backgroundColor: '#FEF3C7',
+                border: '1px solid #FDE68A',
+                fontSize: 12,
+                color: '#92400E',
+                lineHeight: 1.5,
+              }}>
+                Add the following to turn this on:{' '}
+                {autoRenewSettings.missing.city_sticker.map((m) => (
+                  m === 'vin' ? 'VIN' : m === 'license_plate' ? 'license plate' : m === 'last_name' ? 'last name' : m
+                )).join(', ')}.
+              </div>
             )}
           </div>
-          <p style={{ margin: '12px 0 0', fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>
-            Stored encrypted. We use them only to renew your plate sticker on your behalf and never share with anyone. Your PIN stays the same year over year unless your plate gets replaced.
-          </p>
+
+          {/* License plate sticker sub-row */}
+          <div style={{
+            padding: '14px',
+            borderRadius: 10,
+            border: `1px solid ${COLORS.border}`,
+            backgroundColor: autoRenewSettings?.authorized ? COLORS.white : '#F8FAFC',
+            opacity: autoRenewSettings?.authorized ? 1 : 0.6,
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: 12,
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h4 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 600, color: COLORS.primary }}>
+                  Illinois license plate sticker
+                </h4>
+                <p style={{ margin: 0, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>
+                  We&rsquo;ll renew your plate sticker through the Illinois Secretary of State EzBuy site.
+                </p>
+              </div>
+              <Toggle
+                checked={Boolean(autoRenewSettings?.license_plate)}
+                onChange={(next) => saveAutoRenewSettings({ license_plate: next })}
+                disabled={!autoRenewSettings?.authorized || (!autoRenewSettings?.license_plate_ready && !autoRenewSettings?.license_plate)}
+              />
+            </div>
+
+            {/* Inline Reg ID + PIN */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+              <div>
+                <label style={{ ...FORM_STYLES.label, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Registration ID
+                  {autoRenewSettings?.license_plate && (
+                    <span style={{ fontSize: 11, color: COLORS.danger, fontWeight: 600 }}>required</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={ilRegIdInput}
+                  onChange={(e) => setIlRegIdInput(e.target.value)}
+                  placeholder={ilCredsStatus?.has_credentials ? 'On file' : '11 digits'}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  style={{ ...FORM_STYLES.input, fontFamily: 'monospace' }}
+                />
+              </div>
+              <div>
+                <label style={{ ...FORM_STYLES.label, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  PIN
+                  {autoRenewSettings?.license_plate && (
+                    <span style={{ fontSize: 11, color: COLORS.danger, fontWeight: 600 }}>required</span>
+                  )}
+                </label>
+                <input
+                  type="password"
+                  value={ilPinInput}
+                  onChange={(e) => setIlPinInput(e.target.value)}
+                  placeholder={ilCredsStatus?.has_credentials ? 'On file' : 'from registration card'}
+                  autoComplete="off"
+                  style={{ ...FORM_STYLES.input, fontFamily: 'monospace' }}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+              <button
+                type="button"
+                onClick={saveIlCredentials}
+                disabled={!ilRegIdInput.trim() || !ilPinInput.trim() || ilCredsSaveState === 'saving'}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  border: 'none',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: !ilRegIdInput.trim() || !ilPinInput.trim() || ilCredsSaveState === 'saving' ? 'not-allowed' : 'pointer',
+                  backgroundColor: COLORS.accent,
+                  color: '#fff',
+                  opacity: !ilRegIdInput.trim() || !ilPinInput.trim() ? 0.5 : 1,
+                }}
+              >
+                {ilCredsSaveState === 'saving' ? 'Saving…' : ilCredsStatus?.has_credentials ? 'Update credentials' : 'Save credentials'}
+              </button>
+              {ilCredsSaveState === 'saved' && (
+                <span style={{ fontSize: 13, color: COLORS.accent }}>Saved — encrypted at rest.</span>
+              )}
+              {ilCredsError && (
+                <span style={{ fontSize: 13, color: COLORS.danger }}>{ilCredsError}</span>
+              )}
+            </div>
+            <p style={{ margin: '8px 0 0', fontSize: 11, color: COLORS.textMuted, lineHeight: 1.4 }}>
+              Stored encrypted. Find your Reg ID + PIN on your IL Vehicle Registration Card or the renewal notice the state mails you.
+            </p>
+
+            {ilCredsStatus?.invalid_at && (
+              <div style={{
+                marginTop: 10,
+                padding: '8px 10px',
+                borderRadius: 6,
+                backgroundColor: '#FEF3C7',
+                border: '1px solid #FDE68A',
+                fontSize: 12,
+                color: '#92400E',
+                lineHeight: 1.5,
+              }}>
+                The state rejected your saved credentials on the last renewal attempt. This usually means your plate was replaced — please re-enter your Reg ID and PIN.
+              </div>
+            )}
+
+            {autoRenewSettings?.authorized && !autoRenewSettings.license_plate_ready && (
+              <div style={{
+                marginTop: 10,
+                padding: '8px 10px',
+                borderRadius: 6,
+                backgroundColor: '#FEF3C7',
+                border: '1px solid #FDE68A',
+                fontSize: 12,
+                color: '#92400E',
+                lineHeight: 1.5,
+              }}>
+                Save your Reg ID + PIN above to enable plate-sticker auto-renewal.
+              </div>
+            )}
+          </div>
+
+          {autoRenewSaveError && (
+            <p style={{ margin: '10px 0 0', fontSize: 13, color: COLORS.danger }}>{autoRenewSaveError}</p>
+          )}
         </CollapsibleCard>
 
         {/* Soft nudge banner — only shown when user has zero receipts on file */}

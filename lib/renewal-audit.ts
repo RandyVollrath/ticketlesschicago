@@ -10,6 +10,7 @@ const supabaseAdmin = typedSupabase as any;
 
 export type RenewalAuditAction =
   | 'renewal_consent_created'
+  | 'renewal_consent_auto_granted'
   | 'renewal_consent_granted'
   | 'renewal_consent_declined'
   | 'renewal_consent_revoked'

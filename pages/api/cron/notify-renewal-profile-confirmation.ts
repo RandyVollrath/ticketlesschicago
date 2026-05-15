@@ -58,8 +58,13 @@ export default async function handler(
     const maxLookAhead = new Date();
     maxLookAhead.setDate(today.getDate() + 65);
 
-    // Get all paid Protection users with at least one renewal date set
-    const { data: users, error: usersError } = await supabaseAdmin
+    // Get all paid Protection users with at least one renewal date set.
+    // auto_renewal_{city_sticker,license_plate} are pulled so we can suppress
+    // these "confirm your profile" reminders for sticker types Autopilot is
+    // already handling — the auto-renewal flow sends its own 30/14/3-day
+    // "we're renewing this" emails and the profile data is already gated by
+    // the auto-renewal toggle's readiness checks.
+    const { data: users, error: usersError } = await (supabaseAdmin as any)
       .from('user_profiles')
       .select(`
         user_id,
@@ -81,7 +86,9 @@ export default async function handler(
         residency_proof_path,
         residency_forwarding_enabled,
         notification_preferences,
-        profile_confirmed_at
+        profile_confirmed_at,
+        auto_renewal_city_sticker,
+        auto_renewal_license_plate
       `)
       .eq('has_contesting', true);
 
@@ -103,14 +110,16 @@ export default async function handler(
         // Build list of all renewal dates the user has set
         const renewalDates: { type: string; date: Date; label: string }[] = [];
 
-        if (user.city_sticker_expiry) {
+        // Skip sticker types Autopilot is auto-renewing on the user's behalf.
+        // Emissions is not in the auto-renewal flow yet, so it's never suppressed here.
+        if (user.city_sticker_expiry && !(user as any).auto_renewal_city_sticker) {
           renewalDates.push({
             type: 'city_sticker',
             date: new Date(user.city_sticker_expiry),
             label: 'City Sticker'
           });
         }
-        if (user.license_plate_expiry) {
+        if (user.license_plate_expiry && !(user as any).auto_renewal_license_plate) {
           renewalDates.push({
             type: 'license_plate',
             date: new Date(user.license_plate_expiry),

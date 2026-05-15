@@ -35,6 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status: c.status,
         expires_at: c.expires_at,
         granted_at: c.granted_at,
+        auto_granted: (c as any).auto_granted ?? false,
       });
     }
 

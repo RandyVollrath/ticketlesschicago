@@ -42,6 +42,13 @@ export interface CreateConsentInput {
   govAmountCents: number;
   serviceFeeCents?: number;
   expiresInDays?: number;
+  /**
+   * When true, the consent is created with status='granted' immediately
+   * (default-compliant flow — user has already opted in via /settings).
+   * granted_at is set; granted_ip/UA stay null. auto_granted=true is recorded
+   * so audit + support tooling can distinguish from per-renewal Authorize clicks.
+   */
+  autoGrant?: boolean;
 }
 
 export function generateConsentToken(): string {
@@ -54,27 +61,33 @@ export async function createConsentRequest(input: CreateConsentInput): Promise<C
   const expires = new Date(Date.now() + (input.expiresInDays ?? 30) * 24 * 60 * 60 * 1000);
   const token = generateConsentToken();
 
+  const insertRow: Record<string, unknown> = {
+    user_id: input.userId,
+    renewal_type: input.renewalType,
+    license_plate: input.licensePlate ?? null,
+    license_state: input.licenseState ?? null,
+    gov_amount_cents: input.govAmountCents,
+    service_fee_cents: fee,
+    total_amount_cents: total,
+    consent_token: token,
+    status: input.autoGrant ? 'granted' : 'pending',
+    expires_at: expires.toISOString(),
+  };
+  if (input.autoGrant) {
+    insertRow.granted_at = new Date().toISOString();
+    insertRow.auto_granted = true;
+  }
+
   const { data, error } = await supabaseAdmin
     .from('renewal_purchase_consents')
-    .insert({
-      user_id: input.userId,
-      renewal_type: input.renewalType,
-      license_plate: input.licensePlate ?? null,
-      license_state: input.licenseState ?? null,
-      gov_amount_cents: input.govAmountCents,
-      service_fee_cents: fee,
-      total_amount_cents: total,
-      consent_token: token,
-      status: 'pending',
-      expires_at: expires.toISOString(),
-    } as any)
+    .insert(insertRow)
     .select()
     .single();
 
   if (error) throw new Error(`createConsentRequest: ${error.message}`);
   const record = data as unknown as ConsentRecord;
   await logRenewalAudit({
-    action: 'renewal_consent_created',
+    action: input.autoGrant ? 'renewal_consent_auto_granted' : 'renewal_consent_created',
     userId: record.user_id,
     consentId: record.id,
     details: {
@@ -82,6 +95,7 @@ export async function createConsentRequest(input: CreateConsentInput): Promise<C
       license_plate: record.license_plate,
       total_amount_cents: record.total_amount_cents,
       expires_at: record.expires_at,
+      auto_granted: Boolean(input.autoGrant),
     },
   });
   return record;

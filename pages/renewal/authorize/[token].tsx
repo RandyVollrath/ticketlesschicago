@@ -18,6 +18,7 @@ interface ConsentSummary {
   status: string;
   expires_at: string;
   granted_at: string | null;
+  auto_granted?: boolean;
 }
 
 function dollars(cents: number) {
@@ -90,14 +91,24 @@ export default function AuthorizePage() {
 
         {consent && !outcome && (
           <>
-            {consent.status !== 'pending' && (
+            {/* Auto-granted = user opted in via /settings, we're already going to charge them.
+                Page becomes a "scheduled renewal" view with a Skip button. */}
+            {consent.status === 'granted' && consent.auto_granted && (
+              <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', padding: 12, borderRadius: 8, color: '#065F46', marginBottom: 16 }}>
+                This renewal is scheduled because you turned on sticker auto-renewal in Settings. You don&rsquo;t have to do anything — we&rsquo;ll handle it.
+              </div>
+            )}
+            {/* Legacy per-renewal flow: already-decided cases get the old yellow note. */}
+            {consent.status !== 'pending' && !(consent.status === 'granted' && consent.auto_granted) && (
               <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', padding: 12, borderRadius: 8, color: '#92400E', marginBottom: 16 }}>
                 This authorization has already been {consent.status}. Nothing more to do.
               </div>
             )}
 
             <p style={{ fontSize: 16, lineHeight: 1.6, margin: '12px 0' }}>
-              We're asking your permission to renew your <strong>{TYPE_LABEL[consent.renewal_type]}</strong> on your behalf.
+              {consent.status === 'granted' && consent.auto_granted
+                ? <>Here are the details of the upcoming <strong>{TYPE_LABEL[consent.renewal_type]}</strong> renewal we&rsquo;ll handle for you.</>
+                : <>We&rsquo;re asking your permission to renew your <strong>{TYPE_LABEL[consent.renewal_type]}</strong> on your behalf.</>}
             </p>
             <dl style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: 16, margin: '16px 0' }}>
               {consent.license_plate && (
@@ -119,7 +130,9 @@ export default function AuthorizePage() {
             </dl>
 
             <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.6, margin: '12px 0' }}>
-              By clicking <strong>Authorize</strong>, you direct Autopilot America to use your stored credentials to complete this single renewal purchase on your behalf. We'll email you the confirmation receipt when it's done. Authorization expires {new Date(consent.expires_at).toLocaleDateString()}.
+              {consent.status === 'granted' && consent.auto_granted
+                ? <>We&rsquo;ll charge the card on file and submit your renewal up to a few days before it expires. If you&rsquo;d rather skip this year and renew yourself, hit the button below — it only works while we haven&rsquo;t started processing yet.</>
+                : <>By clicking <strong>Authorize</strong>, you direct Autopilot America to use your stored credentials to complete this single renewal purchase on your behalf. We&rsquo;ll email you the confirmation receipt when it&rsquo;s done. Authorization expires {new Date(consent.expires_at).toLocaleDateString()}.</>}
             </p>
 
             {consent.status === 'pending' && (
@@ -136,7 +149,19 @@ export default function AuthorizePage() {
                   disabled={submitting}
                   style={{ padding: '12px 24px', borderRadius: 8, border: '1px solid #CBD5E1', background: '#fff', color: '#334155', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}
                 >
-                  Don't authorize
+                  Don&rsquo;t authorize
+                </button>
+              </div>
+            )}
+
+            {consent.status === 'granted' && consent.auto_granted && (
+              <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => submit('revoke')}
+                  disabled={submitting}
+                  style={{ padding: '12px 24px', borderRadius: 8, border: '1px solid #DC2626', background: '#fff', color: '#DC2626', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}
+                >
+                  {submitting ? 'Submitting…' : 'Skip this year'}
                 </button>
               </div>
             )}

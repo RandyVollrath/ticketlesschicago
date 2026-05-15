@@ -28,11 +28,14 @@ interface StickerSpec {
   logCategory: 'sticker_renewal' | 'plate_renewal';
   /** Title prefix in the push */
   label: string;
+  /** user_profiles column: if TRUE the user has us auto-renewing this sticker
+   *  type, so we should NOT also push them a "go renew it yourself" reminder. */
+  autoRenewField: 'auto_renewal_city_sticker' | 'auto_renewal_license_plate';
 }
 
 const SPECS: StickerSpec[] = [
-  { field: 'city_sticker_expiry', prefKey: 'city_sticker', logCategory: 'sticker_renewal', label: 'City Sticker' },
-  { field: 'license_plate_expiry', prefKey: 'license_plate', logCategory: 'plate_renewal', label: 'License Plate Sticker' },
+  { field: 'city_sticker_expiry', prefKey: 'city_sticker', logCategory: 'sticker_renewal', label: 'City Sticker', autoRenewField: 'auto_renewal_city_sticker' },
+  { field: 'license_plate_expiry', prefKey: 'license_plate', logCategory: 'plate_renewal', label: 'License Plate Sticker', autoRenewField: 'auto_renewal_license_plate' },
 ];
 
 function todayChicagoYMD(): string {
@@ -61,12 +64,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const today = todayChicagoYMD();
-  const results = { processed: 0, sent: 0, skipped_dedup: 0, skipped_optout: 0, no_token: 0, errors: 0 };
+  const results = { processed: 0, sent: 0, skipped_dedup: 0, skipped_optout: 0, skipped_auto_renew: 0, no_token: 0, errors: 0 };
 
   // Pull users with at least one sticker date set. Limit to 5000 for safety.
-  const { data: users, error: usersErr } = await supabaseAdmin
+  // Auto-renewal toggle columns are pulled so we can skip pushing "renew your
+  // sticker" reminders for stickers Autopilot is already handling on the
+  // user's behalf (auto_renewal_city_sticker / auto_renewal_license_plate).
+  // Cast through `as any` because auto_renewal_{city_sticker,license_plate}
+  // are new columns not yet reflected in the generated supabase types.
+  const { data: users, error: usersErr } = await (supabaseAdmin as any)
     .from('user_profiles')
-    .select('user_id, first_name, city_sticker_expiry, license_plate_expiry, push_alert_preferences')
+    .select('user_id, first_name, city_sticker_expiry, license_plate_expiry, push_alert_preferences, auto_renewal_city_sticker, auto_renewal_license_plate')
     .or('city_sticker_expiry.not.is.null,license_plate_expiry.not.is.null')
     .limit(5000);
 
@@ -94,6 +102,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!REMINDER_DAYS.includes(daysUntil)) continue;
 
         results.processed++;
+
+        // Suppress the "renew your sticker" push when Autopilot is auto-renewing
+        // this sticker for the user. The create-authorized-renewal-consents
+        // cron sends its own "we're charging you on X" emails — pushing a
+        // contradictory "you need to renew" reminder is confusing.
+        if ((user as any)[spec.autoRenewField] === true) {
+          results.skipped_auto_renew++;
+          continue;
+        }
 
         // Opt-out check (default ON if not set)
         if (prefs[spec.prefKey] === false) {
