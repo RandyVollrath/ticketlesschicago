@@ -59,6 +59,10 @@ export const StorageKeys = {
   // Snow Forecast Monitoring
   SNOW_FORECAST_LAST_CHECK: 'snowForecastLastCheck', // ISO timestamp
   SNOW_FORECAST_NOTIFIED: 'snowForecastNotified', // 'true' if already warned about upcoming snow
+  // Cached min forecast temp (°F) for next 24h + timestamp. Used to skip the
+  // NWS API call on the next 2-hour tick when it's clearly too warm to snow.
+  SNOW_FORECAST_MIN_TEMP_F: 'snowForecastMinTempF',
+  SNOW_FORECAST_MIN_TEMP_AT: 'snowForecastMinTempAt',
 
   // Parking Save Retry Queue
   PARKING_SAVE_RETRY_QUEUE: 'parkingSaveRetryQueue', // JSON array of failed server saves awaiting retry
