@@ -145,8 +145,9 @@ const TempSignsMap: React.FC<Props> = ({ permits, showActive, showUpcoming, focu
                       paddingTop: 6,
                       borderTop: '1px solid #e5e7eb',
                     }}
-                    dangerouslySetInnerHTML={{ __html: p.comments }}
-                  />
+                  >
+                    {p.comments}
+                  </div>
                 )}
                 <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 6 }}>
                   CDOT permit #{p.applicationNumber}

@@ -1,15 +1,18 @@
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
 
-// Use service role key for full access
-const mscSupabase = createClient(
-  'https://zqljxkqdgfibfzdjfjiq.supabase.co',
-  '***REMOVED_MSC_SERVICE_ROLE_KEY***'
-);
+const MSC_URL = process.env.MSC_SUPABASE_URL;
+const MSC_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY;
+const AA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const AA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const ticketlessSupabase = createClient(
-  'https://dzhqolbhuqdcpngdayuq.supabase.co',
-  '***REMOVED_AA_SERVICE_ROLE_KEY***'
-);
+if (!MSC_URL || !MSC_KEY || !AA_URL || !AA_KEY) {
+  console.error('Missing Supabase credentials in .env.local (MSC_SUPABASE_URL, MSC_SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).');
+  process.exit(1);
+}
+
+const mscSupabase = createClient(MSC_URL, MSC_KEY);
+const ticketlessSupabase = createClient(AA_URL, AA_KEY);
 
 async function checkEverything() {
   console.log('📊 NOTIFICATION READINESS CHECK\n');

@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { supabase } from '../../lib/supabase';
 
 interface Partner {
   id: string;
@@ -55,12 +56,23 @@ export default function AdminPartners() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
-  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
-
   useEffect(() => {
-    if (adminToken === (process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'ticketless2025admin')) {
-      setAuthenticated(true);
-    }
+    // Gate on a real Supabase admin session, not a hardcoded password.
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      try {
+        const resp = await fetch('/api/admin/check-admin-status', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (resp.ok) {
+          const json = await resp.json();
+          if (json?.isAdmin) setAuthenticated(true);
+        }
+      } catch {
+        /* unauthenticated */
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -71,12 +83,9 @@ export default function AdminPartners() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'ticketless2025admin') {
-      setAuthenticated(true);
-      const token = process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'ticketless2025admin';
-      localStorage.setItem('adminToken', token);
-    } else {
-      setMessage('Invalid password');
+    setMessage('Sign in with your admin email at /login, then return here.');
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login?next=/admin/partners';
     }
   };
 

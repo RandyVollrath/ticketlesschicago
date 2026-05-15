@@ -898,12 +898,28 @@ export default function AdminPortal() {
   const [transferRequests, setTransferRequests] = useState<any[]>([]);
   const [transferRequestsCount, setTransferRequestsCount] = useState(0);
 
-  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
-
   useEffect(() => {
-    if (adminToken === (process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'ticketless2025admin')) {
-      setAuthenticated(true);
-    }
+    // Gate the admin UI on a real Supabase session whose email is on the
+    // admin allowlist. The previous client-side check trusted a hardcoded
+    // password string in NEXT_PUBLIC_ADMIN_TOKEN, which shipped to the
+    // browser bundle. Server-side admin APIs (`requireAdminAuth`) already
+    // perform the real check; this just removes a visible-source UI gate.
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        try {
+          const resp = await fetch('/api/admin/check-admin-status', {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (resp.ok) {
+            const json = await resp.json();
+            if (json?.isAdmin) setAuthenticated(true);
+          }
+        } catch {
+          /* fall through — stays unauthenticated */
+        }
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -934,14 +950,14 @@ export default function AdminPortal() {
     }
   }, [authenticated, activeSection, docFilter, propertyTaxFilter]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'ticketless2025admin') {
-      setAuthenticated(true);
-      const token = process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'ticketless2025admin';
-      localStorage.setItem('adminToken', token);
-    } else {
-      setMessage('Invalid password');
+    // The admin UI no longer accepts a hardcoded password. Send the visitor
+    // through the standard Supabase magic-link flow; admin emails are checked
+    // server-side by requireAdminAuth on every protected fetch.
+    setMessage('Sign in with your admin email at /login, then return to this page.');
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login?next=/admin-portal';
     }
   };
 

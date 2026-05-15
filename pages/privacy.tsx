@@ -236,13 +236,22 @@ export default function PrivacyPolicy() {
                 <strong>Resend:</strong> Email delivery for alerts and notifications
               </li>
               <li style={{ marginBottom: '8px' }}>
-                <strong>ClickSend:</strong> SMS delivery for text alerts
+                <strong>ClickSend:</strong> SMS and voice-call delivery for text and phone alerts
               </li>
               <li style={{ marginBottom: '8px' }}>
                 <strong>Supabase:</strong> Database hosting and authentication
               </li>
               <li style={{ marginBottom: '8px' }}>
                 <strong>Vercel:</strong> Website hosting
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                <strong>PostHog:</strong> Product analytics (anonymized usage events)
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                <strong>Sentry:</strong> Error monitoring (configured to scrub personal data from reports)
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                <strong>Mapping &amp; geocoding providers:</strong> Google Maps, Geoapify, Radar, and OpenStreetMap Nominatim — used to look up street addresses, find your ward/section, and display alternative parking. These providers receive the address text you enter; they do not receive your account identity.
               </li>
               <li style={{ marginBottom: '8px' }}>
                 <strong>Google Cloud Vision:</strong> Automated image quality verification for driver's license uploads (with your explicit consent). Ensures images are clear for city clerk processing. Google does not retain images after analysis. <a href="https://cloud.google.com/vision/docs/data-usage" target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', textDecoration: 'underline' }}>Learn more</a>

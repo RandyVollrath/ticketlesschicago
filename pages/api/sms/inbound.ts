@@ -52,7 +52,12 @@ export default async function handler(
   }
 
   try {
-    console.log('📨 Inbound SMS webhook received:', JSON.stringify(req.body, null, 2));
+    // Don't dump the raw body — `from` is a phone number (PII) and
+    // `messageBody` may contain account details the user replied with.
+    const fromForLog = typeof req.body?.from === 'string'
+      ? req.body.from.replace(/\d(?=\d{4})/g, '*')
+      : '(missing)';
+    console.log(`📨 Inbound SMS webhook received: from=${fromForLog} bodyLen=${(req.body?.body || '').length}`);
 
     const { from, body: messageBody } = req.body;
 

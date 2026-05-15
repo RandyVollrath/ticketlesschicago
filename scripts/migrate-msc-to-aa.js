@@ -13,16 +13,18 @@
  */
 
 const { createClient } = require("@supabase/supabase-js");
-
-// MSC Database credentials
-const MSC_URL = "https://zqljxkqdgfibfzdjfjiq.supabase.co";
-const MSC_KEY = "***REMOVED_MSC_SERVICE_ROLE_KEY***";
-
-// Load AA credentials from env
 require('dotenv').config({ path: '.env.local' });
+
+const MSC_URL = process.env.MSC_SUPABASE_URL;
+const MSC_KEY = process.env.MSC_SUPABASE_SERVICE_ROLE_KEY;
+
 const AA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const AA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+if (!MSC_URL || !MSC_KEY) {
+  console.error("Error: Missing MSC_SUPABASE_URL or MSC_SUPABASE_SERVICE_ROLE_KEY in .env.local");
+  process.exit(1);
+}
 if (!AA_URL || !AA_KEY) {
   console.error("Error: Missing AA database credentials in .env.local");
   process.exit(1);
