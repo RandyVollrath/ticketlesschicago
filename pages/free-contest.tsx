@@ -52,6 +52,7 @@ interface PortalTicketSummary {
   violationDescription: string;
   violationName: string;
   violationCode: string | null;
+  citedAddress?: string | null;
 }
 
 interface ReviewStatus {
@@ -59,8 +60,15 @@ interface ReviewStatus {
   status: 'pending' | 'processing' | 'done' | 'error';
   error_message?: string;
   analysis?: { perTicket: PortalTicketSummary[]; totalTickets: number; totalAmountDue: number } | null;
-  queue?: { position: number; ahead: number; etaSeconds: number; workerLive: boolean };
+  queue?: { position: number; ahead: number; etaSeconds: number; workerLive: boolean; heartbeatAgeMs: number | null };
 }
+
+// After this many seconds of polling without completion, swap from the
+// "estimated wait" UI to a "we'll keep working in the background" UI. The
+// user can bookmark the URL (which now contains ?review=<id>) and come
+// back later. 90s is past the typical 20–60s scrape time but short enough
+// that an obviously stuck queue gets surfaced before the user gives up.
+const SLOW_LOOKUP_THRESHOLD_MS = 90_000;
 
 export default function FreeContest() {
   // ─── Password gate ─────────────────────────────────────────────────────
@@ -78,8 +86,11 @@ export default function FreeContest() {
   const [letter, setLetter] = useState<string | null>(null);
   const [letterForTicket, setLetterForTicket] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lookupStartedAt, setLookupStartedAt] = useState<number | null>(null);
+  const [, forceTick] = useState(0);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollAttempts = useRef(0);
+  const slowTick = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -90,9 +101,28 @@ export default function FreeContest() {
     }
   }, []);
 
+  // Resume an in-flight review if the URL has ?review=<uuid>. Lets the user
+  // bookmark the page during a slow scrape and come back to the same state.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !authed) return;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('review');
+    if (id && /^[0-9a-f-]{36}$/i.test(id) && !reviewId) {
+      setReviewId(id);
+      setReviewStatus({ id, status: 'pending' });
+      setLookupStartedAt(Date.now());
+      pollAttempts.current = 0;
+      pollTimer.current = setInterval(() => pollReview(id), 4000);
+      void pollReview(id);
+      slowTick.current = setInterval(() => forceTick((n) => n + 1), 5000);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
+
   useEffect(() => {
     return () => {
       if (pollTimer.current) clearInterval(pollTimer.current);
+      if (slowTick.current) clearInterval(slowTick.current);
     };
   }, []);
 
@@ -166,8 +196,18 @@ export default function FreeContest() {
       }
       setReviewId(data.id);
       setReviewStatus({ id: data.id, status: data.status || 'pending' });
+      setLookupStartedAt(Date.now());
       pollAttempts.current = 0;
       pollTimer.current = setInterval(() => pollReview(data.id), 4000);
+      // Tick once every 5s so the "still working" message can appear after
+      // SLOW_LOOKUP_THRESHOLD_MS even if no new poll response has arrived.
+      slowTick.current = setInterval(() => forceTick((n) => n + 1), 5000);
+      // Update URL so the user can bookmark/refresh and pick up where they left off.
+      if (typeof window !== 'undefined') {
+        const u = new URL(window.location.href);
+        u.searchParams.set('review', data.id);
+        window.history.replaceState({}, '', u.toString());
+      }
     } catch (err: any) {
       setError(err?.message || 'Network error.');
     } finally {
@@ -185,6 +225,16 @@ export default function FreeContest() {
         if (pollTimer.current) {
           clearInterval(pollTimer.current);
           pollTimer.current = null;
+        }
+        if (slowTick.current) {
+          clearInterval(slowTick.current);
+          slowTick.current = null;
+        }
+        // Drop ?review= once we have results — clean URL for sharing.
+        if (typeof window !== 'undefined' && data.status === 'done') {
+          const u = new URL(window.location.href);
+          u.searchParams.delete('review');
+          window.history.replaceState({}, '', u.toString());
         }
       } else if (pollAttempts.current === 5 && pollTimer.current) {
         clearInterval(pollTimer.current);
@@ -220,7 +270,7 @@ export default function FreeContest() {
           violation_type: violationType,
           violation_description: t.violationDescription || t.violationName,
           amount: String(t.amount || ''),
-          location: '',
+          location: t.citedAddress || '',
         }),
       });
       const data = await r.json();
@@ -259,9 +309,19 @@ export default function FreeContest() {
     setLetter(null);
     setLetterForTicket(null);
     setError(null);
+    setLookupStartedAt(null);
     if (pollTimer.current) {
       clearInterval(pollTimer.current);
       pollTimer.current = null;
+    }
+    if (slowTick.current) {
+      clearInterval(slowTick.current);
+      slowTick.current = null;
+    }
+    if (typeof window !== 'undefined') {
+      const u = new URL(window.location.href);
+      u.searchParams.delete('review');
+      window.history.replaceState({}, '', u.toString());
     }
   }
 
@@ -422,39 +482,12 @@ export default function FreeContest() {
 
         {/* ─── Step 2: Waiting ──────────────────────────────────────── */}
         {isLooking && reviewStatus && (
-          <section style={{ maxWidth: 720, margin: '0 auto', padding: '24px' }}>
-            <div style={{
-              background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: 12, padding: 24,
-              textAlign: 'center',
-            }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#0c4a6e' }}>
-                {reviewStatus.status === 'processing'
-                  ? 'Pulling your tickets from the City of Chicago payment portal…'
-                  : 'Queued — starting the city portal lookup shortly'}
-              </div>
-              {reviewStatus.queue && reviewStatus.queue.etaSeconds > 0 && (
-                <div style={{ marginTop: 8, fontSize: 13, color: COLORS.slate }}>
-                  Estimated wait: <strong>{reviewStatus.queue.etaSeconds < 90
-                    ? `${Math.round(reviewStatus.queue.etaSeconds)}s`
-                    : `${Math.ceil(reviewStatus.queue.etaSeconds / 60)} min`
-                  }</strong>
-                </div>
-              )}
-              <div style={{ marginTop: 18, height: 4, background: '#BAE6FD', borderRadius: 4, overflow: 'hidden' }}>
-                <div style={{
-                  width: '40%', height: '100%', background: COLORS.regulatory,
-                  animation: 'fc-slide 1.4s ease-in-out infinite',
-                }} />
-              </div>
-            </div>
-            <style jsx global>{`
-              @keyframes fc-slide {
-                0%   { transform: translateX(-100%); }
-                50%  { transform: translateX(120%); }
-                100% { transform: translateX(250%); }
-              }
-            `}</style>
-          </section>
+          <WaitingView
+            status={reviewStatus}
+            startedAt={lookupStartedAt}
+            reviewId={reviewId!}
+            onStartOver={startOver}
+          />
         )}
 
         {/* ─── Error from review ────────────────────────────────────── */}
@@ -597,6 +630,109 @@ const btnSecondary: React.CSSProperties = {
   padding: '10px 16px', borderRadius: 10, border: `1px solid ${COLORS.border}`,
   background: '#fff', color: COLORS.deepHarbor, fontSize: 14, fontWeight: 600, cursor: 'pointer',
 };
+
+function WaitingView({
+  status, startedAt, reviewId, onStartOver,
+}: {
+  status: ReviewStatus;
+  startedAt: number | null;
+  reviewId: string;
+  onStartOver: () => void;
+}) {
+  const elapsed = startedAt ? Date.now() - startedAt : 0;
+  const slow = elapsed >= SLOW_LOOKUP_THRESHOLD_MS;
+  const workerOffline = status.queue && status.queue.workerLive === false;
+
+  const bookmarkUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/free-contest?review=${reviewId}`
+    : `/free-contest?review=${reviewId}`;
+
+  if (workerOffline) {
+    return (
+      <section style={{ maxWidth: 720, margin: '0 auto', padding: '24px' }}>
+        <div style={{
+          background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, padding: 24,
+        }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#78350F' }}>
+            Our city-portal lookup system is briefly offline
+          </div>
+          <div style={{ marginTop: 8, color: '#78350F', fontSize: 14, lineHeight: 1.55 }}>
+            Your request is safely queued. As soon as the system is back, we&apos;ll process
+            it — there&apos;s nothing more for you to do. Bookmark this URL and come back
+            in a few minutes:
+          </div>
+          <div style={{
+            marginTop: 12, padding: '10px 12px', background: '#fff', borderRadius: 8,
+            border: '1px solid #FDE68A', fontSize: 12, fontFamily: 'monospace',
+            color: COLORS.graphite, wordBreak: 'break-all',
+          }}>
+            {bookmarkUrl}
+          </div>
+          <button onClick={onStartOver} style={{ ...btnSecondary, marginTop: 14 }}>
+            ← Try a different plate
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section style={{ maxWidth: 720, margin: '0 auto', padding: '24px' }}>
+      <div style={{
+        background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: 12, padding: 24,
+        textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#0c4a6e' }}>
+          {slow
+            ? 'Still working in the background…'
+            : status.status === 'processing'
+              ? 'Pulling your tickets from the City of Chicago payment portal…'
+              : 'Queued — starting the city portal lookup shortly'}
+        </div>
+        {!slow && status.queue && status.queue.etaSeconds > 0 && (
+          <div style={{ marginTop: 8, fontSize: 13, color: COLORS.slate }}>
+            Estimated wait: <strong>{status.queue.etaSeconds < 90
+              ? `${Math.round(status.queue.etaSeconds)}s`
+              : `${Math.ceil(status.queue.etaSeconds / 60)} min`
+            }</strong>
+          </div>
+        )}
+        <div style={{ marginTop: 18, height: 4, background: '#BAE6FD', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{
+            width: '40%', height: '100%', background: COLORS.regulatory,
+            animation: 'fc-slide 1.4s ease-in-out infinite',
+          }} />
+        </div>
+
+        {slow && (
+          <div style={{
+            marginTop: 18, padding: 14, background: '#fff', borderRadius: 10,
+            border: '1px solid #BAE6FD', textAlign: 'left',
+            fontSize: 13, color: COLORS.deepHarbor, lineHeight: 1.55,
+          }}>
+            <strong>Taking longer than usual</strong> — the city portal is sometimes slow.
+            You don&apos;t have to stay here. Bookmark this URL and come back in a few
+            minutes; your results will be waiting:
+            <div style={{
+              marginTop: 8, padding: '8px 10px', background: COLORS.concrete,
+              borderRadius: 6, fontFamily: 'monospace', fontSize: 12,
+              color: COLORS.graphite, wordBreak: 'break-all',
+            }}>
+              {bookmarkUrl}
+            </div>
+          </div>
+        )}
+      </div>
+      <style jsx global>{`
+        @keyframes fc-slide {
+          0%   { transform: translateX(-100%); }
+          50%  { transform: translateX(120%); }
+          100% { transform: translateX(250%); }
+        }
+      `}</style>
+    </section>
+  );
+}
 
 function TicketRow({ t, busy, onGenerate }: { t: PortalTicketSummary; busy: boolean; onGenerate: () => void }) {
   return (

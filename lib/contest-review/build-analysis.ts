@@ -45,6 +45,15 @@ export interface PerTicketAnalysis {
   beyondTemplate: BeyondTemplateArgument[];
   recommendation: 'contest' | 'maybe' | 'skip';
   recommendationReason: string;
+  /**
+   * The violation address composed from FOIA (street_num + dir + name).
+   * The CHI PAY portal doesn't expose the cited address — only "Ticket --
+   * Skeletal" records. We resolve it from foia.db when the ticket is old
+   * enough to be in the FOIA dataset (typically ~4 months after issue).
+   * Null when not in FOIA. Used by /free-contest to fill the {location}
+   * token in red_light/speed_camera/parking_prohibited contest templates.
+   */
+  citedAddress: string | null;
 }
 
 export interface FreeReviewAnalysis {
@@ -107,6 +116,7 @@ export function buildAnalysis(
       beyondTemplate: beyond,
       recommendation,
       recommendationReason: reason,
+      citedAddress: enrichment.foundInFoia ? (enrichment.citedAddress ?? null) : null,
     });
   }
 
