@@ -30,7 +30,7 @@ const FONT = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sa
 //
 // 3) Top-10 violation breakdown sourced from same tickets table, 2025, Chicago-zip.
 
-const PRICE = 99;
+const PRICE = 79;
 const LATE_FEES_M = 74.1;
 const TICKETED_PLATES = 883240;
 const LATE_FEE_PER_TICKETED = 84;          // $74.1M / 883,240 = $83.94
@@ -167,7 +167,7 @@ export default function TheMath() {
             fontSize: '46px', lineHeight: 1.1, fontWeight: 800,
             color: COLORS.deepHarbor, margin: '0 0 20px', letterSpacing: '-0.025em',
           }}>
-            $84 in late fees. <span style={{ color: COLORS.rose }}>${PRICE}</span> for Autopilot.
+            $84 in late fees. <span style={{ color: COLORS.signal }}>${PRICE}</span> for Autopilot.
           </h1>
           <p style={{ fontSize: '20px', lineHeight: 1.55, color: COLORS.slate, margin: '0 0 36px' }}>
             The average Chicago driver who got a ticket last year paid <strong style={{ color: COLORS.deepHarbor }}>${LATE_FEE_PER_TICKETED} in late fees alone</strong> — on top of the original fines. Autopilot's mail-in contest service freezes the late-fee clock the moment a ticket lands. That one feature, by itself, almost covers the cost of the whole product.
@@ -340,7 +340,7 @@ Late fees per ticketed driver   =       $83.94   ≈  $84`}</CodeBlock>
               <span style={{ fontWeight: 700, color: COLORS.deepHarbor, fontVariantNumeric: 'tabular-nums' }}>{COVERED_PCT}% of dollar exposure</span>
 
               <span style={{ fontWeight: 800, color: COLORS.deepHarbor, borderTop: `1px solid ${COLORS.rose}`, paddingTop: '12px' }}>Cost</span>
-              <span style={{ fontWeight: 800, color: COLORS.rose, fontVariantNumeric: 'tabular-nums', borderTop: `1px solid ${COLORS.rose}`, paddingTop: '12px' }}>${PRICE}/year</span>
+              <span style={{ fontWeight: 800, color: COLORS.signal, fontVariantNumeric: 'tabular-nums', borderTop: `1px solid ${COLORS.rose}`, paddingTop: '12px' }}>${PRICE}/year</span>
             </div>
           </div>
 
