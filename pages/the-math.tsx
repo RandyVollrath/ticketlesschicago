@@ -188,7 +188,7 @@ export default function TheMath() {
           <H2 id="late-fees">How we got to $84</H2>
 
           <P>
-            <strong>The City of Chicago is in the late-fee business.</strong> A parking ticket starts at face value — $75 for street cleaning, $60 for an expired meter — but if you don't pay or contest within 25 days, the fine <em>doubles</em>. Don't respond to the second notice either, and the City stops counting it as a ticket and starts counting it as a debt sent to the Department of Administrative Hearings.
+            <strong>The City of Chicago is in the late-fee business.</strong> A parking ticket starts at face value — $60 for street cleaning, $50 for an expired meter outside the Loop, $100 for a red-light camera — but if you don't pay or contest in time, the fine <em>doubles</em> to a level-2 penalty. Keep ignoring the notices and the City enters a default determination of liability, after which it goes to collections and can suspend your driver's license.
           </P>
 
           <P>
@@ -256,10 +256,10 @@ Late fees per ticketed driver   =       $83.94   ≈  $84`}</CodeBlock>
           <Layer
             n={2}
             title="Automatic contesting — you don't lift a finger"
-            claim={`94% of drivers don't contest. The ones who mail in win ${MAIL_WIN_PCT}% of the time.`}
+            claim={`94% of tickets go uncontested. The ones contested by mail win ${MAIL_WIN_PCT}% of the time.`}
           >
             <P>
-              Filing a contest in Chicago means writing a letter, mailing it certified to 400 W. Superior with a hearing officer at DOAH, and showing up to a hearing (or requesting a mail decision). <strong>{UNCONTESTED_PCT}% of Chicago drivers never contest a ticket</strong> — they just pay or let it slide into late-fee territory. It's not because the tickets are good. It's because the process is hostile.
+              Filing a contest in Chicago means writing a defense letter, mailing it to the City's adjudication office, and either showing up to a hearing or requesting a decision on the documents. <strong>{UNCONTESTED_PCT}% of Chicago tickets are never contested</strong> — drivers just pay or let them slide into late-fee territory. It's not because the tickets are good. It's because the process is hostile.
             </P>
             <P>
               When Chicago drivers actually do mail in a contest, they win — dismissed entirely — <strong>{MAIL_WIN_PCT}% of the time</strong>. That's the trailing 2023–2025 win rate for the mail-in path, computed from 287,532 decided contests in the hearings table of our FOIA database.
@@ -309,7 +309,7 @@ Late fees per ticketed driver   =       $83.94   ≈  $84`}</CodeBlock>
               <li>Street cleaning</li>
             </ul>
             <P>
-              That's <strong>{COVERED_PCT}% of every dollar Chicago drivers are billed in tickets ({fmt$(COVERED_DOLLARS_M)}M of ${TOTAL_CHI_DOLLARS_M}M in 2025)</strong>. The two we don't yet cover with prevention alerts are commercial loading zones and residential permit zones (we know where the zones are; we're still mapping out the day/time restrictions for each one). Both are on the roadmap.
+              That's <strong>{COVERED_PCT}% of every dollar Chicago drivers are billed in tickets ({fmt$(COVERED_DOLLARS_M)}M of ${TOTAL_CHI_DOLLARS_M}M in 2025)</strong>. The two top-10 violations we don't yet cover with prevention alerts are generic "no parking anytime" zones and residential permit zones (we know where the permit zones are; we're still mapping out the day/time restrictions for each one). Both are on the roadmap.
             </P>
           </Layer>
 
