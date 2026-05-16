@@ -55,26 +55,26 @@ export const AUTOPILOT_PLANS = {
   },
 } as const;
 
-// New-customer pricing: $99/yr or $10/mo. Existing $79/yr Founding Members and
-// the one $9/mo legacy customer are grandfathered — their Stripe subscriptions
-// keep renewing at their historical rate; we never modify those subscriptions.
+// New-customer pricing: $79/yr or $9/mo (reverted from $99/$10 on 2026-05-16).
+// Anyone who signed up at $99/$10 between 2026-05-15 and 2026-05-16 stays
+// grandfathered in Stripe at their rate — we never modify existing
+// subscriptions.
 //
-// Both AUTOPILOT_PRICE_ID and AUTOPILOT_MONTHLY_PRICE_ID fall back through prior
-// env vars if the new one is unset, so checkout keeps working at the old price
-// until you set the new env var. Set both in Vercel env once the new Stripe
-// prices are created: STANDARD_ANNUAL_99=price_xxx, STANDARD_MONTHLY_10=price_xxx.
-export const ACTIVE_AUTOPILOT_PLAN = AUTOPILOT_PLANS.STANDARD_ANNUAL_99;
-export const ACTIVE_MONTHLY_PLAN = AUTOPILOT_PLANS.STANDARD_MONTHLY_10;
+// Both AUTOPILOT_PRICE_ID and AUTOPILOT_MONTHLY_PRICE_ID prefer the $79/$9
+// env vars first; the $99/$10 vars stay as fallbacks so a checkout that
+// somehow hits the codepath before the revert lands still works.
+export const ACTIVE_AUTOPILOT_PLAN = AUTOPILOT_PLANS.STANDARD_ANNUAL_79;
+export const ACTIVE_MONTHLY_PLAN = AUTOPILOT_PLANS.STANDARD_MONTHLY_9;
 
 export const AUTOPILOT_PRICE_ID =
-  process.env.STANDARD_ANNUAL_99 ||
   process.env.STANDARD_ANNUAL_79 ||
+  process.env.STANDARD_ANNUAL_99 ||
   process.env.STRIPE_AUTOPILOT_PRICE_ID ||
   process.env.STRIPE_FOUNDING_ANNUAL_49_PRICE_ID ||
-  'price_autopilot_annual_99';
+  'price_autopilot_annual_79';
 
 export const AUTOPILOT_MONTHLY_PRICE_ID =
-  process.env.STANDARD_MONTHLY_10 ||
   process.env.STANDARD_MONTHLY_9 ||
+  process.env.STANDARD_MONTHLY_10 ||
   process.env.STRIPE_AUTOPILOT_MONTHLY_PRICE_ID ||
-  'price_autopilot_monthly_10';
+  'price_autopilot_monthly_9';

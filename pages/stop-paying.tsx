@@ -6,7 +6,7 @@ export default function StopPayingFlyer() {
       flyerKey="stop_paying"
       eyebrow="Chicago Parking & Camera Tickets"
       headline="Stop Paying Chicago Tickets Like It's Normal."
-      subhead="Chicago bills drivers $420 million a year in parking and camera tickets. 94% are never contested — because fighting one means a 21-day deadline, physical mail, and a hearing downtown. We do it all for you, for $99/year, unlimited tickets."
+      subhead="Chicago bills drivers $420 million a year in parking and camera tickets. 94% are never contested — because fighting one means a 21-day deadline, physical mail, and a hearing downtown. We do it all for you, for $79/year, unlimited tickets."
       stat={{ big: '$420M', label: 'billed by the City to Chicago drivers in 2025 — your share: ~$234/year (FOIA F129773 + 2025 Budget Ordinance)' }}
       bullets={[
         'We detect every ticket within 3 days via twice-weekly plate monitoring on the City payment portal.',

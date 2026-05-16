@@ -1150,7 +1150,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
             }}>
               <p style={{ fontSize: '14px', color: '#92400e', margin: 0, textAlign: 'center' }}>
                 Average Chicago driver: <strong>$1,000/year in tickets</strong><br/>
-                Autopilot Protection: <strong>$99/year</strong><br/>
+                Autopilot Protection: <strong>$79/year</strong><br/>
                 <span style={{ fontSize: '16px', fontWeight: '700' }}>Save up to $1,000 per year</span>
               </p>
             </div>
@@ -1177,7 +1177,7 @@ export default function TicketContester({ userId }: TicketContesterProps) {
                 e.currentTarget.style.backgroundColor = '#2563eb';
               }}
             >
-              Get Autopilot - $99/year →
+              Get Autopilot - $79/year →
             </button>
           </div>
 

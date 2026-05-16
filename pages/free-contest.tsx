@@ -614,7 +614,7 @@ export default function FreeContest() {
                     textDecoration: 'none',
                   }}
                 >
-                  Start Autopilot — $99/year →
+                  Start Autopilot — $79/year →
                 </a>
               </div>
             </div>

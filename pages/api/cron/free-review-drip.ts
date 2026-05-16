@@ -6,7 +6,7 @@
  * cron sends them:
  *
  *   Day 3 — educational, no pitch (Chicago ticket math)
- *   Day 7 — soft pitch ($99/yr Autopilot)
+ *   Day 7 — soft pitch ($79/yr Autopilot)
  *
  * State is tracked on free_review_requests.drip_day3_sent_at /
  * drip_day7_sent_at (see migration 20260515_free_review_source_and_drip.sql).

@@ -312,7 +312,7 @@ export default function Protection() {
   };
 
   const calculateTotal = () => {
-    const subscriptionPrice = billingPlan === 'monthly' ? 10 : 99;
+    const subscriptionPrice = billingPlan === 'monthly' ? 9 : 79;
     return subscriptionPrice;
   };
 
@@ -455,7 +455,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              By Autopilot America. $99/year or $10/month. Unlimited automated contesting for eligible tickets.
+              By Autopilot America. $79/year or $9/month. Unlimited automated contesting for eligible tickets.
             </p>
           </div>
 
@@ -584,7 +584,7 @@ export default function Protection() {
                         boxShadow: billingPlan === 'monthly' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                       }}
                     >
-                      Monthly ($10/mo)
+                      Monthly ($9/mo)
                     </button>
                     <button
                       onClick={() => {
@@ -603,7 +603,7 @@ export default function Protection() {
                         boxShadow: billingPlan === 'annual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                       }}
                     >
-                      Annual ($99/yr)
+                      Annual ($79/yr)
                     </button>
                   </div>
                 </div>
@@ -618,7 +618,7 @@ export default function Protection() {
                     textAlign: 'center'
                   }}>
                     <span style={{ fontSize: '14px', fontWeight: '600', color: COLORS.signal }}>
-                      Save $21/year with annual billing
+                      Save $29/year with annual billing
                     </span>
                   </div>
                 )}
@@ -770,7 +770,7 @@ export default function Protection() {
                     textAlign: 'center'
                   }}>
                     <div style={{ fontSize: '15px', color: COLORS.regulatory, fontWeight: '700', marginBottom: '4px' }}>
-                      Due today: ${billingPlan === 'monthly' ? '10' : '99'}
+                      Due today: ${billingPlan === 'monthly' ? '9' : '79'}
                     </div>
                     <div style={{ fontSize: '12px', color: COLORS.slate }}>
                       {billingPlan === 'monthly' ? 'Billed monthly. Cancel anytime.' : 'Billed annually.'}
@@ -779,7 +779,7 @@ export default function Protection() {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '15px', color: COLORS.graphite, fontWeight: '600' }}>
                     <span>Protection subscription ({billingPlan})</span>
-                    <span>${billingPlan === 'monthly' ? '10' : '99'}</span>
+                    <span>${billingPlan === 'monthly' ? '9' : '79'}</span>
                   </div>
 
                   {hasPermitZone && permitRequested && (

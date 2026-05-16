@@ -176,7 +176,7 @@ export default function LandingPage() {
     }}>
       <Head>
         <title>The Chicago Ticket Defense Plan | Autopilot America</title>
-        <meta name="description" content="The Chicago Ticket Defense Plan by Autopilot America — street cleaning & snow ban alerts, twice-weekly plate monitoring, automatic contest letters drafted/printed/mailed, and sticker auto-renewal. $99/year or $10/month." />
+        <meta name="description" content="The Chicago Ticket Defense Plan by Autopilot America — street cleaning & snow ban alerts, twice-weekly plate monitoring, automatic contest letters drafted/printed/mailed, and sticker auto-renewal. $79/year or $9/month." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -319,12 +319,12 @@ export default function LandingPage() {
           margin: '0 auto 32px',
           lineHeight: 1.5
         }}>
-          Chicago drivers paid <strong style={{ color: '#fff' }}>$420 million</strong> in parking and camera tickets last year. <span style={{ color: '#CBD5E1' }}>The Plan keeps you out of that number for \$99/year. <strong style={{ color: '#fff' }}>Guaranteed<sup style={{ fontSize: '0.6em' }}>*</sup></strong></span>
+          Chicago drivers paid <strong style={{ color: '#fff' }}>$420 million</strong> in parking and camera tickets last year. <span style={{ color: '#CBD5E1' }}>The Plan keeps you out of that number for \$79/year. <strong style={{ color: '#fff' }}>Guaranteed<sup style={{ fontSize: '0.6em' }}>*</sup></strong></span>
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <Button primary href="/get-started">
-            Get Started - \$99/year <ArrowRight />
+            Get Started - \$79/year <ArrowRight />
           </Button>
         </div>
 
@@ -380,7 +380,7 @@ export default function LandingPage() {
           letterSpacing: '-0.5px',
           lineHeight: 1.15,
         }}>
-          \$99/year pays for itself after one avoided ticket.
+          \$79/year pays for itself after one avoided ticket.
         </h2>
         <p style={{
           fontSize: '18px',
@@ -574,7 +574,7 @@ export default function LandingPage() {
             letterSpacing: '0.3px',
             boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
           }}>
-            Get Protected for \$99/year
+            Get Protected for \$79/year
           </Link>
         </div>
       </section>
@@ -818,7 +818,7 @@ export default function LandingPage() {
                 transition: 'all 0.2s ease',
               }}
             >
-              Annual <span style={{ fontSize: 12, color: '#10B981', fontWeight: 600, marginLeft: 6 }}>Save $21</span>
+              Annual <span style={{ fontSize: 12, color: '#10B981', fontWeight: 600, marginLeft: 6 }}>Save $29</span>
             </button>
             <button
               type="button"
@@ -861,7 +861,7 @@ export default function LandingPage() {
                 color: '#fff',
                 letterSpacing: '-1px',
               }}>
-                {pricingPlan === 'annual' ? '$99' : '$10'}
+                {pricingPlan === 'annual' ? '$79' : '$9'}
                 <span style={{ fontSize: '20px', color: '#94A3B8', fontWeight: 400 }}>
                   {pricingPlan === 'annual' ? '/year' : '/month'}
                 </span>
@@ -881,7 +881,7 @@ export default function LandingPage() {
                     Cancel anytime. No commitment.
                   </p>
                   <p style={{ color: '#94A3B8', fontSize: '13px', margin: 0 }}>
-                    $120/year — save $21 with annual.
+                    $108/year — save $29 with annual.
                   </p>
                 </>
               )}
@@ -915,7 +915,7 @@ export default function LandingPage() {
               href={`/get-started?plan=${pricingPlan}`}
               style={{ backgroundColor: '#fff', color: COLORS.primary }}
             >
-              Get Started {pricingPlan === 'annual' ? '— $99/year' : '— $10/month'}
+              Get Started {pricingPlan === 'annual' ? '— $79/year' : '— $9/month'}
             </Button>
 
             <p style={{ fontSize: '13px', color: '#94A3B8', marginTop: '20px', textAlign: 'center', lineHeight: 1.6 }}>
@@ -1001,7 +1001,7 @@ export default function LandingPage() {
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button primary href="/get-started">
-              Get Started - \$99/year <ArrowRight />
+              Get Started - \$79/year <ArrowRight />
             </Button>
           </div>
         </div>

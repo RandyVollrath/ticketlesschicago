@@ -291,7 +291,7 @@ async function sendProofEmail(email: string, firstName?: string) {
           p("That gap — 59% would win, 10% try — is exactly where the $420M comes from. People accepting tickets because contesting them yourself is real work."),
           callout('success', "What you actually bought",
             "You bought the part that closes that gap. Every ticket on your plate now gets a custom contest letter written, printed, and mailed to the city before the deadline. The 59% dismissal rate is now <em>yours</em>, automatically, without you spending a Saturday afternoon drafting a defense."),
-          p("Average Chicago driver pays around <strong>$234/year</strong> in tickets and late fees they could have either avoided or contested. Autopilot at $99/year, with one auto-dismissed ticket per year, pays for itself."),
+          p("Average Chicago driver pays around <strong>$234/year</strong> in tickets and late fees they could have either avoided or contested. Autopilot at $79/year, with one auto-dismissed ticket per year, pays for itself."),
           p("You're already on the right side of the math. Welcome to the 1 in 10."),
           signature('Randy'),
           divider(),
@@ -334,7 +334,7 @@ async function sendSoftSellEmail(email: string, firstName?: string) {
           p("Until last week, you didn't. Now you do."),
           callout('success', "What your protection is doing this week",
             "Twice-weekly checks of the city's ticket portal. Street cleaning, snow ban, sticker, and emissions watchers all running quietly in the background. The next time the city schedules a ticket for your block, you'll know before they write it."),
-          p("And for the tickets you can't prevent — the meter that expired 2 minutes early, the sign you didn't see, the street cleaning that started at 7am instead of 9am — we already have the contest pipeline ready. <strong>59% of mail-contested tickets in Chicago get dismissed</strong> (FOIA 2023–2025). That's the side of the math your $99/year just put you on."),
+          p("And for the tickets you can't prevent — the meter that expired 2 minutes early, the sign you didn't see, the street cleaning that started at 7am instead of 9am — we already have the contest pipeline ready. <strong>59% of mail-contested tickets in Chicago get dismissed</strong> (FOIA 2023–2025). That's the side of the math your $79/year just put you on."),
           callout('info', "Worth re-reading: the First Dismissal Guarantee",
             "If your first contest letter doesn't result in dismissal, we refund the year. No questions. We only win when you do."),
           section("If you haven't yet, two quick wins", bulletList([

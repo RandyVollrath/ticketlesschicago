@@ -108,6 +108,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   return res.status(200).send(htmlPage('Unsubscribed', `
     <h1>Unsubscribed — we'll stop all follow-up emails for plate ${row.plate}.</h1>
     <p>No more weekly rechecks, no more drip emails. Your original review at <a href="/free-ticket-review?id=${row.id}">/free-ticket-review?id=${row.id}</a> is still there.</p>
-    <p>If you ever want ongoing protection again — contest filing, FOIA, street-cleaning alerts — Autopilot is $99/year. <a href="/get-started">Start Autopilot →</a></p>
+    <p>If you ever want ongoing protection again — contest filing, FOIA, street-cleaning alerts — Autopilot is $79/year. <a href="/get-started">Start Autopilot →</a></p>
   `));
 }

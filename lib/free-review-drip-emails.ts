@@ -6,7 +6,7 @@
  * the same 2-email FOIA-style nurture:
  *
  *   Day 3 — educational, no pitch. Chicago ticket math.
- *   Day 7 — soft pitch. Autopilot at $99/yr, first-dismissal guarantee.
+ *   Day 7 — soft pitch. Autopilot at $79/yr, first-dismissal guarantee.
  *
  * Tracking lives on free_review_requests.drip_day3_sent_at / drip_day7_sent_at.
  * drip_unsubscribed is the kill switch — same flag the /api/contest/free-review-
@@ -100,7 +100,7 @@ export async function sendFreeReviewDripDay3(params: {
 /**
  * Day 7 — Soft pitch.
  * Sent 7 days after the free review. By now the City's portal has usually
- * caught up. Pitches Autopilot at $99/yr with the First Dismissal Guarantee.
+ * caught up. Pitches Autopilot at $79/yr with the First Dismissal Guarantee.
  * If the user has a paid Autopilot account by now, the cron filters them
  * out before calling this — but we leave the soft-pitch language honest
  * regardless (it's the email body, not the audience filter).
@@ -123,14 +123,14 @@ export async function sendFreeReviewDripDay7(params: {
       p("A week ago you ran a free review on your plate. Whether the City has shown new tickets yet or not, wanted to share what we built and why."),
       callout('success', 'How Autopilot works',
         `<strong>Twice a week</strong> we check Chicago's ticket system for your plate. New ticket appears? We pull the violation code, look up the specific legal defense that wins for that violation, generate a custom contest letter, and <strong>mail it before the deadline</strong>. You don't do anything. 59% of mail-contested tickets get dismissed (FOIA data).`),
-      section("What's included for $99/year", bulletList([
+      section("What's included for $79/year", bulletList([
         '<strong>Twice-weekly plate monitoring</strong> — we catch tickets within days',
         '<strong>Auto-generated contest letters</strong> — written, printed, mailed for you',
         '<strong>Street cleaning, snow ban, sticker, emissions, and city sticker alerts</strong> — stop tickets before they happen',
         "<strong>First Dismissal Guarantee</strong> — if your first contest letter doesn't result in dismissal, we refund the year. No questions.",
       ])),
-      p('$99/year. Less than two parking tickets. One dismissal pays for the year.', { center: true, size: '14px' }),
-      button('Start Autopilot Protection — $99/year', 'https://www.autopilotamerica.com/get-started', { color: '#10B981' }),
+      p('$79/year. Less than two parking tickets. One dismissal pays for the year.', { center: true, size: '14px' }),
+      button('Start Autopilot Protection — $79/year', 'https://www.autopilotamerica.com/get-started', { color: '#10B981' }),
       p(`Your review from last week is still here: <a href="${reviewLink}" style="color:#2563EB;">${reviewLink}</a>`, { size: '13px', color: '#6B7280' }),
       p('Not interested? No worries. We\'ll keep quietly watching your plate and only email if a new ticket shows up.', { size: '13px', color: '#6B7280', center: true }),
       p('— The Autopilot team', { size: '13px', color: '#6B7280' }),
