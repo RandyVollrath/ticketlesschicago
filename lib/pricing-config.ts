@@ -15,17 +15,17 @@
 // config — display strings here only apply to public marketing + new signups.
 export const SUBSCRIPTION_PRICING = {
   monthly: {
-    amount: 9,
-    displayAmount: '$9',
+    amount: 10,
+    displayAmount: '$10',
     interval: 'month',
-    stripePriceEnvKey: 'STANDARD_MONTHLY_9',
+    stripePriceEnvKey: 'STANDARD_MONTHLY_10',
   },
   annual: {
     amount: 99,
     displayAmount: '$99',
     interval: 'year',
     stripePriceEnvKey: 'STANDARD_ANNUAL_99',
-    savings: '$9', // vs monthly × 12 = $108
+    savings: '$21', // vs monthly × 12 = $120; annual saves $21
   },
 } as const;
 
