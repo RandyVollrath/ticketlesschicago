@@ -1,5 +1,5 @@
 {
-  "buildCommand": "bash scripts/vercel-build.sh",
+  "buildCommand": "if echo \"${VERCEL_GIT_COMMIT_REF:-}\" | grep -q '^auto/parking-quality-'; then echo 'Refusing to deploy auto/parking-quality-* branch' >&2; exit 1; fi; next build",
   "functions": {
     "pages/api/notifications/process.ts": {
       "maxDuration": 60
