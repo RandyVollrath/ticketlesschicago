@@ -3,13 +3,12 @@
  * Returns priority blocks for the collection workflow.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabaseAdmin } from '../../../lib/supabase';
+import { permitSb } from '../../../lib/permit-zone-supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!supabaseAdmin) return res.status(500).json({ error: 'no service role configured' });
   const status = String(req.query.status || 'pending');
   const limit = Math.min(Number(req.query.limit || 50), 500);
-  const sb = supabaseAdmin as any;
+  const sb = permitSb as any;
   const { data, error } = await sb
     .from('permit_zone_collection_targets')
     .select('*')

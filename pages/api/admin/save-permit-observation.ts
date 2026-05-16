@@ -4,13 +4,12 @@
  * Optional fields: photo_base64 (data:image/jpeg;base64,…) — uploaded to Supabase Storage.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabaseAdmin } from '../../../lib/supabase';
+import { permitSb } from '../../../lib/permit-zone-supabase';
 
 export const config = { api: { bodyParser: { sizeLimit: '15mb' } } };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-  if (!supabaseAdmin) return res.status(500).json({ error: 'no service role configured' });
 
   const obs = req.body || {};
 
@@ -23,14 +22,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const ext = mime.split('/')[1];
       const buf = Buffer.from(m[2], 'base64');
       const key = `permit-signs/${new Date().toISOString().slice(0, 10)}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: upErr } = await supabaseAdmin.storage.from('permit-sign-photos').upload(key, buf, {
+      const { error: upErr } = await permitSb.storage.from('permit-sign-photos').upload(key, buf, {
         contentType: mime,
         upsert: false,
       });
       if (upErr && !upErr.message?.includes('already exists')) {
         return res.status(500).json({ error: 'photo upload failed: ' + upErr.message });
       }
-      const { data: pub } = supabaseAdmin.storage.from('permit-sign-photos').getPublicUrl(key);
+      const { data: pub } = permitSb.storage.from('permit-sign-photos').getPublicUrl(key);
       photo_url = pub?.publicUrl || null;
     }
   }
@@ -57,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const row: any = {};
   for (const k of Object.keys(obs)) if (ALLOWED.has(k)) row[k] = obs[k];
 
-  const { data, error } = await (supabaseAdmin as any)
+  const { data, error } = await (permitSb as any)
     .from('permit_zone_field_observations')
     .insert(row)
     .select('id')
