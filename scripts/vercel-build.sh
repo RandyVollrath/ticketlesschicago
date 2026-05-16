@@ -26,5 +26,7 @@ case "$BRANCH" in
     ;;
 esac
 
-# Normal Next.js build. Mirrors npm run build.
-exec npx next build
+# Normal Next.js build. Mirrors npm run build, but invokes the binary
+# directly from node_modules/.bin so we don't depend on npx being on
+# PATH (Vercel build containers strip PATH down significantly).
+exec ./node_modules/.bin/next build
