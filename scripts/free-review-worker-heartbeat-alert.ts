@@ -32,8 +32,12 @@ const HEARTBEAT_STALE_MS = process.env.HEARTBEAT_STALE_MS_OVERRIDE
   ? parseInt(process.env.HEARTBEAT_STALE_MS_OVERRIDE, 10)
   : 5 * 60 * 1000;   // 5 min — matches alert cadence
 const DRY_RUN = process.env.HEARTBEAT_ALERT_DRY_RUN === '1';
-const ADMIN_EMAIL = 'randyvollrath@gmail.com';
-const ALERT_FROM = 'Autopilot America <alerts@autopilotamerica.com>';
+// Plus-alias delivers to the same inbox but lets Randy set up a Gmail filter
+// matching to:randyvollrath+ops-p1@gmail.com → label/star/notify. Pairs with
+// the [P1-ACTION] subject prefix so the filter can match either field.
+const ADMIN_EMAIL = 'randyvollrath+ops-p1@gmail.com';
+const ALERT_FROM = 'Autopilot America Ops <alerts@autopilotamerica.com>';
+const SUBJECT_PREFIX = '[P1-ACTION]';
 const SENTINEL_PATH = join(homedir(), '.free-review-worker-alert-state');
 
 const supabase = createClient(
@@ -104,7 +108,7 @@ async function sendAlert(body: string) {
   const hostname = (() => {
     try { return readFileSync('/etc/hostname', 'utf-8').trim(); } catch { return 'unknown'; }
   })();
-  const subject = `🚨 free-review-worker is silent (${hostname})`;
+  const subject = `${SUBJECT_PREFIX} free-review-worker is silent — ${hostname}`;
   const html = `
     <h2>Free-review worker is silent</h2>
     <p>${body}</p>

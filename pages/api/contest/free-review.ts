@@ -54,6 +54,11 @@ async function handleEnqueue(req: NextApiRequest, res: NextApiResponse) {
   // Monitor flag: keep watching the plate weekly and email on new tickets.
   // Only honored when we actually have an email — silently false otherwise.
   const wantsMonitor: boolean = !!body.monitor && !!rawEmail;
+  // Which surface enqueued this — controls which landing-page link goes in
+  // the results-ready email. Allowed values are gated by a check constraint
+  // on the column itself.
+  const rawSource: string = (body.source || 'free_ticket_review').toString().trim();
+  const source = rawSource === 'free_contest' ? 'free_contest' : 'free_ticket_review';
 
   if (!PLATE_RE.test(rawPlate)) {
     return res.status(400).json({ error: 'Plate must be 2–8 letters and digits.' });
@@ -94,6 +99,7 @@ async function handleEnqueue(req: NextApiRequest, res: NextApiResponse) {
       ip,
       user_agent: (req.headers['user-agent'] || '').toString().slice(0, 500),
       status: 'pending',
+      source,
       monitor_enabled: wantsMonitor,
       // Pre-generate the unsubscribe token even when monitoring is off, so
       // it's already there if the user is later moved into monitoring (e.g.
