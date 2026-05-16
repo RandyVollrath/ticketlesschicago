@@ -37,7 +37,7 @@ export default function Protection() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
-  const [billingPlan, setBillingPlan] = useState<'monthly' | 'annual'>('monthly');
+  const [billingPlan, setBillingPlan] = useState<'monthly' | 'annual'>('annual');
   const [user, setUser] = useState<any>(null);
 
 
@@ -312,7 +312,7 @@ export default function Protection() {
   };
 
   const calculateTotal = () => {
-    const subscriptionPrice = billingPlan === 'monthly' ? 8 : 80;
+    const subscriptionPrice = billingPlan === 'monthly' ? 10 : 99;
     return subscriptionPrice;
   };
 
@@ -455,7 +455,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              Founding Member rate: $99/year. Unlimited automated contesting for eligible tickets.
+              $99/year or $10/month. Unlimited automated contesting for eligible tickets.
             </p>
           </div>
 
@@ -584,7 +584,7 @@ export default function Protection() {
                         boxShadow: billingPlan === 'monthly' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                       }}
                     >
-                      Monthly ($8/mo)
+                      Monthly ($10/mo)
                     </button>
                     <button
                       onClick={() => {
@@ -603,7 +603,7 @@ export default function Protection() {
                         boxShadow: billingPlan === 'annual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                       }}
                     >
-                      Annual ($80/yr)
+                      Annual ($99/yr)
                     </button>
                   </div>
                 </div>
@@ -618,7 +618,7 @@ export default function Protection() {
                     textAlign: 'center'
                   }}>
                     <span style={{ fontSize: '14px', fontWeight: '600', color: COLORS.signal }}>
-                      Save $16/year with annual billing
+                      Save $21/year with annual billing
                     </span>
                   </div>
                 )}
@@ -770,7 +770,7 @@ export default function Protection() {
                     textAlign: 'center'
                   }}>
                     <div style={{ fontSize: '15px', color: COLORS.regulatory, fontWeight: '700', marginBottom: '4px' }}>
-                      Due today: ${billingPlan === 'monthly' ? '8' : '80'}
+                      Due today: ${billingPlan === 'monthly' ? '10' : '99'}
                     </div>
                     <div style={{ fontSize: '12px', color: COLORS.slate }}>
                       {billingPlan === 'monthly' ? 'Billed monthly. Cancel anytime.' : 'Billed annually.'}
@@ -779,7 +779,7 @@ export default function Protection() {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '15px', color: COLORS.graphite, fontWeight: '600' }}>
                     <span>Protection subscription ({billingPlan})</span>
-                    <span>${billingPlan === 'monthly' ? '8' : '80'}</span>
+                    <span>${billingPlan === 'monthly' ? '10' : '99'}</span>
                   </div>
 
                   {hasPermitZone && permitRequested && (
