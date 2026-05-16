@@ -319,8 +319,8 @@ export default function Protection() {
   return (
     <div style={{ fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: COLORS.concrete }}>
       <Head>
-        <title>Activate Autopilot - Autopilot America</title>
-        <meta name="description" content="Automated parking ticket contesting for Chicago drivers" />
+        <title>Activate the Chicago Ticket Defense Plan - Autopilot America</title>
+        <meta name="description" content="Activate the Chicago Ticket Defense Plan. Automated parking ticket contesting for Chicago drivers." />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
         <style>{`
           @media (max-width: 768px) {
@@ -447,7 +447,7 @@ export default function Protection() {
               margin: '0 0 12px 0',
               fontFamily: '"Space Grotesk", sans-serif'
             }}>
-              Activate Autopilot
+              Activate your Chicago Ticket Defense Plan
             </h1>
             <p style={{
               fontSize: '16px',
@@ -455,7 +455,7 @@ export default function Protection() {
               lineHeight: '1.5',
               margin: 0
             }}>
-              $99/year or $10/month. Unlimited automated contesting for eligible tickets.
+              By Autopilot America. $99/year or $10/month. Unlimited automated contesting for eligible tickets.
             </p>
           </div>
 

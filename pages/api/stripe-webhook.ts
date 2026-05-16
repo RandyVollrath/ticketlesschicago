@@ -1132,13 +1132,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const emailPayload = {
                   from: 'Autopilot America <hello@autopilotamerica.com>',
                   to: email,
-                  subject: 'Welcome to Autopilot America - Complete Your Profile',
+                  subject: 'Welcome to your Chicago Ticket Defense Plan — Complete Your Profile',
                   html: `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                      <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to Autopilot America!</h2>
+                      <h2 style="color: #1a1a1a; margin-bottom: 16px;">Welcome to your Chicago Ticket Defense Plan!</h2>
 
                       <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                        Thanks for purchasing Ticket Protection! Click the button below to securely log in to your account and complete your profile:
+                        Thanks for joining the Chicago Ticket Defense Plan from Autopilot America. Click the button below to securely log in to your account and complete your profile:
                       </p>
 
                       <div style="margin: 32px 0; text-align: center;">
@@ -1477,13 +1477,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               const emailPayloadUpgrade = {
                 from: 'Autopilot America <hello@autopilotamerica.com>',
                 to: email,
-                subject: 'Welcome to Autopilot Protection - Access Your Account',
+                subject: 'Your Chicago Ticket Defense Plan is active — Access Your Account',
                 html: `
                   <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #1a1a1a; margin-bottom: 16px;">Your Protection is Active!</h2>
+                    <h2 style="color: #1a1a1a; margin-bottom: 16px;">Your Chicago Ticket Defense Plan is active!</h2>
 
                     <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                      Thanks for upgrading to Ticket Protection! Click the button below to access your account and verify your profile:
+                      Thanks for upgrading to the Chicago Ticket Defense Plan from Autopilot America. Click the button below to access your account and verify your profile:
                     </p>
 
                     <div style="margin: 32px 0; text-align: center;">

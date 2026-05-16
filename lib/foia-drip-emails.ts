@@ -73,7 +73,7 @@ export async function sendFoiaDripDay3(params: {
         `Per FOIA data from 2023–2025, the City dismisses <strong>59% of parking tickets that get mail-contested</strong>. But only about 1 in 10 people actually contest. Most pay because the process is a hassle — figure out the defense, write the letter, mail it before the deadline, hope you got it right.`),
       p(`So the average Chicago driver sees a bill of around <strong>$234/year</strong> in tickets and late fees they could have either avoided (with better info) or contested. <strong>People accepting it is why the City can keep charging $420 million a year.</strong>`),
       p("Once your FOIA results come back from the City, we'll email you the full breakdown. Usually takes a couple more business days."),
-      p('— The Autopilot team', { size: '13px', color: '#6B7280' }),
+      p('— The Autopilot America team', { size: '13px', color: '#6B7280' }),
     ].join(''),
     includeUnsubscribe: true,
     unsubscribeEmail: params.email,
@@ -132,20 +132,20 @@ export async function sendFoiaDripDay7(params: {
     body: [
       greet(params.name || undefined),
       opener,
-      callout('success', 'How Autopilot works',
+      callout('success', 'How the Chicago Ticket Defense Plan works',
         `<strong>Twice a week</strong> we check Chicago's ticket system for your plate. New ticket appears? We pull the violation code, look up the specific legal defense that wins for that violation, generate a custom contest letter, and <strong>mail it before the deadline</strong>. You don't do anything. 59% of mail-contested tickets get dismissed (FOIA data).`),
-      section("What's included for $99/year", bulletList([
+      section("What's included in the Plan for $99/year", bulletList([
         '<strong>Twice-weekly plate monitoring</strong> — we catch tickets within days',
         '<strong>Auto-generated contest letters</strong> — written, printed, mailed for you',
         '<strong>Street cleaning, snow ban, sticker, emissions, and city sticker alerts</strong> — stop tickets before they happen',
         "<strong>First Dismissal Guarantee</strong> — if your first contest letter doesn't result in dismissal, we refund the year. No questions.",
       ])),
       hasRecords
-        ? p(`Your FOIA showed you've paid <strong>$${(params.totalFines || 0).toLocaleString()}</strong> in Chicago tickets. Autopilot is $99/year. Even one dismissed ticket pays for the year.`)
+        ? p(`Your FOIA showed you've paid <strong>$${(params.totalFines || 0).toLocaleString()}</strong> in Chicago tickets. The Chicago Ticket Defense Plan is $99/year. Even one dismissed ticket pays for the year.`)
         : p('$99/year. Less than two parking tickets. One dismissal pays for the year.', { center: true, size: '14px' }),
-      button('Start Autopilot Protection — $99/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
+      button('Start the Chicago Ticket Defense Plan — $99/year', 'https://autopilotamerica.com/get-started', { color: '#10B981' }),
       p('Not interested? No worries. The FOIA we filed for you is yours either way.', { size: '13px', color: '#6B7280', center: true }),
-      p('— The Autopilot team', { size: '13px', color: '#6B7280' }),
+      p('— The Autopilot America team', { size: '13px', color: '#6B7280' }),
     ].join(''),
     includeUnsubscribe: true,
     unsubscribeEmail: params.email,

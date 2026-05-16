@@ -175,8 +175,8 @@ export default function LandingPage() {
       overflowX: 'hidden'
     }}>
       <Head>
-        <title>Your car&apos;s ticket protection on autopilot | Autopilot America</title>
-        <meta name="description" content="Your car's ticket protection on autopilot in Chicago — street cleaning & snow ban alerts, twice-weekly plate monitoring, automatic contest letters drafted/printed/mailed, and sticker auto-renewal. $99/year or $10/month." />
+        <title>The Chicago Ticket Defense Plan | Autopilot America</title>
+        <meta name="description" content="The Chicago Ticket Defense Plan by Autopilot America — street cleaning & snow ban alerts, twice-weekly plate monitoring, automatic contest letters drafted/printed/mailed, and sticker auto-renewal. $99/year or $10/month." />
         <link rel="canonical" href="https://autopilotamerica.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -307,9 +307,9 @@ export default function LandingPage() {
           margin: '0 auto 24px',
           position: 'relative',
         }}>
-          Your car&apos;s ticket protection on autopilot.
+          The Chicago Ticket Defense Plan.
           <br />
-          <span style={{ color: COLORS.accent }}>Running 24/7 in Chicago.</span>
+          <span style={{ color: COLORS.accent }}>Running 24/7, by Autopilot America.</span>
         </h1>
 
         <p style={{
@@ -319,7 +319,7 @@ export default function LandingPage() {
           margin: '0 auto 32px',
           lineHeight: 1.5
         }}>
-          Chicago drivers paid <strong style={{ color: '#fff' }}>$420 million</strong> in parking and camera tickets last year. <span style={{ color: '#CBD5E1' }}>\$99/year keeps you out of that number. <strong style={{ color: '#fff' }}>Guaranteed<sup style={{ fontSize: '0.6em' }}>*</sup></strong></span>
+          Chicago drivers paid <strong style={{ color: '#fff' }}>$420 million</strong> in parking and camera tickets last year. <span style={{ color: '#CBD5E1' }}>The Plan keeps you out of that number for \$99/year. <strong style={{ color: '#fff' }}>Guaranteed<sup style={{ fontSize: '0.6em' }}>*</sup></strong></span>
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -368,7 +368,7 @@ export default function LandingPage() {
           letterSpacing: '2px',
           marginBottom: '12px',
         }}>
-          What you get
+          What's in the Plan
         </p>
         <h2 style={{
           fontFamily: FONTS.heading,
@@ -391,7 +391,7 @@ export default function LandingPage() {
           margin: '0 auto 48px',
           lineHeight: 1.5,
         }}>
-          Three layers of protection, all on autopilot. No other service combines all three.
+          The Chicago Ticket Defense Plan has three layers of protection, all on autopilot. No other service combines all three.
         </p>
         <div style={{
           display: 'grid',

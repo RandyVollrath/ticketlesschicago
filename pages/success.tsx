@@ -5,8 +5,8 @@ export default function Success() {
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       <Head>
-        <title>Welcome to Autopilot America</title>
-        <meta name="description" content="Your vehicle protection is now active!" />
+        <title>Your Chicago Ticket Defense Plan is active — Autopilot America</title>
+        <meta name="description" content="Your Chicago Ticket Defense Plan is now active!" />
       </Head>
 
       <div style={{ 
@@ -27,22 +27,22 @@ export default function Success() {
         }}>
           <div style={{ marginBottom: '24px', color: '#10B981' }}><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
           
-          <h1 style={{ 
-            fontSize: '36px', 
-            fontWeight: 'bold', 
-            color: '#1a1a1a', 
-            marginBottom: '16px' 
+          <h1 style={{
+            fontSize: '36px',
+            fontWeight: 'bold',
+            color: '#1a1a1a',
+            marginBottom: '16px'
           }}>
-            Payment Successful!
+            Your Chicago Ticket Defense Plan is active!
           </h1>
-          
-          <p style={{ 
-            fontSize: '20px', 
-            color: '#666', 
+
+          <p style={{
+            fontSize: '20px',
+            color: '#666',
             marginBottom: '32px',
             lineHeight: '1.4'
           }}>
-            Your vehicle compliance reminders are now active. We'll notify you before each renewal deadline.
+            Plate monitoring, contest letters, and renewal reminders are now running on autopilot. We'll notify you before each renewal deadline.
           </p>
 
           {/* Important Action Required - Mailing Address */}

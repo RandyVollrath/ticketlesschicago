@@ -596,8 +596,8 @@ export default function StartFunnel() {
       flexDirection: 'column',
     }}>
       <Head>
-        <title>Get Protected - Autopilot America</title>
-        <meta name="description" content="Set up automatic parking ticket protection. $99/year or $10/month — first ticket pays for it." />
+        <title>Get the Chicago Ticket Defense Plan — Autopilot America</title>
+        <meta name="description" content="Get the Chicago Ticket Defense Plan. $99/year or $10/month — first ticket pays for it." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -657,7 +657,7 @@ export default function StartFunnel() {
               <StepSubtext>
                 That&apos;s what Chicago drivers paid in parking and camera tickets in 2025, per
                 the City of Chicago&apos;s own FOIA data. A single ticket with late fees can run
-                over $200. Autopilot America protects your car three ways so you don&apos;t.
+                over $200. The Chicago Ticket Defense Plan protects your car three ways so you don&apos;t.
               </StepSubtext>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
@@ -1146,7 +1146,7 @@ export default function StartFunnel() {
               }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>The math, plainly:</div>
                 <div style={{ color: COLORS.textSecondary }}>
-                  Autopilot is <strong style={{ color: COLORS.text }}>$99/year</strong>.
+                  The Chicago Ticket Defense Plan is <strong style={{ color: COLORS.text }}>$99/year</strong>.
                   One contested city sticker dismissed saves <strong style={{ color: COLORS.text }}>$200</strong>; one red-light camera dismissed saves <strong style={{ color: COLORS.text }}>$156</strong>.
                   Dismiss <strong>one</strong> ticket and you&apos;re ahead for the year.
                 </div>

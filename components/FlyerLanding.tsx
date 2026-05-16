@@ -98,7 +98,7 @@ export default function FlyerLanding({ flyerKey, eyebrow, headline, subhead, sta
 
           {/* How it works */}
           <Card>
-            <SectionTitle>How Autopilot works for you</SectionTitle>
+            <SectionTitle>How the Chicago Ticket Defense Plan works for you</SectionTitle>
             <ul style={{ margin: 0, paddingLeft: 22, color: C.slate, fontSize: 15, lineHeight: 1.75 }}>
               {bullets.map((b, i) => (
                 <li key={i} style={{ marginBottom: 10 }}>{b}</li>
@@ -149,7 +149,7 @@ export default function FlyerLanding({ flyerKey, eyebrow, headline, subhead, sta
               />
               <Fact
                 title="Competitors would charge $150+ per ticket."
-                body="A ticket lawyer charges $150–$300 to draft one letter. The average Chicago driver has 2.2 tickets/year. At $99/year unlimited, Autopilot is 4–8× cheaper than hiring it out once."
+                body="A ticket lawyer charges $150–$300 to draft one letter. The average Chicago driver has 2.2 tickets/year. At $99/year unlimited, the Chicago Ticket Defense Plan is 4–8× cheaper than hiring it out once."
               />
             </div>
           </Card>
@@ -184,7 +184,7 @@ export default function FlyerLanding({ flyerKey, eyebrow, headline, subhead, sta
             padding: '18px 22px', borderRadius: 14, fontWeight: 800, fontSize: 18, marginTop: 8,
             boxShadow: '0 6px 16px rgba(16,185,129,0.28)',
           }}>
-            Start Protecting Your Car → $99/yr
+            Start the Chicago Ticket Defense Plan → $99/yr
           </Link>
           <div style={{ textAlign: 'center', marginTop: 22 }}>
             <Link href="/pricing" style={{ color: C.muted, fontSize: 13, textDecoration: 'underline' }}>
