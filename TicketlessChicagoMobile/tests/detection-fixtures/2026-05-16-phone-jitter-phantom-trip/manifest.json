@@ -1,0 +1,33 @@
+{
+  "name": "2026-05-16-phone-jitter-phantom-trip",
+  "summary": "Phone hand-jitter while editing video starts a GPS-only phantom trip; CoreMotion never reports automotive; a red-light camera alert fires at 800 W Fullerton and a parking_confirmed event saves a fake stop. 16 min phantom trip total.",
+  "source_debug_report": "3e75e6b4-78de-4b47-86d9-84ed19cc4913",
+  "user": "randyvollrath@gmail.com",
+  "app_version_at_capture": "2.0.17",
+  "fix_commit": "5f93f8ea",
+  "fix_summary": "Veto strict gps_speed_fallback when coreMotionStateLabel is walking/stationary; cancel phantom trip if tripSummaryAutomotiveUpdates == 0 after gpsFallbackCancelMinDurationSec (60s).",
+  "regression_check": {
+    "description": "Find any trip that matches `trip_signature` in a parking_decisions.ndjson. For each match, every key in `trip_must_not_have` must be absent or different; at least one of `fix_signature_any_of` must be present in the surrounding trip events.",
+    "trip_signature": {
+      "event": "trip_summary",
+      "startSource": "gps_speed_fallback",
+      "motionAutomotiveUpdates": 0,
+      "motionAutomotiveDurationSec": 0,
+      "durationSec_gte": 60
+    },
+    "trip_must_not_have": {
+      "cameraAlertOutcome": "camera_alert_fired",
+      "outcome": "parked",
+      "cameraAlertCount_gt": 0
+    },
+    "fix_signature_any_of": [
+      {"event": "gps_fallback_trip_cancelled"},
+      {"event": "trip_summary", "outcome": "cancelled_gps_fallback_no_automotive"},
+      {"event": "gps_fallback_reset", "reason": "coremotion_confident_non_automotive"}
+    ]
+  },
+  "self_check_against_input": {
+    "description": "Asserts run against THIS fixture's own NDJSON. The pre-fix log must show the bug (trip_signature matches AND trip_must_not_have items present AND no fix_signature events). This documents the bug in the test suite even though we can't replay through fresh code.",
+    "expect": "bug_present"
+  }
+}

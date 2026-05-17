@@ -117,7 +117,86 @@ at all).
 | 2026-05-16 | Phantom red-light camera alert + phantom parking event saved at 800 W Fullerton while sitting still editing video on phone. Hadn't driven for hours. | A GPS speed spike (phone hand-jitter / indoor multipath) sustained ≥4.2 m/s for 8s and ≥90m of perceived drift was enough to trip the `gps_speed_fallback` driving start. CoreMotion never reported `automotive` during the entire 16-min phantom trip (`motionAutomotiveDurationSec: 0`, `motionUnknownDurationSec: 898`), but the existing code path only checked `coreMotionSaysAutomotive` (a flag), not `coreMotionStateLabel` (the actual state). A confidently walking/stationary CoreMotion signal did NOT veto the GPS-only promotion, and there was no cross-check during the trip to tear down a trip that CoreMotion clearly disagrees with. Once `isDriving` was true, the camera scanner ran for 16 min, one alert slipped through the per-camera filter at GPS speed 1.35 m/s (line 774 of `parking_detection.log` from debug report `3e75e6b4`), and finally the parking-confirmation logic saved a fake stop at the same coords. | Two-part fix in `BackgroundLocationModule.swift` (2026-05-17): **(a)** Veto the strict GPS-only fallback at trip-start when `coreMotionStateLabel` is `walking` or `stationary` — only the hard path (≥ `gpsHardDrivingSpeedMps` ≈ 18 mph sustained for ≥6s) can promote when CoreMotion confidently disagrees, because 18 mph isn't reachable on foot. **(b)** Phantom-trip cancellation in the CoreMotion delegate: if a trip started via `gps_speed_fallback` and `tripSummaryAutomotiveUpdates == 0` after `gpsFallbackCancelMinDurationSec` (60s), tear down the trip — emit `trip_summary` with `outcome: cancelled_gps_fallback_no_automotive`, reset `isDriving`, fire `onParkingCheckCancelled`. New decision event: `gps_fallback_trip_cancelled`. |
 
 ### How to add an entry
-- Pull the offending debug report: `node scripts/fetch-debug-report.js --list 10` then `--id <uuid>`.
-- Identify the trip in `parking_decisions.ndjson` (each trip ends with a `trip_summary` decision — that line is the ledger).
-- Cite the symptom in plain English, the root cause in code terms (what variable did the wrong thing, in what file), and the fix (what code changed AND what new decision/log event was introduced so future failures show up in the log).
-- Cross-link from `PARKING_LOCATION_ACCURACY.md` Change Log only if the fix changes *location* output. Detection-correctness fixes live here.
+
+Every fix should land with **both** an Error Log row above AND a regression
+fixture in `TicketlessChicagoMobile/tests/detection-fixtures/`. The Error
+Log is for humans; the fixture is for the harness.
+
+1. **Pull the debug report** that triggered the fix:
+   ```bash
+   node scripts/fetch-debug-report.js --list 10
+   node scripts/fetch-debug-report.js --id <uuid>
+   ```
+2. **Identify the bug** in `parking_decisions.ndjson` (each trip ends with a
+   `trip_summary` event — that line is the ledger).
+3. **Add the Error Log row** above with: symptom (plain English), root
+   cause (what variable did the wrong thing, in which file), fix (what
+   code changed AND what new `decision()` event was introduced so future
+   failures show up in the log).
+4. **Create a fixture directory** under
+   `TicketlessChicagoMobile/tests/detection-fixtures/<YYYY-MM-DD>-<slug>/`:
+   - `parking_decisions.ndjson` — copy from
+     `TicketlessChicagoMobile/logs/remote_<slug>/parking_decisions.ndjson`.
+     **Scrub uppercase-hex UUIDs** before committing — the repo's pre-commit
+     hook flags `[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}`
+     as a potential Resend key. tripId values aren't used by the harness, so
+     replace with `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`:
+     ```bash
+     # find unique UUIDs in the fixture, then replace each with x's
+     grep -oE '\b[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}\b' \
+       TicketlessChicagoMobile/tests/detection-fixtures/<slug>/parking_decisions.ndjson \
+       | sort -u
+     # then sed -i 's/<UUID>/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/g' <file>
+     ```
+   - `manifest.json` — describe the bug as a *pattern* in event terms:
+     - `trip_signature`: how to find this kind of trip in any ndjson
+       (event=trip_summary plus signature fields like `startSource`,
+       `motionAutomotiveUpdates`, etc.). Numeric comparisons use `_gt`,
+       `_gte`, `_lt`, `_lte` suffixes.
+     - `trip_must_not_have`: outcomes the trip MUST NOT have if the fix
+       is working (e.g. `cameraAlertCount_gt: 0`, `outcome: parked`).
+     - `fix_signature_any_of`: at least one of these events must appear
+       somewhere in the ndjson for the fix to be considered active.
+       Look at the new `decision()` calls your fix introduced.
+     - `self_check_against_input.expect`: `bug_present` (the captured
+       pre-fix log should show the bug — documents it as a test case)
+       or `bug_absent` (rare; used when the fixture is a clean baseline).
+     - `fix_commit`: short SHA of the commit that fixes it.
+5. **Verify the fixture is well-formed**:
+   ```bash
+   npm run test:detection
+   ```
+   Self-check should pass — confirming the manifest's `trip_signature`
+   actually matches the captured log.
+6. **After deploying the fix**, ask the user to reproduce the scenario
+   and send a new debug report. Scan it:
+   ```bash
+   node scripts/run-detection-regressions.js scan-latest --user <email>
+   ```
+   The fix is verified when the scan passes (the trip either no longer
+   matches the bug pattern, or matches with the fix_signature present).
+7. **Going forward**, every new debug report should be scanned:
+   ```bash
+   node scripts/run-detection-regressions.js scan-latest
+   ```
+   If any prior bug shows up in a new report, the harness flags it as a
+   regression — even if nobody complained.
+
+### What the harness does and doesn't do
+
+**Does:** scan captured NDJSON logs for known-bad patterns. Each fixture
+encodes one bug as a pattern + expected fix signature. The harness turns
+every fixed bug into a recurrence detector that runs against any new
+debug report.
+
+**Doesn't:** replay raw sensor inputs (CoreMotion + GPS + Bluetooth)
+through fresh Swift code. That requires extracting the decision logic
+out of `BackgroundLocationModule.swift` into pure functions with unit
+tests — a separate, larger piece of work. Until then, a code change that
+regresses a fix will pass the suite UNTIL a new debug report from a user
+encountering the regression is scanned. The `scan-latest` flow makes
+that scan automatic — but it's still reactive, not proactive.
+
+Cross-link from `PARKING_LOCATION_ACCURACY.md` Change Log only if the
+fix changes *location* output. Detection-correctness fixes (was a trip
+real? did parking happen? should a camera alert have fired?) live here.
