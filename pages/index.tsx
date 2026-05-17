@@ -1042,6 +1042,7 @@ export default function LandingPage() {
                 <h4 style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', marginBottom: '12px', letterSpacing: '0.05em' }}>SUPPORT</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <Link href="/support" style={{ color: '#64748B', textDecoration: 'none' }}>Contact</Link>
+                  <Link href="/coverage" style={{ color: '#64748B', textDecoration: 'none' }}>What We Cover</Link>
                   <a href="#faq" style={{ color: '#64748B', textDecoration: 'none' }}>FAQ</a>
                 </div>
               </div>
