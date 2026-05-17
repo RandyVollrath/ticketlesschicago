@@ -19,7 +19,7 @@ const FONT = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sa
 
 // ---------- numbers from foia.db (queried 2026-05-15) ----------
 // Filter: zipcode LIKE '606%' on the tickets table (Chicago-registered cars).
-// Denominator: 1.18M Chicago-registered vehicles (CDOT, 2024).
+// Denominator: 1.18M Chicago-registered vehicles (U.S. Census ACS, corroborated by City Clerk FOIA F118286).
 // Anchored to calendar year 2025 throughout for consistency.
 
 const YEARLY = [
@@ -229,7 +229,7 @@ WHERE zipcode LIKE '606%'
 
           <p style={{ fontSize: '18px', fontWeight: 700, color: COLORS.deepHarbor, margin: '20px 0 8px' }}>Step 5 — Divide by the Chicago vehicle fleet.</p>
           <P>
-            Chicago has approximately <strong>1.18 million registered vehicles</strong> (Chicago Department of Transportation, 2024). Dividing each annual total by 1,180,000 gives the per-vehicle figure:
+            Chicago has approximately <strong>1.18 million registered vehicles</strong> (U.S. Census American Community Survey, corroborated by Chicago City Clerk FOIA <Code>F118286</Code>). Dividing each annual total by 1,180,000 gives the per-vehicle figure:
           </P>
           <ul style={{ fontSize: '16px', lineHeight: 1.7, color: COLORS.graphite, paddingLeft: '22px', margin: '0 0 14px' }}>
             <li>$191.1M ÷ 1.18M = <strong>{fmt$(perFines)} per vehicle</strong> in ticket fines</li>
@@ -326,7 +326,7 @@ WHERE zipcode LIKE '606%'
             <li><strong>"Notice escalated" is our late-fee trigger.</strong> Chicago's ordinance auto-doubles the fine 25 days after issue if unpaid. We count the late fee when the city actually moved the ticket past that gate, evidenced by a Violation Notice or later notice stage.</li>
             <li><strong>Warnings (fine = $0) are counted as tickets but contribute $0 to the financial total.</strong> About 1.6 million warning notices were issued in the 2018–2025 dataset; they don't affect the per-vehicle dollar figure.</li>
             <li><strong>Excludes:</strong> red-light camera and speed camera tickets to non-Chicago-zip vehicles, city sticker purchase price, registration, license plate sticker, residential parking permits, ride-share fees, congestion fees, parking meter payments.</li>
-            <li><strong>The 1.18M denominator</strong> comes from Chicago Department of Transportation (2024 estimate of Chicago-registered vehicles).</li>
+            <li><strong>The 1.18M denominator</strong> comes from U.S. Census American Community Survey vehicle-availability data, corroborated by Chicago City Clerk FOIA F118286.</li>
           </ol>
 
           <H2 id="reproduce">How to reproduce this</H2>
@@ -358,7 +358,7 @@ WHERE zipcode LIKE '606%'
           </P>
 
           <p style={{ fontSize: '13px', color: COLORS.slate, marginTop: '48px', borderTop: `1px solid ${COLORS.border}`, paddingTop: '24px' }}>
-            Sources: Chicago Department of Finance ticket data (FOIA F129773-022626, covering 2018–2025); Chicago Department of Finance boot statistics &amp; fees (FOIA F120036-111425); Chicago Department of Streets &amp; Sanitation tow records (FOIA F136267-041626). Chicago vehicle count from CDOT 2024. Database last refreshed April 10, 2026.
+            Sources: Chicago Department of Finance ticket data (FOIA F129773-022626, covering 2018–2025); Chicago Department of Finance boot statistics &amp; fees (FOIA F120036-111425); Chicago Department of Streets &amp; Sanitation tow records (FOIA F136267-041626). Chicago vehicle count from U.S. Census American Community Survey, corroborated by Chicago City Clerk FOIA F118286. Database last refreshed April 10, 2026.
           </p>
         </div>
         <Footer />
