@@ -33,7 +33,7 @@ interface RouteData {
   isPeakTicketDay: boolean
   justCleanedZones: Zone[]; justCleanedCount: number
   tomorrowZones: Zone[]; tomorrowCount: number
-  hotBlocks: HotBlock[]; towBlocks: HotBlock[]; neighborhoods: Neighborhood[]
+  hotBlocks: HotBlock[]; towBlocks: HotBlock[]; towHazardBlocks?: HotBlock[]; neighborhoods: Neighborhood[]
   ticketCorridors: TicketCorridor[]
   startingPoint: { lat: number; lng: number }
 }
@@ -732,6 +732,31 @@ export default function FlyerRoutes() {
                     <div style={{ fontSize: 11, color: C.slate }}>{b.neighborhood} &middot; Ward {b.ward} &middot; {b.daysTicketed > 0 ? `${b.daysTicketed} days ticketed` : ''}</div>
                   </div>
                   <span style={{ fontWeight: 700, fontSize: 13, color: C.red, whiteSpace: 'nowrap' }}>{b.tickets}</span>
+                  <button onClick={() => toggleDoneBlock(b.block)}
+                    style={{ padding: '4px 8px', borderRadius: 6, background: isDone ? C.navy : '#F1F5F9', color: isDone ? 'white' : C.dark, border: 'none', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+                    {isDone ? 'Undo' : 'Done'}
+                  </button>
+                  <a href={mapsUrl(b.lat, b.lng)} target="_blank" rel="noopener noreferrer"
+                    style={{ padding: '4px 8px', borderRadius: 6, background: C.blue, color: 'white', fontSize: 10, fontWeight: 600, textDecoration: 'none' }}>Go</a>
+                </div>
+              )})}
+
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, padding: '16px 0 4px', borderBottom: `2px solid ${C.navy}`, marginBottom: 6 }}>
+                Active Tow Hotspots (DSS tow FOIA, Jan 2025 – Mar 2026)
+              </div>
+              <div style={{ fontSize: 11, color: C.slate, marginBottom: 6 }}>
+                Where cars actually get hauled today. Tow-zone hazards (River North, Wicker Park), overnight park bans (Milwaukee Ave, S State, Foster), and Wrigley game-day clearance. These drivers paid $200+ tow + storage + ticket.
+              </div>
+              {(data.towHazardBlocks || []).map((b, i) => {
+                const isDone = doneState.blocks.has(b.block)
+                return (
+                <div key={`tw-${b.block}`} style={{ background: C.white, borderRadius: 8, padding: '8px 12px', marginBottom: 4, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, opacity: isDone ? 0.55 : 1 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: isDone ? C.slate : i < 5 ? C.red : '#E2E8F0', color: isDone || i < 5 ? 'white' : C.dark, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{isDone ? '✓' : i+1}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: C.dark, textDecoration: isDone ? 'line-through' : 'none' }}>{b.block}</div>
+                    <div style={{ fontSize: 11, color: C.slate }}>{b.neighborhood} &middot; Ward {b.ward}</div>
+                  </div>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: C.red, whiteSpace: 'nowrap' }}>{b.tickets} tows</span>
                   <button onClick={() => toggleDoneBlock(b.block)}
                     style={{ padding: '4px 8px', borderRadius: 6, background: isDone ? C.navy : '#F1F5F9', color: isDone ? 'white' : C.dark, border: 'none', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
                     {isDone ? 'Undo' : 'Done'}

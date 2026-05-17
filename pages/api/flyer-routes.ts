@@ -57,6 +57,49 @@ const TOP_BLOCKS: HotBlock[] = [
   { block: '2300 S Marshall Blvd', tickets: 268, daysTicketed: 93, lat: 41.8497, lng: -87.6983, neighborhood: 'Little Village', ward: '24' },
 ];
 
+// ============================================================================
+// ACTIVE TOW HOTSPOTS — where DSS actually pulls cars off the curb
+// Source: FOIA F136267 (DSS Towed Vehicles, 1/1/2025 – 3/27/2026, 109,755 tows)
+// Filter: parking-enforcement reasons only — TOWZONE HAZARD, OVERNIGHT PARK BAN,
+//   HAZARD, TOWZONE BASEBALL, BOOT, CURB STONING, ABANDONED, CAB TOW, STREET CLEANING.
+//   Police/arrest tows (SUSP LICENSE, DUI, FIREARMS, SEIZURE, etc.) EXCLUDED because
+//   their address column is the precinct/pound, not the curb. After filter: 51,128 tows.
+// Aggregated to 100-block (e.g. "100 W Hubbard" = 100-199 W Hubbard).
+// `tickets` here = tow count over ~15 months. `daysTicketed` = 0 (not derivable).
+// ============================================================================
+const TOW_HAZARD_BLOCKS: HotBlock[] = [
+  { block: '1300 N Milwaukee Ave', tickets: 972, daysTicketed: 0, lat: 41.9050, lng: -87.6680, neighborhood: 'Wicker Park (tow zone)', ward: '1' },
+  { block: '100 W Hubbard St', tickets: 784, daysTicketed: 0, lat: 41.8898, lng: -87.6305, neighborhood: 'River North (tow zone)', ward: '42' },
+  { block: '100 W Kinzie St', tickets: 710, daysTicketed: 0, lat: 41.8891, lng: -87.6305, neighborhood: 'River North (tow zone)', ward: '42' },
+  { block: '1200 N Clark St', tickets: 633, daysTicketed: 0, lat: 41.9036, lng: -87.6320, neighborhood: 'Gold Coast (tow zone)', ward: '42' },
+  { block: '1500 N Milwaukee Ave', tickets: 614, daysTicketed: 0, lat: 41.9095, lng: -87.6750, neighborhood: 'Wicker Park (tow zone)', ward: '1' },
+  { block: '1200 N Dearborn St', tickets: 529, daysTicketed: 0, lat: 41.9036, lng: -87.6295, neighborhood: 'Gold Coast (tow zone)', ward: '42' },
+  { block: '0 W Kinzie St', tickets: 445, daysTicketed: 0, lat: 41.8891, lng: -87.6280, neighborhood: 'River North (tow zone)', ward: '42' },
+  { block: '0 W Illinois St', tickets: 413, daysTicketed: 0, lat: 41.8909, lng: -87.6280, neighborhood: 'River North (tow zone)', ward: '42' },
+  { block: '3500 N Clark St', tickets: 395, daysTicketed: 0, lat: 41.9474, lng: -87.6553, neighborhood: 'Wrigleyville (game-day clearance)', ward: '44' },
+  { block: '2000 W Division St', tickets: 388, daysTicketed: 0, lat: 41.9038, lng: -87.6770, neighborhood: 'Wicker Park (tow zone)', ward: '1' },
+  { block: '600 N Franklin St', tickets: 371, daysTicketed: 0, lat: 41.8918, lng: -87.6357, neighborhood: 'River North (tow zone)', ward: '42' },
+  { block: '200 W Hubbard St', tickets: 334, daysTicketed: 0, lat: 41.8898, lng: -87.6330, neighborhood: 'River North (tow zone)', ward: '42' },
+  { block: '1400 N Milwaukee Ave', tickets: 311, daysTicketed: 0, lat: 41.9075, lng: -87.6720, neighborhood: 'Wicker Park (tow zone)', ward: '1' },
+  { block: '2100 W Division St', tickets: 310, daysTicketed: 0, lat: 41.9038, lng: -87.6795, neighborhood: 'Wicker Park (tow zone)', ward: '1' },
+  { block: '400 N State St', tickets: 304, daysTicketed: 0, lat: 41.8891, lng: -87.6280, neighborhood: 'River North (tow zone)', ward: '42' },
+  { block: '300 W Hubbard St', tickets: 296, daysTicketed: 0, lat: 41.8898, lng: -87.6355, neighborhood: 'River North (tow zone)', ward: '42' },
+  { block: '200 W Institute Pl', tickets: 273, daysTicketed: 0, lat: 41.8935, lng: -87.6330, neighborhood: 'Near North (tow zone)', ward: '42' },
+  { block: '200 W Ontario St', tickets: 272, daysTicketed: 0, lat: 41.8932, lng: -87.6330, neighborhood: 'River North (tow zone)', ward: '42' },
+  { block: '2700 W Foster Ave', tickets: 271, daysTicketed: 0, lat: 41.9756, lng: -87.6974, neighborhood: 'Lincoln Square (overnight park ban)', ward: '40' },
+  { block: '3400 N Clark St', tickets: 258, daysTicketed: 0, lat: 41.9456, lng: -87.6553, neighborhood: 'Wrigleyville (game-day clearance)', ward: '44' },
+  { block: '200 E Walton St', tickets: 222, daysTicketed: 0, lat: 41.8988, lng: -87.6234, neighborhood: 'Streeterville (tow zone)', ward: '42' },
+  { block: '1100 N State St', tickets: 174, daysTicketed: 0, lat: 41.9019, lng: -87.6280, neighborhood: 'Gold Coast (tow zone)', ward: '2' },
+  { block: '1100 N Dearborn St', tickets: 171, daysTicketed: 0, lat: 41.9019, lng: -87.6295, neighborhood: 'Gold Coast (tow zone)', ward: '2' },
+  { block: '700 W Addison St', tickets: 164, daysTicketed: 0, lat: 41.9474, lng: -87.6460, neighborhood: 'Wrigleyville (game-day clearance)', ward: '44' },
+  { block: '0 E Cermak Rd', tickets: 159, daysTicketed: 0, lat: 41.8521, lng: -87.6280, neighborhood: 'South Loop/Chinatown (overnight park ban)', ward: '25' },
+  { block: '2500 N Milwaukee Ave', tickets: 157, daysTicketed: 0, lat: 41.9290, lng: -87.6970, neighborhood: 'Logan Square (overnight park ban)', ward: '32' },
+  { block: '2700 N Milwaukee Ave', tickets: 156, daysTicketed: 0, lat: 41.9325, lng: -87.7020, neighborhood: 'Logan Square (overnight park ban)', ward: '35' },
+  { block: '200 W Chestnut St', tickets: 154, daysTicketed: 0, lat: 41.8975, lng: -87.6330, neighborhood: 'Near North (tow zone)', ward: '42' },
+  { block: '400 N Franklin St', tickets: 151, daysTicketed: 0, lat: 41.8891, lng: -87.6357, neighborhood: 'River North (tow zone)', ward: '42' },
+  { block: '2800 N Milwaukee Ave', tickets: 147, daysTicketed: 0, lat: 41.9345, lng: -87.7045, neighborhood: 'Logan Square (overnight park ban)', ward: '35' },
+];
+
 // Top blocks for SEIZURE-level street cleaning tickets (boot/tow eligible)
 // notice_level='SEIZ' = the city has issued a seizure notice = car will be booted/towed
 // These drivers are actively losing their cars. They will pay anything to make it stop.
@@ -785,6 +828,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       hotBlocks: TOP_BLOCKS,
       // Tow/seizure-eligible blocks (cars actively being booted/towed)
       towBlocks: TOW_BLOCKS,
+      // Active tow-hotspot blocks from DSS tow FOIA (parking-only filter)
+      towHazardBlocks: TOW_HAZARD_BLOCKS,
       // Neighborhood intelligence
       neighborhoods: NEIGHBORHOOD_RANKINGS,
       // General parking-ticket corridors (Loop / Mag Mile / Hyde Park / etc).
