@@ -153,7 +153,7 @@ export default function LandingPage() {
     },
     {
       q: "What's the success rate?",
-      a: "59% of mail-in contested parking tickets get dismissed — based on 35.7M ticket records from Chicago FOIA data (2023–2025 mail contests). When you include all decided contests (mail + in-person + virtual hearings), category dismissal rates are even higher: expired plates 89%, city sticker 86%, disabled zone 71%, expired meter 68%, residential permit 54%. Camera tickets are tougher at 24–32%. These are real rates from actual hearings — not estimates."
+      a: "57% of mail-in contested parking tickets get dismissed — based on Chicago FOIA hearing data (2023–2025 trailing). When you include all decided contests (mail + in-person + virtual hearings), category dismissal rates are even higher: expired plates 89%, city sticker 86%, disabled zone 71%, expired meter 68%, residential permit 54%. Camera tickets are tougher at 24–32%. These are real rates from actual hearings — not estimates."
     },
     {
       q: "Can I review letters before they're sent?",
@@ -319,12 +319,12 @@ export default function LandingPage() {
           margin: '0 auto 32px',
           lineHeight: 1.5
         }}>
-          Chicago issued <strong style={{ color: '#fff' }}>$420 million</strong> in parking and camera tickets last year. <span style={{ color: '#CBD5E1' }}>The Plan keeps you out of that number for \$79/year. <strong style={{ color: '#fff' }}>Guaranteed<sup style={{ fontSize: '0.6em' }}>*</sup></strong></span>
+          Chicago issued <strong style={{ color: '#fff' }}>$420 million</strong> in parking and camera tickets last year. <span style={{ color: '#CBD5E1' }}>The Plan keeps you out of that number for $79/year. <strong style={{ color: '#fff' }}>Guaranteed<sup style={{ fontSize: '0.6em' }}>*</sup></strong></span>
         </p>
 
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <Button primary href="/get-started">
-            Get Started - \$79/year <ArrowRight />
+            Get Started - $79/year <ArrowRight />
           </Button>
         </div>
 
@@ -380,7 +380,7 @@ export default function LandingPage() {
           letterSpacing: '-0.5px',
           lineHeight: 1.15,
         }}>
-          \$79/year pays for itself after one avoided ticket.
+          $79/year pays for itself after one avoided ticket.
         </h2>
         <p style={{
           fontSize: '18px',
@@ -539,7 +539,7 @@ export default function LandingPage() {
               </span>
             </div>
             <h3 style={{ fontFamily: FONTS.heading, fontSize: '22px', fontWeight: 700, color: COLORS.textDark, marginBottom: '10px', lineHeight: 1.25 }}>
-              Every ticket you get, we fight for you.
+              Every eligible ticket, we contest for you.
             </h3>
             <p style={{ color: COLORS.textMuted, lineHeight: 1.6, margin: 0, fontSize: '15px' }}>
               We handle everything — the research, the argument, and the mailing:
@@ -548,7 +548,7 @@ export default function LandingPage() {
               <li>Scan the City&apos;s database twice a week for any ticket on your plate</li>
               <li>Gather evidence from 25+ sources — weather records, sweeper GPS data, street view imagery, 311 reports, and more</li>
               <li>Build a violation-specific legal argument using real Chicago hearing data</li>
-              <li>Print, mail, and fight it for you — every ticket, every time</li>
+              <li>Print and mail your contest letter before the 21-day deadline</li>
             </ul>
           </div>
         </div>
@@ -574,7 +574,7 @@ export default function LandingPage() {
             letterSpacing: '0.3px',
             boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
           }}>
-            Get Protected for \$79/year
+            Get Protected for $79/year
           </Link>
         </div>
       </section>
@@ -1001,7 +1001,7 @@ export default function LandingPage() {
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button primary href="/get-started">
-              Get Started - \$79/year <ArrowRight />
+              Get Started - $79/year <ArrowRight />
             </Button>
           </div>
         </div>
