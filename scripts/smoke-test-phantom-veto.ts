@@ -35,7 +35,10 @@ import { createClient } from '@supabase/supabase-js';
 const HOST = process.env.SMOKE_HOST || 'https://www.autopilotamerica.com';
 const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const TEST_EMAIL = 'randyvollrath@gmail.com';
+// Use the QA bot — Randy's account has real parking activity that interferes
+// with the "most recent row" lookup. qa-bot has no real activity, so the
+// rows we insert are the most recent for the veto check.
+const TEST_EMAIL = process.env.SMOKE_TEST_EMAIL || 'qa-bot@autopilotamerica.com';
 
 if (!SUPABASE_URL || !SERVICE_ROLE) {
   console.error('[smoke] Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
@@ -136,9 +139,23 @@ async function main() {
   const lakeLat = 41.892;
   const lakeLng = -87.557;
 
-  // Cleanup any leftover smoke rows from previous runs.
-  await sb.from('parking_location_history').delete().eq('user_id', userId).like('address', `smoke_phantom_veto_%`);
-  await sb.from('user_parked_vehicles').delete().eq('user_id', userId).like('address', `smoke_phantom_veto_%`);
+  // Wipe ALL parking_location_history + user_parked_vehicles rows for the
+  // test account so the rows we insert are guaranteed to be "the most recent"
+  // for the veto's lookup. Safe because qa-bot has no real activity.
+  await sb.from('parking_location_history').delete().eq('user_id', userId).select('id');
+  await sb.from('user_parked_vehicles').delete().eq('user_id', userId).select('id');
+  await sb.from('audit_logs').delete().eq('user_id', userId).eq('action_type', 'parking_event_vetoed').select('id');
+
+  // Verify wipe took effect — without this, leftover state would make the
+  // "most recent row" lookup return the wrong row and the test would fail
+  // for the wrong reason.
+  const verify = await sb
+    .from('parking_location_history')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  if ((verify.count ?? 0) > 0) {
+    throw new Error(`pre-test wipe left ${verify.count} rows in parking_location_history for ${TEST_EMAIL}`);
+  }
 
   try {
     // -------- CASE A — must veto --------
@@ -152,24 +169,35 @@ async function main() {
       fail(`expected vetoed=true with reason no_departure_since_previous_park; got ${JSON.stringify(resA.body)}`);
     }
 
-    // Verify an audit_logs row got created.
-    const { data: audit } = await sb
-      .from('audit_logs')
-      .select('id, action_type, action_details, status')
-      .eq('user_id', userId)
-      .eq('action_type', 'parking_event_vetoed')
-      .eq('entity_id', priorA)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Verify an audit_logs row got created. Retry up to 3 times with a
+    // short delay — there's a small window after the API handler returns
+    // its response before a subsequent read from a different connection
+    // sees the inserted row.
+    let audit = null;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000));
+      const result = await sb
+        .from('audit_logs')
+        .select('id, action_type, action_details, status')
+        .eq('user_id', userId)
+        .eq('action_type', 'parking_event_vetoed')
+        .eq('entity_id', priorA)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      audit = result.data;
+      if (audit) break;
+    }
     if (audit && audit.status === 'rejected' && (audit.action_details as any)?.reason === 'no_departure_since_previous_park') {
       ok(`audit log written (id=${audit.id})`);
     } else {
-      fail(`no audit_logs row found for prior=${priorA}`);
+      fail(`no audit_logs row found for prior=${priorA} after 10 retries (10s)`);
     }
 
-    // Clean up prior A so it doesn't affect Case B.
-    await sb.from('parking_location_history').delete().eq('id', priorA);
+    // Wipe between cases so each case has a clean slate (the veto looks at
+    // "most recent row" — any leftover row interferes).
+    await sb.from('parking_location_history').delete().eq('user_id', userId);
+    await sb.from('user_parked_vehicles').delete().eq('user_id', userId);
 
     // -------- CASE B — must pass (distance) --------
     log('Case B: prior park 30 min ago, uncleared, new park 500m away — must pass');
@@ -185,7 +213,8 @@ async function main() {
       fail(`unexpected response: ${JSON.stringify(resB.body)}`);
     }
 
-    await sb.from('parking_location_history').delete().eq('id', priorB);
+    await sb.from('parking_location_history').delete().eq('user_id', userId);
+    await sb.from('user_parked_vehicles').delete().eq('user_id', userId);
 
     // -------- CASE C — must pass (cleared_at set) --------
     log('Case C: prior park 30 min ago, CLEARED, new park at same coords — must pass');

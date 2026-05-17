@@ -127,7 +127,11 @@ export default async function handler(
           Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111_000
         );
 
-        await supabaseAdmin
+        // Chain .select() so the await round-trips to the server and we
+        // capture the new row id — without this we'd have no way to know if
+        // the audit-write actually succeeded, and the smoke test's reader
+        // can race the writer.
+        const { data: auditRow, error: auditErr } = await supabaseAdmin
           .from('audit_logs')
           .insert({
             user_id: userId,
@@ -151,11 +155,18 @@ export default async function handler(
               },
             },
             status: 'rejected',
-          });
+          })
+          .select('id')
+          .single();
+
+        if (auditErr) {
+          console.error(`[save-parked-location] audit_logs insert failed for veto: ${auditErr.message}`);
+        }
 
         console.log(
           `[save-parked-location] VETOED user=${userId} reason=no_departure_since_previous_park ` +
-          `priorAgeMin=${Math.round(priorAgeMs / 60000)} approxDistanceM=${approxDistanceMeters}`
+          `priorAgeMin=${Math.round(priorAgeMs / 60000)} approxDistanceM=${approxDistanceMeters} ` +
+          `auditId=${auditRow?.id ?? 'NULL'}`
         );
 
         return res.status(200).json({
