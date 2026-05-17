@@ -4,6 +4,7 @@ import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../lib/ra
 import { validateClientReferenceId } from '../../lib/webhook-validator';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 import stripeConfig from '../../lib/stripe-config';
+import { AUTOPILOT_PRICE_ID, AUTOPILOT_MONTHLY_PRICE_ID } from '../../lib/autopilot-plans';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
@@ -34,16 +35,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log('Create checkout API called with referralId:', referralId);
 
   try {
-    // Get Stripe price ID from env vars
+    // Resolve the Stripe price ID through the canonical AUTOPILOT_PRICE_ID
+    // chain (lib/autopilot-plans.ts) — the legacy STRIPE_PROTECTION_*_PRICE_ID
+    // vars had drifted to an old $80/$8 Stripe price set 215 days ago.
     const isAnnual = billingPlan === 'annual';
-    const stripePriceId = isAnnual
-      ? stripeConfig.protectionAnnualPriceId
-      : stripeConfig.protectionMonthlyPriceId;
+    const stripePriceId = isAnnual ? AUTOPILOT_PRICE_ID : AUTOPILOT_MONTHLY_PRICE_ID;
 
-    if (!stripePriceId) {
-      const envVar = isAnnual ? 'STRIPE_PROTECTION_ANNUAL_PRICE_ID' : 'STRIPE_PROTECTION_MONTHLY_PRICE_ID';
-      console.error(`Missing Stripe price ID: ${envVar}`);
-      return res.status(500).json({ error: `Missing Stripe configuration: ${envVar}` });
+    if (!stripePriceId || !stripePriceId.startsWith('price_')) {
+      console.error(`AUTOPILOT price ID did not resolve to a real Stripe ID. Resolved: ${stripePriceId}`);
+      return res.status(500).json({ error: 'Stripe price ID misconfigured' });
     }
 
     const lineItem: Stripe.Checkout.SessionCreateParams.LineItem = {

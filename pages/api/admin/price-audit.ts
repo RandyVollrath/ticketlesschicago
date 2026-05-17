@@ -49,19 +49,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const result: any = {
     paths: {
-      protection_checkout: {
-        used_by: '/protection page → /api/protection/checkout',
-        annual_price_id_source_var: 'STRIPE_PROTECTION_ANNUAL_PRICE_ID (or STRIPE_LIVE_PROTECTION_ANNUAL_PRICE_ID)',
-        monthly_price_id_source_var: 'STRIPE_PROTECTION_MONTHLY_PRICE_ID (or STRIPE_LIVE_PROTECTION_MONTHLY_PRICE_ID)',
-        annual_resolved_price_id: stripeConfig.protectionAnnualPriceId || '(not set)',
-        monthly_resolved_price_id: stripeConfig.protectionMonthlyPriceId || '(not set)',
-      },
-      autopilot_create_checkout: {
-        used_by: '/start, homepage → /api/autopilot/create-checkout',
-        annual_price_id_source_var: 'STANDARD_ANNUAL_79 → STANDARD_ANNUAL_99 → STRIPE_AUTOPILOT_PRICE_ID (fallback chain)',
+      checkout_canonical: {
+        used_by: 'All paid signup paths (/start, /protection, homepage, /api/autopilot/create-checkout, /api/protection/checkout, /api/create-checkout)',
+        annual_price_id_source_var: 'STANDARD_ANNUAL_79 → STANDARD_ANNUAL_99 → STRIPE_AUTOPILOT_PRICE_ID (fallback chain in lib/autopilot-plans.ts)',
         monthly_price_id_source_var: 'STANDARD_MONTHLY_9 → STANDARD_MONTHLY_10 → STRIPE_AUTOPILOT_MONTHLY_PRICE_ID (fallback chain)',
         annual_resolved_price_id: AUTOPILOT_PRICE_ID,
         monthly_resolved_price_id: AUTOPILOT_MONTHLY_PRICE_ID,
+      },
+      legacy_stripe_protection_vars: {
+        note: 'These env vars used to be the source for /api/protection/checkout, but as of 2026-05-17 protection/checkout reads AUTOPILOT_PRICE_ID instead. We keep these surfaced here so any future drift between the two sources is visible.',
+        annual_resolved_price_id: stripeConfig.protectionAnnualPriceId || '(not set)',
+        monthly_resolved_price_id: stripeConfig.protectionMonthlyPriceId || '(not set)',
       },
     },
     stripe_amounts: {} as any,
@@ -102,13 +100,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
-  // Equality summary
+  // Drift summary — true means "legacy vars match canonical vars". After
+  // the 2026-05-17 consolidation, only the canonical pair is actually used
+  // for checkout, but agreement here means a future regression that points
+  // the legacy vars at the wrong price won't bite us either.
   result.summary = {
-    paths_agree_on_annual:
+    canonical_annual_charges_dollars: result.stripe_amounts[AUTOPILOT_PRICE_ID]?.unit_amount_dollars,
+    canonical_monthly_charges_dollars: result.stripe_amounts[AUTOPILOT_MONTHLY_PRICE_ID]?.unit_amount_dollars,
+    legacy_vars_agree_on_annual:
       stripeConfig.protectionAnnualPriceId &&
       AUTOPILOT_PRICE_ID &&
       stripeConfig.protectionAnnualPriceId === AUTOPILOT_PRICE_ID,
-    paths_agree_on_monthly:
+    legacy_vars_agree_on_monthly:
       stripeConfig.protectionMonthlyPriceId &&
       AUTOPILOT_MONTHLY_PRICE_ID &&
       stripeConfig.protectionMonthlyPriceId === AUTOPILOT_MONTHLY_PRICE_ID,

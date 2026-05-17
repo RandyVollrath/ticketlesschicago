@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { z } from 'zod';
 import { logAuditEvent, getIpAddress, getUserAgent } from '../../../lib/audit-logger';
 import stripeConfig from '../../../lib/stripe-config';
+import { AUTOPILOT_PRICE_ID, AUTOPILOT_MONTHLY_PRICE_ID } from '../../../lib/autopilot-plans';
 import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib/rate-limiter';
 import { validateClientReferenceId } from '../../../lib/webhook-validator';
 import { maskEmail } from '../../../lib/mask-pii';
@@ -139,13 +140,18 @@ export default async function handler(
       permitRequested,
       vehicleType
     });
-    // Create Stripe price IDs based on plan
+    // Resolve the Stripe price ID through the canonical AUTOPILOT_PRICE_ID
+    // chain (lib/autopilot-plans.ts) rather than the legacy
+    // STRIPE_PROTECTION_*_PRICE_ID env vars, which had drifted to an older
+    // $80/$8 Stripe price set 215 days ago. Both /protection and /start
+    // now charge the same $79/$9 prices. See the 2026-05-17 price-audit
+    // for the drift root cause.
     const priceId = billingPlan === 'monthly'
-      ? stripeConfig.protectionMonthlyPriceId
-      : stripeConfig.protectionAnnualPriceId;
+      ? AUTOPILOT_MONTHLY_PRICE_ID
+      : AUTOPILOT_PRICE_ID;
 
-    if (!priceId) {
-      throw new Error(`Stripe price ID not configured for ${stripeConfig.mode} mode`);
+    if (!priceId || !priceId.startsWith('price_')) {
+      throw new Error(`Stripe price ID not configured (resolved: ${priceId})`);
     }
 
     // Build line items array - ONLY the subscription
