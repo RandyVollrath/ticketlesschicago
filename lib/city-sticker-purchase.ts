@@ -25,6 +25,7 @@ import {
   looksLikePaymentForm,
   scrapeConfirmationReference,
 } from './gov-payment-form';
+import { compareChicagoAddresses, findChicagoAddressCandidates } from './compare-chicago-addresses';
 
 export interface CitySticerPurchaseInput {
   consent: ConsentRecord;
@@ -33,6 +34,12 @@ export interface CitySticerPurchaseInput {
     vinLast6: string;
     lastName: string;
     email: string;
+    /**
+     * The address Autopilot has on file for this user (from user_profiles).
+     * Used by the address-mismatch guard after the EzBuy search-results
+     * page renders the city's on-file address. Pass null to skip the guard.
+     */
+    expectedAddress?: string | null;
   };
   /**
    * When true, stops after extracting the price and before any payment input.
@@ -52,7 +59,7 @@ export interface CitySticerPurchaseResult {
   totalChargedCents?: number;
   screenshotPaths: string[];
   error?: string;
-  stoppedAt?: 'gate' | 'consent' | 'login' | 'vehicle_search' | 'price' | 'payment_not_configured' | 'payment_form' | 'submit' | 'confirmation';
+  stoppedAt?: 'gate' | 'consent' | 'login' | 'vehicle_search' | 'address_mismatch' | 'price' | 'payment_not_configured' | 'payment_form' | 'submit' | 'confirmation';
 }
 
 const ENTRY_URL = 'https://ezbuy.chicityclerk.com/vehicle-stickers';
@@ -215,6 +222,45 @@ export async function purchaseCitySticker(input: CitySticerPurchaseInput): Promi
       await page.screenshot({ path: shot, fullPage: true });
       screenshots.push(shot);
       return { success: false, screenshotPaths: screenshots, error: 'Vehicle not found on EzBuy', stoppedAt: 'vehicle_search' };
+    }
+
+    // Address-mismatch guard. Backstop only: our /api/check-permit-zone
+    // already verifies the user's saved address against parking_permit_zones
+    // before we decide permit vs sticker-only — this catches the rarer
+    // failure where the *city's* on-file address is stale, which would lead
+    // to buying the wrong-zone permit (or no permit when they qualify).
+    // Fail-open: when we can't parse, we don't block; we log + continue.
+    if (vehicle.expectedAddress) {
+      const candidates = findChicagoAddressCandidates(afterSearch);
+      // Pick the first candidate whose street name matches the user's, else
+      // fall back to the first candidate — protects us from matching against
+      // an unrelated address that happens to render on the page (e.g. a
+      // sample address in instructions).
+      const expectedParsed = vehicle.expectedAddress.trim();
+      let chosen: string | undefined;
+      for (const c of candidates) {
+        const cmp = compareChicagoAddresses(expectedParsed, c);
+        if (cmp.decision === 'match') { chosen = c; break; }
+      }
+      if (!chosen && candidates.length > 0) chosen = candidates[0];
+
+      if (chosen) {
+        const cmp = compareChicagoAddresses(expectedParsed, chosen);
+        if (cmp.decision === 'mismatch') {
+          const shot = `/tmp/city-purchase-address-mismatch-${consent.id}.png`;
+          await page.screenshot({ path: shot, fullPage: true });
+          screenshots.push(shot);
+          return {
+            success: false,
+            screenshotPaths: screenshots,
+            error: `Address on file at City Clerk ("${cmp.found}") differs from your profile address ("${cmp.expected}") — ${cmp.reason}. Buying a sticker against the city's stale record could attach a permit to the wrong zone. Aborted before payment.`,
+            stoppedAt: 'address_mismatch',
+          };
+        }
+        console.log(`[city-sticker-purchase] address guard: ${cmp.decision} — ${cmp.reason}`);
+      } else {
+        console.log(`[city-sticker-purchase] address guard: inconclusive — no recognizable address on search-results page`);
+      }
     }
 
     // Fill contact email if a field is present, then advance to cart

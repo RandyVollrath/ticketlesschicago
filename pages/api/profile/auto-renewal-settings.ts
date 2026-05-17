@@ -23,6 +23,10 @@ const patchSchema = z.object({
   authorized: z.boolean().optional(),
   city_sticker: z.boolean().optional(),
   license_plate: z.boolean().optional(),
+  // User intent: "if I'm in a permit zone, also buy the residential parking
+  // permit on my behalf at sticker renewal time." Independent of city_sticker
+  // — a user may want a sticker-only renewal even though they qualify.
+  permit_requested: z.boolean().optional(),
 });
 
 interface ProfileRow {
@@ -38,12 +42,15 @@ interface ProfileRow {
   auto_renewal_authorized_by: string | null;
   auto_renewal_city_sticker: boolean | null;
   auto_renewal_license_plate: boolean | null;
+  has_permit_zone: boolean | null;
+  permit_requested: boolean | null;
 }
 
 const PROFILE_COLUMNS =
   'user_id, email, last_name, license_plate, vin, il_pin_encrypted, il_registration_id_encrypted, ' +
   'auto_renewal_authorized, auto_renewal_authorized_at, auto_renewal_authorized_by, ' +
-  'auto_renewal_city_sticker, auto_renewal_license_plate';
+  'auto_renewal_city_sticker, auto_renewal_license_plate, ' +
+  'has_permit_zone, permit_requested';
 
 async function authenticate(req: NextApiRequest): Promise<{ userId: string } | { error: string; status: number }> {
   const authHeader = req.headers.authorization;
@@ -79,6 +86,12 @@ function buildResponse(row: ProfileRow) {
     city_sticker: Boolean(row.auto_renewal_city_sticker),
     license_plate: Boolean(row.auto_renewal_license_plate),
     authorized_at: row.auto_renewal_authorized_at,
+    // has_permit_zone is read-only here: it reflects our parking_permit_zones
+    // lookup of the user's saved address. Recomputed in profile-update.ts when
+    // the address changes; never set directly by this endpoint. The toggle the
+    // user actually controls is permit_requested.
+    has_permit_zone: Boolean(row.has_permit_zone),
+    permit_requested: Boolean(row.permit_requested),
     ...readinessSummary(row),
   };
 }
@@ -124,11 +137,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       parsed.data.city_sticker !== undefined ? parsed.data.city_sticker : Boolean(currentRow.auto_renewal_city_sticker);
     let targetPlate =
       parsed.data.license_plate !== undefined ? parsed.data.license_plate : Boolean(currentRow.auto_renewal_license_plate);
+    let targetPermit =
+      parsed.data.permit_requested !== undefined ? parsed.data.permit_requested : Boolean(currentRow.permit_requested);
 
     // Force sub-toggles off if master is off.
     if (!targetAuthorized) {
       targetCity = false;
       targetPlate = false;
+      // Permit intent is independent of the auto-renew master switch — leaving
+      // it on while the master is off would let us pick the wrong cart total
+      // if the user re-enables auto-renew later. Mirror the same off-on-revoke
+      // safety as the sticker toggles.
+      targetPermit = false;
     }
 
     // Reject if sub-toggle is on but the required credentials aren't present.
@@ -145,10 +165,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // Reject permit_requested=true if we don't believe the address is in a
+    // permit zone. has_permit_zone is recomputed on every address change in
+    // profile-update.ts; if it's false here, our parking_permit_zones table
+    // says the address doesn't qualify and we won't waste $30 on a permit.
+    if (targetPermit && !currentRow.has_permit_zone) {
+      return res.status(400).json({
+        error: 'Address is not in an active residential permit zone',
+        detail: 'Update your address on file if you recently moved; we recompute permit-zone eligibility from city data.',
+      });
+    }
+
     const updates: Record<string, unknown> = {
       auto_renewal_authorized: targetAuthorized,
       auto_renewal_city_sticker: targetCity,
       auto_renewal_license_plate: targetPlate,
+      permit_requested: targetPermit,
     };
 
     if (targetAuthorized && !currentRow.auto_renewal_authorized) {
@@ -181,11 +213,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             authorized: Boolean(currentRow.auto_renewal_authorized),
             city_sticker: Boolean(currentRow.auto_renewal_city_sticker),
             license_plate: Boolean(currentRow.auto_renewal_license_plate),
+            permit_requested: Boolean(currentRow.permit_requested),
           },
           after: {
             authorized: targetAuthorized,
             city_sticker: targetCity,
             license_plate: targetPlate,
+            permit_requested: targetPermit,
           },
         },
         status: 'success',
@@ -195,7 +229,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
     console.log(
-      `[auto-renewal-settings] ${maskUserId(auth.userId)} → authorized=${targetAuthorized}, city=${targetCity}, plate=${targetPlate}`,
+      `[auto-renewal-settings] ${maskUserId(auth.userId)} → authorized=${targetAuthorized}, city=${targetCity}, plate=${targetPlate}, permit=${targetPermit}`,
     );
 
     const updatedRow: ProfileRow = {
@@ -203,6 +237,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       auto_renewal_authorized: targetAuthorized,
       auto_renewal_city_sticker: targetCity,
       auto_renewal_license_plate: targetPlate,
+      permit_requested: targetPermit,
       auto_renewal_authorized_at: (updates.auto_renewal_authorized_at as string | null | undefined) ?? currentRow.auto_renewal_authorized_at,
     };
 

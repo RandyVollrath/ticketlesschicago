@@ -30,11 +30,13 @@ export function isDryRun(): boolean {
 
 export function mapFailureReason(
   stoppedAt?: string,
-): 'invalid_credentials' | 'card_declined' | 'site_changed' | 'circuit_breaker' | 'other' {
+): 'invalid_credentials' | 'card_declined' | 'site_changed' | 'address_mismatch' | 'circuit_breaker' | 'other' {
   switch (stoppedAt) {
     case 'invalid_credentials':
     case 'missing_credentials':
       return 'invalid_credentials';
+    case 'address_mismatch':
+      return 'address_mismatch';
     case 'akamai_block':
     case 'login_form_changed':
     case 'payment_form':
@@ -54,17 +56,39 @@ interface UserVehicle {
   license_state: string | null;
   vin: string | null;
   last_name: string | null;
+  expected_address: string | null;
 }
 
 async function loadUserVehicle(userId: string, plateId?: string | null): Promise<UserVehicle | null> {
   // Always need the user's email (no email column on monitored_plates).
+  // We also pull mailing_address / home_address_full so the EzBuy bot's
+  // address-mismatch guard can compare the city's on-file address against
+  // what we think the user's address is.
   const { data: profile } = await supabaseAdmin
     .from('user_profiles')
-    .select('email, license_plate, license_state, vin, last_name')
+    .select('email, license_plate, license_state, vin, last_name, mailing_address, home_address_full')
     .eq('user_id', userId)
     .maybeSingle();
   if (!profile) return null;
-  const u = profile as UserVehicle;
+  const p0 = profile as {
+    email: string;
+    license_plate: string | null;
+    license_state: string | null;
+    vin: string | null;
+    last_name: string | null;
+    mailing_address: string | null;
+    home_address_full: string | null;
+  };
+  const u: UserVehicle = {
+    email: p0.email,
+    license_plate: p0.license_plate,
+    license_state: p0.license_state,
+    vin: p0.vin,
+    last_name: p0.last_name,
+    // Prefer mailing_address (what the city should have on file) and fall
+    // back to home_address_full (resolved primary address) when it's unset.
+    expected_address: p0.mailing_address || p0.home_address_full,
+  };
 
   // No plate_id: legacy path, use the user_profiles primary plate.
   if (!plateId) return u;
@@ -83,6 +107,7 @@ async function loadUserVehicle(userId: string, plateId?: string | null): Promise
     license_state: p?.state ?? u.license_state,
     vin: p?.vin ?? u.vin,
     last_name: p?.last_name ?? u.last_name,
+    expected_address: u.expected_address,
   };
 }
 
@@ -187,6 +212,7 @@ export async function processConsent(consent: ConsentRecord): Promise<ProcessOut
         vinLast6: user.vin.slice(-6),
         lastName: user.last_name,
         email: user.email,
+        expectedAddress: user.expected_address,
       },
       dryRun,
     });

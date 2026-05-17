@@ -1190,6 +1190,8 @@ function SettingsPageInner() {
     city_sticker_ready: boolean;
     license_plate_ready: boolean;
     missing: { city_sticker: string[]; license_plate: string[] };
+    has_permit_zone: boolean;
+    permit_requested: boolean;
   } | null>(null);
   const [autoRenewSaveError, setAutoRenewSaveError] = useState<string | null>(null);
 
@@ -1641,8 +1643,11 @@ function SettingsPageInner() {
   // Sticker auto-renewal toggle save — flips master and/or per-sticker bits.
   // Endpoint rejects flipping a sub-toggle ON if its credentials are missing,
   // so the caller should only pass values that align with current readiness.
+  // permit_requested is an additional intent flag that only applies to users
+  // whose has_permit_zone is true (recomputed on every address change against
+  // our parking_permit_zones table).
   const saveAutoRenewSettings = useCallback(async (
-    patch: { authorized?: boolean; city_sticker?: boolean; license_plate?: boolean },
+    patch: { authorized?: boolean; city_sticker?: boolean; license_plate?: boolean; permit_requested?: boolean },
   ) => {
     setAutoRenewSaveError(null);
     try {
@@ -3345,6 +3350,40 @@ function SettingsPageInner() {
                 {autoRenewSettings.missing.city_sticker.map((m) => (
                   m === 'vin' ? 'VIN' : m === 'license_plate' ? 'license plate' : m === 'last_name' ? 'last name' : m
                 )).join(', ')}.
+              </div>
+            )}
+
+            {/* Residential parking permit add-on. Only rendered when the user's
+                saved address falls inside a permit zone per our weekly Chicago
+                Open Data sync (has_permit_zone). The toggle persists user
+                intent (permit_requested); the bot reads both flags at renewal
+                time. */}
+            {autoRenewSettings?.has_permit_zone && (
+              <div style={{
+                marginTop: 14,
+                paddingTop: 14,
+                borderTop: `1px dashed ${COLORS.border}`,
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h4 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 600, color: COLORS.primary }}>
+                      Also buy my residential parking permit
+                    </h4>
+                    <p style={{ margin: 0, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>
+                      Your address is in an active permit zone. If you want one, we&rsquo;ll add the residential permit (+$30) to your city sticker renewal. Leave off if you don&rsquo;t want a permit even though you qualify.
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={Boolean(autoRenewSettings?.permit_requested)}
+                    onChange={(next) => saveAutoRenewSettings({ permit_requested: next })}
+                    disabled={!autoRenewSettings?.authorized}
+                  />
+                </div>
               </div>
             )}
           </div>

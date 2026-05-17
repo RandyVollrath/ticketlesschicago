@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { maskEmail, maskUserId } from '../../lib/mask-pii';
 import { sanitizeErrorMessage } from '../../lib/error-utils';
 import { resolveAddressZone } from '../../lib/address-zone-resolver';
+import { checkPermitZoneForAddress } from '../../lib/check-permit-zone';
 
 // Input validation schema for profile updates
 const profileUpdateSchema = z.object({
@@ -128,6 +129,23 @@ export default async function handler(
         console.log(`[profile-update] Resolved "${addressTarget}" -> ward=${resolved.ward} section=${resolved.section}`);
       } else {
         console.warn(`[profile-update] Could not resolve address "${addressTarget}" to a zone`);
+      }
+    }
+
+    // Recompute has_permit_zone against our parking_permit_zones table
+    // whenever the address changes. The weekly check-zone-changes cron also
+    // recomputes this, but we don't want to wait a week — if a user moves and
+    // updates their address, the next sticker renewal needs to know
+    // immediately whether they qualify for a residential permit. Authoritative
+    // source: our own table, kept in sync from Chicago Open Data. Failures are
+    // logged but don't block the profile update.
+    if (addressTarget) {
+      try {
+        const zoneResult = await checkPermitZoneForAddress(addressTarget);
+        (updates as any).has_permit_zone = zoneResult.hasPermitZone;
+        console.log(`[profile-update] Permit zone check for "${addressTarget}" -> ${zoneResult.hasPermitZone} (${zoneResult.zones.length} match)`);
+      } catch (e) {
+        console.error('[profile-update] checkPermitZoneForAddress failed (continuing):', e);
       }
     }
 

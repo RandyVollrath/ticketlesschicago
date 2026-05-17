@@ -100,7 +100,7 @@ export async function sendUserRenewalReceiptEmail(input: SendReceiptInput): Prom
 export async function sendUserRenewalFailedEmail(input: {
   consent: ConsentRecord;
   userEmail: string;
-  reason: 'invalid_credentials' | 'card_declined' | 'site_changed' | 'circuit_breaker' | 'other';
+  reason: 'invalid_credentials' | 'card_declined' | 'site_changed' | 'address_mismatch' | 'circuit_breaker' | 'other';
   detail?: string;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
@@ -129,6 +129,16 @@ export async function sendUserRenewalFailedEmail(input: {
       `For now please renew yourself at https://${input.consent.renewal_type === 'city_sticker' ? 'ezbuy.chicityclerk.com/vehicle-stickers' : 'www.ilsos.gov/departments/vehicles/onlinerenewals.html'}`,
       ``,
       `We weren't charged so neither were you.`,
+    ],
+    address_mismatch: [
+      `We paused your ${label} renewal because the address the City Clerk has on file for your plate doesn't match the address we have for you.`,
+      ``,
+      `If you recently moved, your parking permit zone may have changed — and buying a sticker against the city's stale record could attach the wrong permit. We won't proceed until you confirm which address is correct.`,
+      ``,
+      `Please review your address here: ${siteBaseUrl()}/settings`,
+      `Then update the city if needed: https://www.chicityclerk.com/clerk-services/vehicle-stickers/change-address`,
+      ``,
+      `We didn't charge you and we'll retry next cycle once the addresses agree.`,
     ],
     circuit_breaker: [
       `Our auto-renewal automation is temporarily paused while we investigate a few recent failures. We'll retry your renewal once we've reopened it.`,
