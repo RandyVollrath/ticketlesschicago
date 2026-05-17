@@ -83,6 +83,92 @@ export default async function handler(
 
     const input: SaveParkedLocationInput = parseResult.data;
 
+    // PHANTOM-TRIP VETO (added 2026-05-17).
+    //
+    // Mobile detection bugs (most recently the GPS-only-fallback phantom trip
+    // from 2026-05-16 while the phone was sitting on a desk being used to
+    // edit video) can fire a "parking" event without the user ever having
+    // actually driven anywhere. The signature is: the most recent
+    // parking_location_history row for this user has cleared_at=NULL (mobile
+    // never reported a departure between the previous park and now), enough
+    // time has passed that the 5-min in-file dedup window doesn't apply, and
+    // the proposed new park is near the previous one.
+    //
+    // We refuse to save these. Critically the veto runs BEFORE deactivating
+    // user_parked_vehicles — a phantom would otherwise wipe the user's
+    // genuine active parking record and replace it with a fake one. The
+    // rejected event is written to audit_logs (`parking_event_vetoed`) so
+    // we can review for false rejections.
+    //
+    // Hardcoded location guards (e.g. the 1019 W Fullerton check below) are
+    // legacy patches and should be retired once this principled check has
+    // soaked in production.
+    //
+    // See docs/IOS_PARKING_DETECTION.md Parking Detection Error Log.
+    const VETO_MIN_AGE_MS = 5 * 60 * 1000;   // must be older than the in-file 5-min dedup window
+    const VETO_MAX_DISTANCE_DEG = 0.003;     // ~300m at Chicago latitude
+
+    const { data: priorRow } = await supabaseAdmin
+      .from('parking_location_history')
+      .select('id, parked_at, cleared_at, latitude, longitude')
+      .eq('user_id', userId)
+      .order('parked_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (priorRow && priorRow.cleared_at === null) {
+      const priorAgeMs = Date.now() - new Date(priorRow.parked_at).getTime();
+      const latDiff = Math.abs((priorRow.latitude ?? input.latitude) - input.latitude);
+      const lngDiff = Math.abs((priorRow.longitude ?? input.longitude) - input.longitude);
+      const nearby = latDiff < VETO_MAX_DISTANCE_DEG && lngDiff < VETO_MAX_DISTANCE_DEG;
+
+      if (priorAgeMs >= VETO_MIN_AGE_MS && nearby) {
+        const approxDistanceMeters = Math.round(
+          Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111_000
+        );
+
+        await supabaseAdmin
+          .from('audit_logs')
+          .insert({
+            user_id: userId,
+            action_type: 'parking_event_vetoed',
+            entity_type: 'parking_location_history',
+            entity_id: priorRow.id,
+            action_details: {
+              reason: 'no_departure_since_previous_park',
+              prior_row: {
+                id: priorRow.id,
+                parked_at: priorRow.parked_at,
+                latitude: priorRow.latitude,
+                longitude: priorRow.longitude,
+                age_minutes: Math.round(priorAgeMs / 60000),
+              },
+              proposed_event: {
+                latitude: input.latitude,
+                longitude: input.longitude,
+                address: input.address ?? null,
+                approx_distance_meters: approxDistanceMeters,
+              },
+            },
+            status: 'rejected',
+          });
+
+        console.log(
+          `[save-parked-location] VETOED user=${userId} reason=no_departure_since_previous_park ` +
+          `priorAgeMin=${Math.round(priorAgeMs / 60000)} approxDistanceM=${approxDistanceMeters}`
+        );
+
+        return res.status(200).json({
+          success: true,
+          id: null,
+          vetoed: true,
+          veto_reason: 'no_departure_since_previous_park',
+          message:
+            'Likely false-positive parking event — no preceding departure recorded since the previous parking. Not saved.',
+        });
+      }
+    }
+
     // Deactivate any existing parked location for this user
     const { error: deactivateError } = await supabaseAdmin
       .from('user_parked_vehicles')
