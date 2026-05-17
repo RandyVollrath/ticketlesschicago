@@ -18,11 +18,20 @@ const COLORS = {
 
 const FONT = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
-// ---------- Numbers locked from FOIA data (queried 2026-05-15) ----------
-// 1) Chicago-resident ticket late fees, 2025:
-//    sqlite3 foia.db "SELECT SUM(current_amount_due + total_payments - fine_level1)
-//      FROM tickets WHERE substr(issue_datetime,7,4)='2025' AND zipcode LIKE '606%'"
-//    = $74,140,000
+// ---------- Numbers locked from FOIA data (queried 2026-05-17) ----------
+// 1) Chicago-resident ticket late fees BILLED, 2025:
+//    sqlite3 foia.db "SELECT SUM(fine_level2 - fine_level1)
+//      FROM tickets
+//      WHERE substr(issue_datetime,7,4)='2025'
+//        AND zipcode LIKE '606%'
+//        AND notice_level IN ('VIOL','DETR','SEIZ','FINL','DLS')
+//        AND fine_level2 > fine_level1"
+//    = $154,213,425
+//    (This counts the actual late penalty the City added to each ticket where it
+//    mailed a Violation Notice — the literal "you didn't pay in 25 days" surcharge.
+//    Prior version of this page used a net formula that subtracted dismissed-fine
+//    forgiveness and produced $74M; the $154M number is the gross billed amount,
+//    which is what drivers actually experience in the mail.)
 //
 // 2) Unique Chicago plates ticketed, 2025:
 //    From FOIA F136386-041726, sheet "Plate count by year - Chicago"
@@ -31,17 +40,17 @@ const FONT = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sa
 // 3) Top-10 violation breakdown sourced from same tickets table, 2025, Chicago-zip.
 
 const PRICE = 79;
-const LATE_FEES_M = 74.1;
+const LATE_FEES_M = 154.2;
 const TICKETED_PLATES = 883240;
-const LATE_FEE_PER_TICKETED = 84;          // $74.1M / 883,240 = $83.94
+const LATE_FEE_PER_TICKETED = 175;         // $154.2M / 883,240 = $174.55
 const CHICAGO_VEHICLES = 1_180_000;
 const PCT_TICKETED = 74.9;                 // 883,240 / 1.18M
 const UNCONTESTED_PCT = 94;
 const MAIL_WIN_PCT = 59;
 const STICKER_FINE = 200;
-const COVERED_DOLLARS_M = 211.1;
-const TOTAL_CHI_DOLLARS_M = 265.1;
-const COVERED_PCT = 80;                    // 211.1 / 265.1
+const COVERED_DOLLARS_M = 275.8;
+const TOTAL_CHI_DOLLARS_M = 345.3;
+const COVERED_PCT = 80;                    // 275.8 / 345.3 = 79.9%
 
 // ---------- helpers ----------
 const fmt$ = (n: number) => '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -167,10 +176,10 @@ export default function TheMath() {
             fontSize: '46px', lineHeight: 1.1, fontWeight: 800,
             color: COLORS.deepHarbor, margin: '0 0 20px', letterSpacing: '-0.025em',
           }}>
-            $84 in late fees. <span style={{ color: COLORS.signal }}>${PRICE}</span> for Autopilot.
+            $175 in late fees. <span style={{ color: COLORS.signal }}>${PRICE}</span> for Autopilot.
           </h1>
           <p style={{ fontSize: '20px', lineHeight: 1.55, color: COLORS.slate, margin: '0 0 36px' }}>
-            The average Chicago driver who got a ticket last year paid <strong style={{ color: COLORS.deepHarbor }}>${LATE_FEE_PER_TICKETED} in late fees alone</strong> — on top of the original fines. Autopilot's mail-in contest service freezes the late-fee clock the moment a ticket lands. That one feature, by itself, almost covers the cost of the whole product.
+            The average Chicago driver who got a ticket last year was billed <strong style={{ color: COLORS.deepHarbor }}>${LATE_FEE_PER_TICKETED} in late fees alone</strong> — on top of the original fines. Autopilot's mail-in contest service freezes the late-fee clock the moment a ticket lands. That one feature, by itself, more than covers the cost of the whole product — twice over.
           </p>
           <p style={{ fontSize: '20px', lineHeight: 1.55, color: COLORS.slate, margin: '0 0 40px' }}>
             Stack on automatic ticket contesting, city sticker auto-renewal, and our mobile app's coverage of 8 of the top 10 Chicago ticket types — and the math becomes a joke. Here's all of it, with every number sourced.
@@ -185,10 +194,10 @@ export default function TheMath() {
           </div>
 
           {/* The $84 derivation */}
-          <H2 id="late-fees">How we got to $84</H2>
+          <H2 id="late-fees">How we got to $175</H2>
 
           <P>
-            <strong>The City of Chicago is in the late-fee business.</strong> A parking ticket starts at face value — $60 for street cleaning, $50 for an expired meter outside the Loop, $100 for a red-light camera — but if you don't pay or contest in time, the fine <em>doubles</em> to a level-2 penalty. Keep ignoring the notices and the City enters a default determination of liability, after which it goes to collections and can suspend your driver's license.
+            <strong>The City of Chicago is in the late-fee business.</strong> A parking ticket starts at face value — $60 for street cleaning, $50 for an expired meter outside the Loop, $100 for a red-light camera — but if you don't pay or contest within 25 days, the City mails a Violation Notice and adds a late penalty. For most tickets the fine doubles. For higher-value violations the total is capped at $250 by ordinance (so a $200 city sticker ticket becomes $250, not $400). Keep ignoring the notices and the City enters a default determination of liability, after which it goes to collections and can suspend your driver's license.
           </P>
 
           <P>
@@ -196,35 +205,41 @@ export default function TheMath() {
           </P>
 
           <CodeBlock>{`-- foia.db, tickets table (35.7M rows, 2018-2025)
+-- For Chicago-registered plates in 2025:
 SELECT
-  SUM(fine_level1) / 1e6                                  AS face_fines_M,
-  SUM(current_amount_due + total_payments) / 1e6          AS total_billed_M,
-  SUM(current_amount_due + total_payments - fine_level1)  / 1e6
-                                                          AS late_fees_M
+  -- Original face-value fine on every ticket
+  SUM(fine_level1) / 1e6 AS face_fines_M,
+
+  -- Late penalty added when the City escalated the ticket
+  -- past the 25-day window (Violation Notice mailed)
+  SUM(CASE WHEN notice_level IN ('VIOL','DETR','SEIZ','FINL','DLS')
+                AND fine_level2 > fine_level1
+           THEN fine_level2 - fine_level1
+           ELSE 0 END) / 1e6 AS late_fees_M
 FROM tickets
 WHERE substr(issue_datetime, 7, 4) = '2025'
   AND zipcode LIKE '606%';   -- Chicago-registered plates
 
 -- Result:
--- face_fines_M:     $191.1M
--- total_billed_M:   $265.1M
--- late_fees_M:      $74.1M   <-- the late-fee tax`}</CodeBlock>
+-- face_fines_M:   $191.1M  (the original tickets)
+-- late_fees_M:    $154.2M  <-- the late-fee tax
+-- total billed:   $345.3M`}</CodeBlock>
 
           <P>
-            Chicago drivers were billed <strong>${LATE_FEES_M}M in late-fee penalties</strong> on 2025 tickets alone. Not fines — <em>penalties on top of</em> fines. That number doesn't include any of the underlying ticket amounts.
+            Chicago drivers were billed <strong>${LATE_FEES_M}M in late-fee penalties</strong> on 2025 tickets alone. Not fines — <em>penalties on top of</em> fines, triggered when the City mailed a Violation Notice past the 25-day window. About 88% of Chicago-zip tickets reached that stage.
           </P>
 
           <P>
             We then needed the right denominator: not "all Chicago drivers" (which would dilute the number across people who never got a ticket), but "Chicago drivers who actually got at least one ticket." For that we filed a separate FOIA — F136386-041726 — asking the Department of Finance for the count of distinct license plates registered to a Chicago address that received at least one ticket in 2025. <strong>The answer: 883,240</strong>.
           </P>
 
-          <CodeBlock>{`Chicago late fees, 2025         =  $74,140,000
-Chicago plates ticketed, 2025   =     883,240
+          <CodeBlock>{`Chicago late fees billed, 2025  =  $154,213,425
+Chicago plates ticketed, 2025   =       883,240
 ──────────────────────────────────────────────
-Late fees per ticketed driver   =       $83.94   ≈  $84`}</CodeBlock>
+Late fees per ticketed driver   =        $174.55   ≈  $175`}</CodeBlock>
 
           <P>
-            Eighty-four dollars a year per ticketed Chicago driver, in late-fee penalties <em>alone</em>. That number is real, derived from public records, and reproducible against the same database any researcher can request.
+            $175 a year per ticketed Chicago driver, in late-fee penalties <em>alone</em>. That number is real, derived from public records, and reproducible against the same database any researcher can request.
           </P>
 
           <P>
@@ -235,7 +250,7 @@ Late fees per ticketed driver   =       $83.94   ≈  $84`}</CodeBlock>
           <H2 id="stack">Now stack the rest of what Autopilot does</H2>
 
           <P>
-            The $84 in late fees is just one piece. Here's what else is in the box, layered on top.
+            The $175 in late fees is just one piece. Here's what else is in the box, layered on top.
           </P>
 
           {/* Layer 1 */}
@@ -276,14 +291,14 @@ Late fees per ticketed driver   =       $83.94   ≈  $84`}</CodeBlock>
             claim={`Avoid the $${STICKER_FINE} city-sticker ticket without thinking about it`}
           >
             <P>
-              Every car registered in Chicago needs an annual city sticker. Forget to renew it on time and the fine is <strong>${STICKER_FINE}</strong> per ticket — and they will keep writing them, day after day, until you buy one. In 2025 the City issued 160,333 city-sticker tickets to Chicago plates, billing them <strong>$35.9M</strong> in total (face + late fees).
+              Every car registered in Chicago needs an annual city sticker. Forget to renew it on time and the fine is <strong>${STICKER_FINE}</strong> per ticket — and they will keep writing them, day after day, until you buy one. In 2025 the City issued 160,333 city-sticker tickets to Chicago plates, billing them <strong>$39.6M</strong> in total (face + late fees).
             </P>
             <P>
               Autopilot watches your sticker expiration. Before it lapses, we purchase the renewal on your behalf through the City Clerk's EzBuy portal. You're default compliant — no calendar reminders, no last-week scramble, no $200 ticket sitting on your windshield.
             </P>
-            <P style={{ fontSize: '14px', color: COLORS.slate, marginTop: '12px' }}>
+            <p style={{ fontSize: '14px', lineHeight: 1.6, color: COLORS.slate, margin: '12px 0 0' }}>
               The sticker cost itself is passed through at face — we don't mark it up. The value here is the avoided ${STICKER_FINE}+ fine, not arbitrage on the sticker price.
-            </P>
+            </p>
           </Layer>
 
           {/* Layer 4 */}
@@ -385,10 +400,10 @@ Late fees per ticketed driver   =       $83.94   ≈  $84`}</CodeBlock>
             </summary>
             <div style={{ marginTop: '14px', lineHeight: 1.65 }}>
               <p style={{ margin: '0 0 12px' }}>
-                <strong>Tickets and late fees:</strong> Chicago Department of Finance FOIA F129773 / F118906, full ticket-row export 2018–2025, 35.7 million rows. Filtered to <Code>zipcode LIKE &apos;606%&apos;</Code> for Chicago-registered plates. Late fees computed as <Code>SUM(current_amount_due + total_payments - fine_level1)</Code> — the difference between everything the City has billed and the original face fine.
+                <strong>Tickets and late fees:</strong> Chicago Department of Finance FOIA F129773-022626, full ticket-row export 2018–2025, 35.7 million rows. Filtered to <Code>zipcode LIKE &apos;606%&apos;</Code> for Chicago-registered plates. Late fees computed as <Code>SUM(fine_level2 - fine_level1)</Code> on tickets where <Code>notice_level</Code> reached <Code>VIOL/DETR/SEIZ/FINL/DLS</Code> — i.e., the City actually mailed a Violation Notice and the late penalty was added. This counts the gross late fee triggered against drivers (≈88% of Chicago-zip tickets reach this stage), regardless of whether the ticket was later dismissed at a hearing. Of the $154M billed in late fees, only about $2.6M was wiped at administrative hearings (Chi-zip 2025; 43,436 tickets, $7.1M total face + late dismissed at hearings).
               </p>
               <p style={{ margin: '0 0 12px' }}>
-                <strong>Unique plates ticketed:</strong> DOF FOIA F136386-041726, responded May 15, 2026. Aggregate counts only; no plate numbers, names, or addresses requested or received.
+                <strong>Unique plates ticketed:</strong> DOF FOIA F136386-041726, responded April 17, 2026. Aggregate counts only; no plate numbers, names, or addresses requested or received.
               </p>
               <p style={{ margin: '0 0 12px' }}>
                 <strong>Mail-in win rate:</strong> Chicago DOAH hearings table, 2023–2025 trailing, contest_method = &apos;Mail&apos;, n = 287,532 decided contests.
@@ -400,7 +415,7 @@ Late fees per ticketed driver   =       $83.94   ≈  $84`}</CodeBlock>
                 <strong>City sticker fine:</strong> Chicago Municipal Code 9-64-125(b), confirmed against fine_level1 = $200 for 180,441 of 2025 issuances.
               </p>
               <p style={{ margin: 0 }}>
-                <strong>Vehicle denominator:</strong> 1.18M Chicago-registered vehicles (CDOT 2024, corroborated by City Clerk FOIA F118286).
+                <strong>Vehicle denominator:</strong> 1.18M Chicago-registered vehicles (U.S. Census ACS 2024 B25046 shows 1.29M; we use the more conservative 1.18M figure corroborated by City Clerk FOIA F118286, which tracks ~1.12M annual city-sticker registrations).
               </p>
             </div>
           </details>
