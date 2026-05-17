@@ -102,3 +102,22 @@ iOS only prompts the user ONCE for CoreMotion (Motion & Fitness) permission. If 
 3. **The pre-permission primer must appear BEFORE `startMonitoring()`** — once startMonitoring calls `activityManager.startActivityUpdates()`, the system prompt fires immediately.
 4. **`MotionActivityModule.getAuthorizationStatus()`** is the canonical way to check CoreMotion permission from JS. Returns: `authorized`, `denied`, `restricted`, `notDetermined`, or `unknown`.
 5. **The recovery banner should NOT show if location is also denied** (location denied is more critical — show that banner instead).
+
+## Parking Detection Error Log
+
+Running log of false positives / negatives that have hit a real user, what
+the root cause was, and what was changed. Every new fix to parking or
+camera detection should add an entry here. The Change Log in
+`PARKING_LOCATION_ACCURACY.md` is for *location accuracy* (where the car
+is); this log is for *detection correctness* (did parking/driving happen
+at all).
+
+| Date | Symptom (what user saw) | Root cause | Fix |
+|------|--------------------------|-----------|-----|
+| 2026-05-16 | Phantom red-light camera alert + phantom parking event saved at 800 W Fullerton while sitting still editing video on phone. Hadn't driven for hours. | A GPS speed spike (phone hand-jitter / indoor multipath) sustained ≥4.2 m/s for 8s and ≥90m of perceived drift was enough to trip the `gps_speed_fallback` driving start. CoreMotion never reported `automotive` during the entire 16-min phantom trip (`motionAutomotiveDurationSec: 0`, `motionUnknownDurationSec: 898`), but the existing code path only checked `coreMotionSaysAutomotive` (a flag), not `coreMotionStateLabel` (the actual state). A confidently walking/stationary CoreMotion signal did NOT veto the GPS-only promotion, and there was no cross-check during the trip to tear down a trip that CoreMotion clearly disagrees with. Once `isDriving` was true, the camera scanner ran for 16 min, one alert slipped through the per-camera filter at GPS speed 1.35 m/s (line 774 of `parking_detection.log` from debug report `3e75e6b4`), and finally the parking-confirmation logic saved a fake stop at the same coords. | Two-part fix in `BackgroundLocationModule.swift` (2026-05-17): **(a)** Veto the strict GPS-only fallback at trip-start when `coreMotionStateLabel` is `walking` or `stationary` — only the hard path (≥ `gpsHardDrivingSpeedMps` ≈ 18 mph sustained for ≥6s) can promote when CoreMotion confidently disagrees, because 18 mph isn't reachable on foot. **(b)** Phantom-trip cancellation in the CoreMotion delegate: if a trip started via `gps_speed_fallback` and `tripSummaryAutomotiveUpdates == 0` after `gpsFallbackCancelMinDurationSec` (60s), tear down the trip — emit `trip_summary` with `outcome: cancelled_gps_fallback_no_automotive`, reset `isDriving`, fire `onParkingCheckCancelled`. New decision event: `gps_fallback_trip_cancelled`. |
+
+### How to add an entry
+- Pull the offending debug report: `node scripts/fetch-debug-report.js --list 10` then `--id <uuid>`.
+- Identify the trip in `parking_decisions.ndjson` (each trip ends with a `trip_summary` decision — that line is the ledger).
+- Cite the symptom in plain English, the root cause in code terms (what variable did the wrong thing, in what file), and the fix (what code changed AND what new decision/log event was introduced so future failures show up in the log).
+- Cross-link from `PARKING_LOCATION_ACCURACY.md` Change Log only if the fix changes *location* output. Detection-correctness fixes live here.

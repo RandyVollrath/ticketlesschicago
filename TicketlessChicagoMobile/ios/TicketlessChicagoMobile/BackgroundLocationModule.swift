@@ -402,6 +402,58 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
     tripLastMotionAt = nil
   }
 
+  /// Tear down a phantom trip that was started by gps_speed_fallback but
+  /// never had CoreMotion confirm automotive within the grace window.
+  /// Emits a trip_summary with a distinct outcome so the decision log
+  /// shows what happened — and resets driving state without firing a
+  /// parking event. Caller is responsible for short-circuiting (`return`)
+  /// after this so the normal walking/stationary parking handlers don't
+  /// run against a half-torn-down trip.
+  private func cancelPhantomGpsFallbackTrip(coreMotionState: String, tripAgeSec: TimeInterval) {
+    decision("gps_fallback_trip_cancelled", [
+      "reason": "coremotion_never_automotive",
+      "coreMotionState": coreMotionState,
+      "tripAgeSec": tripAgeSec,
+      "automotiveUpdates": tripSummaryAutomotiveUpdates,
+      "nonAutomotiveUpdates": tripSummaryNonAutomotiveUpdates,
+      "unknownUpdates": tripSummaryUnknownUpdates,
+    ])
+    self.log("Cancelling phantom GPS-fallback trip: \(Int(tripAgeSec))s old, 0 automotive updates, currently \(coreMotionState)")
+
+    emitTripSummary(outcome: "cancelled_gps_fallback_no_automotive")
+
+    isDriving = false
+    drivingStartTime = nil
+    lastDrivingLocation = nil
+    locationAtStopStart = nil
+    speedSaysMoving = false
+    speedMovingConsecutiveCount = 0
+    speedZeroTimer?.invalidate()
+    speedZeroTimer = nil
+    speedZeroStartTime = nil
+    stopWindowMaxSpeedMps = 0
+    stationaryLocation = nil
+    stationaryStartTime = nil
+    recentLowSpeedLocations.removeAll()
+    recentDrivingLocations.removeAll()
+    maxBufferSpeedMps = -1.0
+    queuedParkingAt = nil
+    queuedParkingBody = nil
+    queuedParkingSource = nil
+    gpsFallbackDrivingSince = nil
+    gpsFallbackStartLocation = nil
+    gpsFallbackPossibleDrivingEmitted = false
+    cancelPendingParkingFinalization(reason: "gps_fallback_cancelled_no_coremotion")
+    stopAccelerometerRecording()
+
+    // Let JS clear any "Detecting parking..." UI that may have appeared
+    // via onPossibleDriving when the phantom trip kicked off.
+    sendEvent(withName: "onParkingCheckCancelled", body: [
+      "timestamp": Date().timeIntervalSince1970 * 1000,
+      "reason": "gps_fallback_cancelled_no_coremotion",
+    ])
+  }
+
   private func startVehicleSignalMonitoring() {
     guard !vehicleSignalMonitoringActive else { return }
     vehicleSignalMonitoringActive = true
@@ -1055,6 +1107,12 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
   private let gpsHardDrivingDurationSec: TimeInterval = 6
   private let gpsHardMinDistanceMeters: Double = 160
   private let gpsHardMaxAccuracyMeters: Double = 300
+  // Phantom-trip cancel: when a trip was started by gps_speed_fallback (no
+  // CoreMotion automotive observed) and CoreMotion has been confidently
+  // non-automotive (walking/stationary/unknown) for this long while still
+  // having zero automotive updates on the trip, kill the trip before it
+  // saves a false parking event. See 2026-05-17 entry in IOS_PARKING_DETECTION.md.
+  private let gpsFallbackCancelMinDurationSec: TimeInterval = 60
   private let speedCheckIntervalSec: TimeInterval = 3    // Re-check parking every 3s while speed≈0
   private let stationaryRadiusMeters: Double = 50        // Consider "same location" if within 50m
   private let stationaryDurationSec: TimeInterval = 120  // 2 minutes in same spot = definitely parked
@@ -2820,6 +2878,25 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         return "unknown"
       }()
       self.trackTripMotionState(tripMotionState)
+
+      // PHANTOM-TRIP CANCEL (added 2026-05-17): if the current trip was started
+      // via gps_speed_fallback (no CoreMotion automotive observation) and the
+      // M-coprocessor still reports nothing automotive after the grace window,
+      // the trip is almost certainly bogus (phone hand-jitter, indoor GPS
+      // multipath, etc.). Tearing down before the parking-confirmation timer
+      // fires prevents the cascading false camera alert + false parking save.
+      // See docs/IOS_PARKING_DETECTION.md Parking Detection Error Log.
+      if tripMotionState != "automotive"
+         && self.isDriving
+         && self.tripSummaryStartSource == "gps_speed_fallback"
+         && self.tripSummaryAutomotiveUpdates == 0 {
+        let tripAgeSec = self.tripSummaryStart.map { Date().timeIntervalSince($0) } ?? 0
+        if tripAgeSec >= self.gpsFallbackCancelMinDurationSec {
+          self.cancelPhantomGpsFallbackTrip(coreMotionState: tripMotionState, tripAgeSec: tripAgeSec)
+          return
+        }
+      }
+
       let motionSig = "\(activity.automotive)-\(activity.stationary)-\(activity.walking)-\(self.confidenceString(activity.confidence))"
       if self.lastMotionDecisionSignature != motionSig {
         self.lastMotionDecisionSignature = motionSig
@@ -3359,7 +3436,29 @@ class BackgroundLocationModule: RCTEventEmitter, CLLocationManagerDelegate, AVSp
         let effectiveDistanceThreshold = hardMode ? gpsHardMinDistanceMeters : fallbackDistanceThreshold
         let effectiveMaxAccuracy = hardMode ? gpsHardMaxAccuracyMeters : gpsFallbackMaxAccuracyMeters
 
-        if accuracy > 0 && accuracy <= effectiveMaxAccuracy && speed >= effectiveSpeedThreshold {
+        // CoreMotion veto on the strict path: when the M-coprocessor confidently
+        // reports walking/stationary, a GPS speed spike from phone hand-jitter
+        // must NOT promote to a driving "trip". This was the 2026-05-16 false-
+        // trip bug — user editing video, GPS jitter starts a phantom trip, the
+        // app then fires a red-light camera alert + saves a fake parking event.
+        // Hard mode (≥ gpsHardDrivingSpeedMps ≈ 18 mph sustained for ≥6s) is
+        // still allowed because that speed is implausible on foot.
+        let coreMotionConfidentNonAuto = (coreMotionStateLabel == "walking" || coreMotionStateLabel == "stationary")
+        let coreMotionVetoesFallback = coreMotionConfidentNonAuto && !hardMode
+
+        if coreMotionVetoesFallback {
+          if gpsFallbackDrivingSince != nil || gpsFallbackStartLocation != nil {
+            decision("gps_fallback_reset", [
+              "reason": "coremotion_confident_non_automotive",
+              "coreMotionState": coreMotionStateLabel,
+              "speed": speed,
+            ])
+            self.log("GPS fallback reset: CoreMotion says \(coreMotionStateLabel) — refusing strict GPS-only trip start (speed \(String(format: "%.1f", speed)) m/s, hardMode=\(hardMode))")
+            gpsFallbackDrivingSince = nil
+            gpsFallbackStartLocation = nil
+            gpsFallbackPossibleDrivingEmitted = false
+          }
+        } else if accuracy > 0 && accuracy <= effectiveMaxAccuracy && speed >= effectiveSpeedThreshold {
           if gpsFallbackDrivingSince == nil {
             gpsFallbackDrivingSince = location.timestamp
             gpsFallbackStartLocation = location
