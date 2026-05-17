@@ -667,11 +667,12 @@ export default function StartFunnel() {
           {/* ── Step 1: Intro ── */}
           {step === 'intro' && (
             <StepContainer>
-              <StepLabel>Stop paying Chicago $420 million a year.</StepLabel>
+              <StepLabel>Chicago issued $420 million in tickets last year.</StepLabel>
               <StepSubtext>
-                That&apos;s what Chicago drivers paid in parking and camera tickets in 2025, per
-                the City of Chicago&apos;s own FOIA data. A single ticket with late fees can run
-                over $200. The Chicago Ticket Defense Plan protects your car three ways so you don&apos;t.
+                That&apos;s what the City of Chicago charged drivers in parking and camera
+                tickets in 2025, per the City&apos;s own FOIA data. A single ticket with
+                late fees can run over $200. The Chicago Ticket Defense Plan protects your
+                car three ways so you don&apos;t pay them.
               </StepSubtext>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
