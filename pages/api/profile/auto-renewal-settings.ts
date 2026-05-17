@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { supabaseAdmin, supabase } from '../../../lib/supabase';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { maskUserId } from '../../../lib/mask-pii';
+import { verifyDeclaredZoneAgainstAddress } from '../../../lib/check-permit-zone';
 
 const patchSchema = z.object({
   authorized: z.boolean().optional(),
@@ -44,13 +45,16 @@ interface ProfileRow {
   auto_renewal_license_plate: boolean | null;
   has_permit_zone: boolean | null;
   permit_requested: boolean | null;
+  permit_zone_number: string | null;
+  home_address_full: string | null;
+  mailing_address: string | null;
 }
 
 const PROFILE_COLUMNS =
   'user_id, email, last_name, license_plate, vin, il_pin_encrypted, il_registration_id_encrypted, ' +
   'auto_renewal_authorized, auto_renewal_authorized_at, auto_renewal_authorized_by, ' +
   'auto_renewal_city_sticker, auto_renewal_license_plate, ' +
-  'has_permit_zone, permit_requested';
+  'has_permit_zone, permit_requested, permit_zone_number, home_address_full, mailing_address';
 
 async function authenticate(req: NextApiRequest): Promise<{ userId: string } | { error: string; status: number }> {
   const authHeader = req.headers.authorization;
@@ -174,6 +178,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         error: 'Address is not in an active residential permit zone',
         detail: 'Update your address on file if you recently moved; we recompute permit-zone eligibility from city data.',
       });
+    }
+
+    // Earlier-stage verification of "address vs the specific zone the user
+    // declared they hold" — catches the failure mode where someone signed up
+    // claiming Zone 2483 but their saved address actually maps to Zone 1855
+    // (or no zone at all). Doing it here means the EzBuy bot's
+    // address-mismatch guard never has to fire for foreseeable cases.
+    if (targetPermit && currentRow.permit_zone_number) {
+      const address = currentRow.mailing_address || currentRow.home_address_full;
+      if (address) {
+        try {
+          const verdict = await verifyDeclaredZoneAgainstAddress(address, currentRow.permit_zone_number);
+          if (verdict.decision === 'wrong-zone') {
+            return res.status(400).json({
+              error: 'Declared permit zone does not match your address',
+              detail: `Your saved address is in zone(s) ${verdict.matchedZones.join(', ')}, but you have zone ${verdict.declared} on file. Update your address (if you moved) or your declared zone before turning permit purchase on.`,
+            });
+          }
+          if (verdict.decision === 'address-not-in-any-zone') {
+            return res.status(400).json({
+              error: 'Address is not in any active residential permit zone',
+              detail: `Your saved address doesn't match any active permit zone in our city data. You have zone ${verdict.declared} on file — update your address (if you moved) or remove the declared zone.`,
+            });
+          }
+          // 'match' and 'inconclusive' both fall through — inconclusive means
+          // we couldn't parse and we shouldn't block legitimate users.
+        } catch (e) {
+          console.error('[auto-renewal-settings] verifyDeclaredZoneAgainstAddress failed (continuing):', e);
+        }
+      }
     }
 
     const updates: Record<string, unknown> = {

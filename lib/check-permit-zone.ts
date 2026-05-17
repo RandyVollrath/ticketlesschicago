@@ -30,6 +30,48 @@ export interface PermitZoneCheckResult {
   } | null;
 }
 
+/**
+ * Companion to checkPermitZoneForAddress: given a user's saved address AND
+ * the specific zone they say they hold (e.g. "2483"), verify the address
+ * actually falls inside that zone per our parking_permit_zones data.
+ *
+ * Returns:
+ *   'match'                  — address sits inside the declared zone
+ *   'wrong-zone'             — address is in a permit zone, but not this one
+ *   'address-not-in-any-zone' — address doesn't qualify for any permit
+ *   'inconclusive'           — address fails to parse; we can't decide
+ *
+ * Use this at the moment of intent (toggling permit_requested on, declaring
+ * a zone) so we never accept a configuration that the EzBuy bot would later
+ * reject as a mismatch. Matching is case-insensitive and tolerates an
+ * optional "Zone " prefix on the declared value.
+ */
+export async function verifyDeclaredZoneAgainstAddress(
+  address: string,
+  declaredZone: string,
+): Promise<{
+  decision: 'match' | 'wrong-zone' | 'address-not-in-any-zone' | 'inconclusive';
+  declared: string;
+  matchedZones: string[];
+}> {
+  const normalize = (s: string) => s.trim().toLowerCase().replace(/^zone\s*/i, '');
+  const declared = normalize(declaredZone);
+  if (!declared) return { decision: 'inconclusive', declared, matchedZones: [] };
+
+  const result = await checkPermitZoneForAddress(address);
+  if (!result.parsedAddress) {
+    return { decision: 'inconclusive', declared, matchedZones: [] };
+  }
+  if (result.zones.length === 0) {
+    return { decision: 'address-not-in-any-zone', declared, matchedZones: [] };
+  }
+  const matched = result.zones.map((z) => z.zone);
+  if (matched.some((z) => normalize(z) === declared)) {
+    return { decision: 'match', declared, matchedZones: matched };
+  }
+  return { decision: 'wrong-zone', declared, matchedZones: matched };
+}
+
 export async function checkPermitZoneForAddress(address: string): Promise<PermitZoneCheckResult> {
   const parsed = parseChicagoAddress(address);
   if (!parsed) {
