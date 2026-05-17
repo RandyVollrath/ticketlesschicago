@@ -73,6 +73,7 @@ const PENDING_CHECKOUT_KEY = 'start_pending_checkout';
 // Stripe as client_reference_id, which is the field Rewardful's Stripe
 // integration auto-watches for conversions.
 const REWARDFUL_REFERRAL_KEY = 'start_rewardful_referral';
+const REWARDFUL_COUPON_KEY = 'start_rewardful_coupon';
 
 function getOrCreateSessionId(): string {
   if (typeof window === 'undefined') return '';
@@ -158,6 +159,12 @@ export default function StartFunnel() {
         const ref = (window as any).Rewardful?.referral;
         if (ref && typeof ref === 'string') {
           localStorage.setItem(REWARDFUL_REFERRAL_KEY, ref);
+        }
+        const coupon = (window as any).Rewardful?.coupon;
+        const couponId =
+          typeof coupon === 'string' ? coupon : (coupon && typeof coupon.id === 'string' ? coupon.id : null);
+        if (couponId) {
+          localStorage.setItem(REWARDFUL_COUPON_KEY, couponId);
         }
       } catch { /* non-fatal */ }
     };
@@ -311,6 +318,7 @@ export default function StartFunnel() {
           localStorage.removeItem(STATE_KEY);
           localStorage.removeItem(SESSION_KEY);
           localStorage.removeItem(REWARDFUL_REFERRAL_KEY);
+          localStorage.removeItem(REWARDFUL_COUPON_KEY);
         } catch { /* ignore */ }
         router.replace('/start', undefined, { shallow: true });
       } catch (err: any) {
@@ -505,11 +513,16 @@ export default function StartFunnel() {
       // (cookie may have refreshed) and fall back to the persisted one we
       // saved before the OAuth redirect.
       let rewardfulReferral: string | null = null;
+      let rewardfulCoupon: string | null = null;
       try {
         const live = (window as any).Rewardful?.referral;
         rewardfulReferral = (live && typeof live === 'string')
           ? live
           : localStorage.getItem(REWARDFUL_REFERRAL_KEY);
+        const liveCoupon = (window as any).Rewardful?.coupon;
+        const liveCouponId =
+          typeof liveCoupon === 'string' ? liveCoupon : (liveCoupon && typeof liveCoupon.id === 'string' ? liveCoupon.id : null);
+        rewardfulCoupon = liveCouponId || localStorage.getItem(REWARDFUL_COUPON_KEY);
       } catch { /* non-fatal */ }
       const checkoutRes = await fetch('/api/autopilot/create-checkout', {
         method: 'POST',
@@ -525,6 +538,7 @@ export default function StartFunnel() {
           contestConsent: consentOverride ?? consentChecked,
           consentSignature: signatureName,
           rewardfulReferral,
+          rewardfulCoupon,
         }),
       });
 

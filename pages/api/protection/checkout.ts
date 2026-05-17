@@ -7,6 +7,7 @@ import { checkRateLimit, recordRateLimitAction, getClientIP } from '../../../lib
 import { validateClientReferenceId } from '../../../lib/webhook-validator';
 import { maskEmail } from '../../../lib/mask-pii';
 import { sanitizeErrorMessage, isValidUSPhone, validateAndNormalizePhone } from '../../../lib/error-utils';
+import { resolveRewardfulCoupon } from '../../../lib/rewardful-coupon';
 
 // Get site URL with Vercel preview fallback
 function getSiteUrl(): string {
@@ -34,6 +35,7 @@ const checkoutSchema = z.object({
     .nullable(),
   userId: z.string().uuid().optional().nullable(),
   rewardfulReferral: z.string().max(100).optional().nullable(),
+  rewardfulCoupon: z.string().max(100).optional().nullable(),
   renewals: z.object({
     citySticker: z.union([
       z.object({
@@ -124,7 +126,8 @@ export default async function handler(
       });
     }
 
-    const { billingPlan, email, phone, userId, rewardfulReferral, renewals, hasPermitZone, streetAddress, vin, permitZones, vehicleType, permitRequested, smsConsent } = parseResult.data;
+    const { billingPlan, email, phone, userId, rewardfulReferral, rewardfulCoupon, renewals, hasPermitZone, streetAddress, vin, permitZones, vehicleType, permitRequested, smsConsent } = parseResult.data;
+    const validatedCouponId = await resolveRewardfulCoupon(stripe, rewardfulCoupon);
 
     console.log('Protection checkout request:', {
       billingPlan,
@@ -183,13 +186,15 @@ export default async function handler(
       customerId = customer.id;
     }
 
-    // Create Stripe Checkout session with mixed line items
-    const session = await stripe.checkout.sessions.create({
+    // Create Stripe Checkout session with mixed line items.
+    // discounts:[{coupon}] and allow_promotion_codes are mutually exclusive in
+    // Stripe Checkout — auto-apply the Rewardful coupon when present, else
+    // leave manual promo codes available.
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       // Use validated Rewardful referral ID as client_reference_id for tracking conversions
       client_reference_id: validatedReferralId || userId || undefined,
       mode: 'subscription',
-      allow_promotion_codes: true,
       line_items: lineItems,
       // IMPORTANT: Save payment method for future renewal charges
       // With 'always', Stripe automatically saves the payment method to the subscription
@@ -219,9 +224,18 @@ export default async function handler(
         permitRequested: permitRequested ? 'true' : 'false',
         permitZones: hasPermitZone && permitZones ? JSON.stringify(permitZones) : '',
         rewardful_referral_id: rewardfulReferral || '',
+        rewardful_coupon_id: validatedCouponId || '',
         smsConsent: smsConsent === true ? 'true' : 'false' // TCPA compliance - track SMS consent
       }
-    });
+    };
+
+    if (validatedCouponId) {
+      sessionParams.discounts = [{ coupon: validatedCouponId }];
+    } else {
+      sessionParams.allow_promotion_codes = true;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     console.log('✅ Stripe checkout session created:', session.id);
 

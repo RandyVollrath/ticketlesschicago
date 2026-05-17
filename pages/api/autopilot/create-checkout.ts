@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { ACTIVE_AUTOPILOT_PLAN, ACTIVE_MONTHLY_PLAN, AUTOPILOT_PRICE_ID, AUTOPILOT_MONTHLY_PRICE_ID } from '../../../lib/autopilot-plans';
 import { sanitizeErrorMessage } from '../../../lib/error-utils';
 import { validateClientReferenceId } from '../../../lib/webhook-validator';
+import { resolveRewardfulCoupon } from '../../../lib/rewardful-coupon';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -32,8 +33,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const userId = authUser.id;
 
-    const { licensePlate, plateState, billingPlan, contestConsent, consentSignature, rewardfulReferral } = req.body;
+    const { licensePlate, plateState, billingPlan, contestConsent, consentSignature, rewardfulReferral, rewardfulCoupon } = req.body;
     const isMonthly = billingPlan === 'monthly';
+
+    // Rewardful "double-sided incentive": if the visitor arrived via a referral
+    // link, Rewardful exposes a Stripe coupon ID in window.Rewardful.coupon
+    // (sent in this request body). Validate it against Stripe before applying.
+    const validatedCouponId = await resolveRewardfulCoupon(stripe, rewardfulCoupon);
 
     // Rewardful affiliate attribution. The referral comes from rw.js on the
     // /start page via window.Rewardful.referral. We validate the format here
@@ -160,11 +166,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const selectedPlan = isMonthly ? ACTIVE_MONTHLY_PLAN : ACTIVE_AUTOPILOT_PLAN;
     const priceId = isMonthly ? AUTOPILOT_MONTHLY_PRICE_ID : AUTOPILOT_PRICE_ID;
 
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
+    // Create checkout session.
+    // discounts:[{coupon}] and allow_promotion_codes are mutually exclusive in
+    // Stripe Checkout — when we have a referral coupon to auto-apply, we use
+    // that; otherwise we leave promo codes available for manual entry.
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       mode: 'subscription',
-      allow_promotion_codes: true,
       // Pass the Rewardful referral ID as Stripe's client_reference_id so
       // Rewardful's Stripe integration auto-creates the lead + conversion.
       // Falls back to userId if no affiliate referral is present.
@@ -193,8 +201,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         license_plate_number: cleanPlate,
         license_plate_state: cleanState,
         rewardful_referral_id: validatedReferralId || '',
+        rewardful_coupon_id: validatedCouponId || '',
       },
-    });
+    };
+
+    if (validatedCouponId) {
+      sessionParams.discounts = [{ coupon: validatedCouponId }];
+    } else {
+      sessionParams.allow_promotion_codes = true;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     // Update or create subscription record with customer ID
     // Note: status must be 'active', 'canceled', 'past_due', or 'trialing' per CHECK constraint

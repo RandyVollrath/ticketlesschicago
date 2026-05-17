@@ -9,6 +9,17 @@ import MobileNav from '../components/MobileNav';
 import { analytics } from '../lib/analytics';
 
 // Phone validation - must match backend validation
+function readRewardfulCouponClient(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const c = (window as any).Rewardful?.coupon;
+    const live = typeof c === 'string' ? c : (c && typeof c.id === 'string' ? c.id : null);
+    return live || localStorage.getItem('start_rewardful_coupon') || null;
+  } catch {
+    return null;
+  }
+}
+
 function isValidUSPhone(phone: string): boolean {
   const digits = phone.replace(/\D/g, '');
   if (digits.length === 10) {
@@ -220,6 +231,7 @@ export default function Protection() {
     }
 
     const rewardfulReferral = typeof window !== 'undefined' && (window as any).Rewardful?.referral || null;
+    const rewardfulCoupon = readRewardfulCouponClient();
 
     const checkoutData = {
       billingPlan,
@@ -227,6 +239,7 @@ export default function Protection() {
       phone: phone,
       userId: user?.id || undefined,
       rewardfulReferral: rewardfulReferral,
+      rewardfulCoupon: rewardfulCoupon,
       streetAddress: streetAddress || undefined,
       hasPermitZone: hasPermitZone,
       permitZones: hasPermitZone ? zones : undefined,
@@ -272,12 +285,14 @@ export default function Protection() {
 
     try {
       const rewardfulReferral = typeof window !== 'undefined' && (window as any).Rewardful?.referral || null;
+      const rewardfulCoupon = readRewardfulCouponClient();
 
       // Build checkout data
       const checkoutData = {
         billingPlan,
         phone: phone,
         rewardfulReferral: rewardfulReferral,
+        rewardfulCoupon: rewardfulCoupon,
         streetAddress: streetAddress || undefined,
         hasPermitZone: hasPermitZone,
         permitZones: hasPermitZone ? zones : undefined,

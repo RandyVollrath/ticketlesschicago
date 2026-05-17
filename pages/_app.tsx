@@ -73,12 +73,19 @@ export default function App({ Component, pageProps }: AppProps) {
     if (isMobileWebView) return
 
     const STORAGE_KEY = 'start_rewardful_referral'
+    const COUPON_STORAGE_KEY = 'start_rewardful_coupon'
 
     const captureReferral = () => {
       try {
         const ref = (window as any).Rewardful?.referral
         if (ref && typeof ref === 'string') {
           localStorage.setItem(STORAGE_KEY, ref)
+        }
+        const coupon = (window as any).Rewardful?.coupon
+        const couponId =
+          typeof coupon === 'string' ? coupon : (coupon && typeof coupon.id === 'string' ? coupon.id : null)
+        if (couponId) {
+          localStorage.setItem(COUPON_STORAGE_KEY, couponId)
         }
       } catch { /* non-fatal */ }
     }
