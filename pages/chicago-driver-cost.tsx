@@ -39,7 +39,7 @@ const BOOTS = [
 ];
 
 // ---------- helpers ----------
-const fmt$ = (n: number) => '$' + n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+const fmt$ = (n: number) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtM = (n: number) => '$' + n.toFixed(1) + 'M';
 const fmtN = (n: number) => n.toLocaleString('en-US');
 
@@ -113,10 +113,10 @@ export default function ChicagoDriverCost() {
   return (
     <>
       <Head>
-        <title>What Chicago drivers actually pay: $303/year per vehicle — methodology & FOIA data</title>
-        <meta name="description" content="Average ticket, late fee, boot, and tow cost per Chicago-registered vehicle, computed from FOIA records. Methodology, queries, and caveats shown in full." />
-        <meta property="og:title" content="What Chicago drivers actually pay: $303/year per vehicle" />
-        <meta property="og:description" content="FOIA-based analysis of tickets, late fees, boots, and tows divided across all 1.18M Chicago-registered vehicles. Full methodology shown." />
+        <title>What Chicago drivers actually pay: $283/year per vehicle in tickets and late fees — methodology & FOIA data</title>
+        <meta name="description" content="Average ticket fines and late fees billed per Chicago-registered vehicle, computed from FOIA records. Full methodology, queries, and caveats shown." />
+        <meta property="og:title" content="What Chicago drivers actually pay: $283/year per vehicle" />
+        <meta property="og:description" content="FOIA-based analysis of tickets and late fees billed to Chicago-zip-registered vehicles, divided across all 1.18M Chicago-registered cars. Full methodology shown." />
       </Head>
 
       <main style={{ fontFamily: FONT, background: COLORS.bg, minHeight: '100vh', color: COLORS.graphite }}>
@@ -127,10 +127,10 @@ export default function ChicagoDriverCost() {
             Autopilot America Research · Published May 15, 2026
           </p>
           <h1 style={{ fontSize: '40px', lineHeight: 1.15, fontWeight: 800, color: COLORS.deepHarbor, margin: '0 0 16px', letterSpacing: '-0.02em' }}>
-            The average Chicago-registered vehicle is billed about <span style={{ color: COLORS.rose }}>$303 a year</span> in parking-enforcement costs
+            The average Chicago-registered vehicle is billed about <span style={{ color: COLORS.rose }}>$283 a year</span> in tickets and late fees alone
           </h1>
           <p style={{ fontSize: '19px', lineHeight: 1.55, color: COLORS.slate, margin: '0 0 32px' }}>
-            That's <strong>tickets + late fees + boots + tows</strong> <em>actually assessed</em> against drivers, averaged across all 1.18 million Chicago-registered vehicles, using the most recent three full years of FOIA data (2023–2025). Below: every number, every query, every caveat.
+            That's <strong>tickets + late fees</strong> <em>actually assessed</em> against Chicago-zip-registered vehicles, averaged across all 1.18 million Chicago-registered cars, using the most recent three full years of FOIA data (2023–2025). Boots and tows add more on top — but the city doesn't track those by registered-vehicle zip, so we present them separately and honestly below.
           </p>
 
           {/* Headline breakdown card */}
@@ -139,31 +139,36 @@ export default function ChicagoDriverCost() {
             background: COLORS.concrete, margin: '0 0 32px',
           }}>
             <p style={{ fontSize: '12px', fontWeight: 700, color: COLORS.slate, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>
-              Per Chicago vehicle, per year (2023–2025 avg)
+              Per Chicago-registered vehicle, per year (2023–2025 avg) — Chicago-zip data only
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px 16px', fontSize: '16px' }}>
               <span style={{ color: COLORS.graphite }}>Ticket fines issued (face value)</span><span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, textAlign: 'right' }}>{fmt$(avg3yrPerFines)}</span>
               <span style={{ color: COLORS.graphite }}>Late fees assessed (notice escalated)</span><span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, textAlign: 'right' }}>{fmt$(avg3yrPerLate)}</span>
-              <span style={{ color: COLORS.graphite }}>Boot fees assessed</span><span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, textAlign: 'right' }}>{fmt$(bootPerVehicle)}</span>
-              <span style={{ color: COLORS.graphite }}>Tow + storage assessed <em style={{ color: COLORS.amber, fontStyle: 'normal', fontSize: '13px' }}>(estimate)</em></span><span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, textAlign: 'right' }}>{fmt$(towPerVehicle)}</span>
-              <span style={{ color: COLORS.deepHarbor, fontWeight: 700, borderTop: `1px solid ${COLORS.border}`, paddingTop: '10px' }}>Total</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 800, textAlign: 'right', color: COLORS.rose, borderTop: `1px solid ${COLORS.border}`, paddingTop: '10px' }}>{fmt$(grandTotal)}</span>
+              <span style={{ color: COLORS.deepHarbor, fontWeight: 700, borderTop: `1px solid ${COLORS.border}`, paddingTop: '10px' }}>Total (tickets + late fees only)</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 800, textAlign: 'right', color: COLORS.rose, borderTop: `1px solid ${COLORS.border}`, paddingTop: '10px' }}>{fmt$(avg3yrPerFines + avg3yrPerLate)}</span>
             </div>
+            <p style={{ fontSize: '13px', color: COLORS.slate, margin: '14px 0 0', fontStyle: 'italic' }}>
+              Boots and tows are real Chicago-driver costs, but the FOIA data for them is citywide — not zip-filterable. See the boot/tow section for honest citywide totals and what we can and can't say about the per-Chicago-driver share.
+            </p>
           </div>
 
           <H2 id="tldr">The bottom line, in plain English</H2>
           <P>
-            If you took every parking ticket, late fee, boot, and tow Chicago issued in 2023–2025, added up the dollar amounts the city <em>billed</em> (not what it actually collected), and divided across all 1.18 million cars registered to a Chicago address, the answer is roughly <strong>$303 per vehicle per year</strong>.
+            If you took every parking ticket Chicago issued to a Chicago-registered car in 2023–2025, added up the original fine plus any late fee actually triggered (not just potential), and divided across all 1.18 million cars registered to a Chicago address, the answer is roughly <strong>$283 per vehicle per year</strong>.
           </P>
           <P>
             Most drivers pay much less than that. A smaller group pays much more. The point of the number isn't "your bill" — it's "what the system, in total, charges Chicago drivers." Think of it like ER bills: the average across all city residents is meaningful even though most people never visit one.
           </P>
+          <P>
+            <strong>Why we don't quote a single combined ticket + boot + tow per-vehicle number:</strong> Chicago's boot and tow records don't list the registered-vehicle zip code. We know who was booted and where they were towed from, but not where their car is registered. Some booted/towed vehicles belong to suburban or visiting drivers. Dividing citywide boot/tow totals by Chicago-only vehicles would overstate the per-Chicago-driver figure. So we report tickets + late fees as a clean per-Chicago-vehicle number, and boots/tows as honest citywide totals separately.
+          </P>
 
           <H2 id="what-this-is-not">What this number is — and isn't</H2>
-          <P><strong>It IS:</strong> what Chicago <em>billed</em> Chicago-registered drivers in fines, doubled-fine late penalties, boot fees, and tow + storage fees.</P>
+          <P><strong>It IS:</strong> what Chicago <em>billed</em> Chicago-zip-registered vehicles in original fines plus the doubled-fine late penalty when actually triggered. Every ticket in the underlying calculation is filtered to <Code>zipcode LIKE '606%'</Code> — tickets given to suburban or out-of-state-registered cars parked illegally in Chicago are excluded.</P>
           <P><strong>It IS NOT:</strong></P>
           <ul style={{ fontSize: '16px', lineHeight: 1.7, color: COLORS.graphite, paddingLeft: '22px', margin: '0 0 14px' }}>
-            <li>what Chicago collected (the city collects roughly 65–70 cents on every dollar billed; the rest sits in debt or is written off)</li>
+            <li>what Chicago collected (the city collects only a fraction of what it bills; the rest sits in debt or is written off)</li>
+            <li>boot or tow costs — those are reported separately because the city does not track booted/towed vehicles by registered-vehicle zip, so they can't be cleanly attributed to Chicago drivers</li>
             <li>red-light or speed camera revenue from suburban/visiting drivers (those have non-606xx zip codes)</li>
             <li>the cost of city stickers, license-plate stickers, residential permits, registration, or insurance</li>
             <li>impound auction proceeds or other downstream city revenue</li>
@@ -171,10 +176,10 @@ export default function ChicagoDriverCost() {
 
           <H2 id="data-source">Where the numbers come from</H2>
           <P>
-            All ticket numbers come from a SQLite database built from <strong>Chicago Department of Finance FOIA responses</strong> covering 2018–2025. The full database holds <strong>35.7 million ticket rows</strong> across that period. Each row is one ticket and includes the original fine, the doubled "level 2" fine, what notice stage the ticket reached, what's been paid, and the registered vehicle's zip code.
+            All ticket numbers come from a SQLite database built from <strong>Chicago Department of Finance FOIA responses</strong> covering 2018–2025. The full database holds <strong>35.7 million ticket rows</strong> across that period. Each row is one ticket and includes: the original fine, the fine after it doubles for being unpaid past 25 days, how far through the notice process the ticket has gone, how much has been paid, and the zip code where the vehicle is registered.
           </P>
           <P>
-            Boot counts come from the city's annual boot statistics. Tow counts come from a Streets &amp; Sanitation FOIA (file <Code>F136267-041626</Code>) listing every towed vehicle from Jan 1, 2025 through Mar 27, 2026 — 109,755 tow records.
+            Boot counts come from a separate Department of Finance FOIA (file <Code>F120036-111425</Code>) returning annual boot totals, boot releases, boot-related hearing counts, and boot/tow/storage fee revenue. Tow counts come from a Streets &amp; Sanitation FOIA (file <Code>F136267-041626</Code>) listing every towed vehicle from Jan 1, 2025 through Mar 27, 2026 — 109,755 tow records.
           </P>
 
           <H2 id="methodology">Methodology, step by step</H2>
@@ -214,30 +219,34 @@ WHERE zipcode LIKE '606%'
             About <strong>88% of Chicago-zip tickets</strong> in recent years reach at least the Violation Notice stage. So almost every late fee that <em>could</em> be assessed, <em>is</em> assessed — even when the driver ultimately ignores it or has it dismissed.
           </P>
 
-          <p style={{ fontSize: '18px', fontWeight: 700, color: COLORS.deepHarbor, margin: '20px 0 8px' }}>Step 4 — Count boots and multiply by the boot fee.</p>
+          <p style={{ fontSize: '18px', fontWeight: 700, color: COLORS.deepHarbor, margin: '20px 0 8px' }}>Step 4 — Divide by the Chicago vehicle fleet.</p>
           <P>
-            Chicago boots roughly 50,000 vehicles per year (44,014 in 2025). The boot fee is $100. Booted vehicles are overwhelmingly Chicago-registered because the boot list is built from accumulated Chicago tickets.
+            Chicago has approximately <strong>1.18 million registered vehicles</strong> (Chicago Department of Transportation, 2024). Dividing each annual total by 1,180,000 gives the per-Chicago-vehicle figure. Tickets to non-Chicago-zip vehicles are already excluded by Step 1, so this division is clean.
           </P>
 
-          <p style={{ fontSize: '18px', fontWeight: 700, color: COLORS.deepHarbor, margin: '20px 0 8px' }}>Step 5 — Estimate tow + storage.</p>
+          <H2 id="boots-tows">Boots and tows — what we can honestly say</H2>
           <P>
-            The S&amp;S FOIA file shows <strong>61,204 tows in calendar year 2025</strong>. Under Chicago municipal code 9-92-080, a passenger-vehicle tow assessed cost is roughly:
+            Boots and tows are real, expensive enforcement events for Chicago drivers — but the city's records for them <strong>do not include the registered-vehicle zip code</strong>. We know who got booted and where vehicles were towed from, but not where each car is registered. So we can't cleanly attribute the dollar totals to "Chicago drivers" the way we can for tickets.
           </P>
+          <P>
+            Here's what the FOIA data <em>does</em> show, honestly, citywide:
+          </P>
+          <p style={{ fontSize: '17px', fontWeight: 700, color: COLORS.deepHarbor, margin: '18px 0 8px' }}>Boots (citywide)</p>
           <ul style={{ fontSize: '16px', lineHeight: 1.7, color: COLORS.graphite, paddingLeft: '22px', margin: '0 0 14px' }}>
-            <li><strong>$150</strong> tow fee</li>
-            <li><strong>$20/day</strong> storage for the first 5 days, then $35/day</li>
+            <li>Chicago booted <strong>{fmtN(BOOTS[0].count)} (2023), {fmtN(BOOTS[1].count)} (2024), and {fmtN(BOOTS[2].count)} (2025)</strong> vehicles — averaging about <strong>48,400 per year</strong>.</li>
+            <li>Boot fee is <strong>$100</strong> (raised from $60 in late 2023). So citywide assessed boot fees average about <strong>$4.84M / year</strong>.</li>
+            <li>The boot list is built from accumulated unpaid Chicago tickets, so the population is heavily but not exclusively Chicago-resident. Without zip data we won't put a precise per-Chicago-driver dollar figure on it.</li>
           </ul>
-          <P>
-            About 54% of towed vehicles are "redeemed and released" (picked up by the owner, usually within a few days). About 13% sit until they're sold at auction (21+ days). The rest fall in between. Using an average of ~7.5 days of storage, the typical tow assessed cost lands around <strong>$300</strong>.
-          </P>
-          <Callout tone="warn" title="Tow figure is the only estimated piece">
-            Tow + storage at $15.55 per Chicago vehicle / year depends on (a) the 2025 tow count being typical for recent years, and (b) the $300/tow estimate. The FOIA didn't include earlier-year tow counts. If actual average storage days are higher (some vehicles sit 30+ days), the real number is bigger; if shorter, smaller.
+          <p style={{ fontSize: '17px', fontWeight: 700, color: COLORS.deepHarbor, margin: '18px 0 8px' }}>Tows (citywide)</p>
+          <ul style={{ fontSize: '16px', lineHeight: 1.7, color: COLORS.graphite, paddingLeft: '22px', margin: '0 0 14px' }}>
+            <li>Chicago towed <strong>61,204 vehicles in calendar year 2025</strong> (Streets &amp; Sanitation FOIA F136267-041626; earlier years not in this dataset).</li>
+            <li>Under municipal code 9-92-080: <strong>$150</strong> tow fee for a passenger vehicle, plus <strong>$20/day</strong> storage for the first 5 days, then $35/day.</li>
+            <li>About 54% of tows are "redeemed and released" (picked up within a few days). About 13% sit through to auction (21+ days). At a rough average of $300 per tow, citywide assessed tow + storage runs <strong>~$18M / year</strong>.</li>
+            <li>Unlike boots, the towed-vehicle population includes a meaningful share of suburban and visiting drivers (caught by tow-zone, snow-route, or hazard tows in commercial corridors). Without zip data we can't say what fraction belongs to Chicago-registered drivers.</li>
+          </ul>
+          <Callout tone="warn" title="Why these aren't folded into the headline">
+            Dividing citywide boot + tow totals by Chicago-only vehicles would inflate the per-Chicago-driver figure, because some of those boots and tows belong to drivers registered outside Chicago. The honest reporting is: <strong>$283/yr per Chicago vehicle in tickets + late fees (clean), plus an unknown additional share of ~$23M/yr in citywide boot + tow assessments.</strong>
           </Callout>
-
-          <p style={{ fontSize: '18px', fontWeight: 700, color: COLORS.deepHarbor, margin: '20px 0 8px' }}>Step 6 — Divide by the Chicago vehicle fleet.</p>
-          <P>
-            Chicago has approximately <strong>1.18 million registered vehicles</strong> (Chicago Department of Transportation, 2024). Dividing each annual total by 1,180,000 gives the per-vehicle figure.
-          </P>
 
           <H2 id="year-table">Year-by-year, Chicago-zip vehicles</H2>
           <div style={{ overflowX: 'auto', margin: '0 0 24px' }}>
@@ -316,7 +325,7 @@ WHERE zipcode LIKE '606%'
 
           <H2 id="caveats">Caveats and limitations</H2>
           <ol style={{ fontSize: '16px', lineHeight: 1.7, color: COLORS.graphite, paddingLeft: '22px', margin: '0 0 14px' }}>
-            <li><strong>"Average" is not "typical."</strong> Most Chicago drivers pay much less than $303/year; a smaller group pays much more. This is sum-divided-by-fleet.</li>
+            <li><strong>"Average" is not "typical."</strong> Most Chicago drivers pay much less than $283/year; a smaller group pays much more. This is sum-divided-by-fleet.</li>
             <li><strong>Tow + storage is an estimate.</strong> Tow count is from a single FOIA covering Jan 2025–Mar 2026. The $300/tow figure applies the city's fee schedule to typical redemption timing. Real per-tow assessed cost varies widely (a vehicle redeemed in 1 day vs. one sold at auction after 30 days are very different).</li>
             <li><strong>Boot and tow assessments are citywide.</strong> The boot count and tow count don't filter by registered-vehicle zip — some booted/towed vehicles belong to suburban or visiting drivers. The leak is small for boots (the boot list is built from Chicago ticket accumulation) but somewhat larger for tows.</li>
             <li><strong>"Notice escalated" is our late-fee trigger.</strong> Chicago's ordinance auto-doubles the fine 25 days after issue if unpaid. We count the late fee when the city actually moved the ticket past that gate, evidenced by a Violation Notice or later notice stage.</li>
@@ -357,7 +366,7 @@ ORDER BY yr;`}</CodeBlock>
           </P>
 
           <p style={{ fontSize: '13px', color: COLORS.slate, marginTop: '48px', borderTop: `1px solid ${COLORS.border}`, paddingTop: '24px' }}>
-            Sources: Chicago Department of Finance ticket data (FOIA, 2018–2025); Chicago Department of Streets &amp; Sanitation tow records (FOIA F136267-041626); Chicago boot statistics (annual reports). Chicago vehicle count from CDOT 2024. Database last refreshed April 10, 2026.
+            Sources: Chicago Department of Finance ticket data (FOIA F129773-022626, covering 2018–2025); Chicago Department of Finance boot statistics &amp; fees (FOIA F120036-111425); Chicago Department of Streets &amp; Sanitation tow records (FOIA F136267-041626). Chicago vehicle count from CDOT 2024. Database last refreshed April 10, 2026.
           </p>
         </div>
         <Footer />
